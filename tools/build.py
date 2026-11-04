@@ -1,0 +1,173 @@
+"""Build the portable Shiva folder with Nuitka (standalone), then verify and zip it.
+
+Usage (from the repository root, after `python tools/fetch_third_party.py`):
+    python tools/build.py [--skip-compile]    # --skip-compile reuses build/ (packaging step only)
+
+Output (git-ignored): dist/Shiva-<version>-win64/ , dist/Shiva-<version>-win64.zip, dist/SHA256SUMS.txt
+
+Steps: compile -> check every bundled file is really there (Nuitka's --include-data-dir silently skips
+.exe files, so each one is listed explicitly) -> add licence texts -> run `Shiva.exe --selftest` with a
+stripped PATH -> zip -> SHA-256. Fails loudly on any problem.
+"""
+from __future__ import annotations
+
+import hashlib
+import importlib.metadata as md
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import tomllib
+import zipfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+AGE_DIR = ROOT / "third_party" / "bin" / "age"
+LICENSE_FILES = [  # (source, name inside the portable folder)
+    (ROOT / "LICENSE", "LICENSE.txt"),
+    (ROOT / "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md"),
+    (ROOT / "third_party" / "licenses" / "LGPL-3.0.txt", "licenses/LGPL-3.0.txt"),
+]
+
+
+def pdfium_files() -> list[tuple[Path, str]]:
+    """pypdfium2 (PDF flattening) loads pdfium.dll and reads version.json from its package folders at run time.
+    Nuitka copies them itself (explicit --include-data-files conflicts with its DLL handling); asserted after the build."""
+    import pypdfium2
+    import pypdfium2_raw
+    raw, pkg = Path(pypdfium2_raw.__file__).parent, Path(pypdfium2.__file__).parent
+    files = [(raw / "pdfium.dll", "pypdfium2_raw/pdfium.dll"), (raw / "version.json", "pypdfium2_raw/version.json"),
+             (pkg / "version.json", "pypdfium2/version.json")]
+    for src, _rel in files:
+        if not src.is_file():
+            die(f"pypdfium2 file missing: {src.name}")
+    return files
+
+
+def die(msg: str) -> None:
+    print(f"BUILD FAILED: {msg}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def compile_app(build_dir: Path) -> Path:
+    exes = sorted(AGE_DIR.glob("*.exe"))
+    if not (AGE_DIR / "age.exe").is_file() or not (AGE_DIR / "age-plugin-batchpass.exe").is_file():
+        die("age binaries missing; run tools/fetch_third_party.py first")
+    cmd = [sys.executable, "-m", "nuitka", "--standalone", "--assume-yes-for-downloads",
+           "--enable-plugin=pyside6", "--windows-console-mode=disable", "--include-package=shiva",
+           "--include-package=pypdfium2", "--include-package=pypdfium2_raw",
+           "--output-filename=Shiva.exe", f"--output-dir={build_dir}"]
+    pdfium_files()   # Nuitka's dll-files plugin and package-data support copy pdfium.dll and version.json; checked after the build
+    cmd += [f"--include-data-files={e}=age/{e.name}" for e in exes]
+    cmd += [f"--include-data-files={AGE_DIR / 'LICENSE'}=age/LICENSE", str(ROOT / "src" / "shiva_launcher.py")]
+    env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
+    if subprocess.run(cmd, env=env, cwd=ROOT).returncode != 0:
+        die("nuitka failed")
+    return build_dir / "shiva_launcher.dist"
+
+
+def selftest(folder: Path) -> None:
+    sysroot = os.environ.get("SystemRoot", r"C:\Windows")
+    scratch = tempfile.mkdtemp(prefix="shiva-selftest-")   # the self-test shreds a file: keep it out of C:\Windows\Temp (protected)
+    env = {"SystemRoot": sysroot, "PATH": str(Path(sysroot) / "System32"),   # no Python, no age on PATH
+           "TEMP": scratch, "TMP": scratch}
+    try:
+        p = subprocess.run([str(folder / "Shiva.exe"), "--selftest"], env=env, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=180)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    if p.returncode != 0 or "SELFTEST_OK" not in p.stdout:
+        die(f"selftest failed (exit {p.returncode}): {p.stdout.strip()} {p.stderr.strip()}")
+
+
+def sha256(p: Path) -> str:
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def main() -> int:
+    if os.name != "nt":
+        die("the portable build targets Windows")
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    build_dir = ROOT / "build"
+    dist = ROOT / "dist"
+    name = f"Shiva-{version}-win64"
+    src_dist = build_dir / "shiva_launcher.dist"
+    if "--skip-compile" not in sys.argv:
+        shutil.rmtree(build_dir, ignore_errors=True)
+        src_dist = compile_app(build_dir)
+    if not (src_dist / "Shiva.exe").is_file():
+        die(f"{src_dist / 'Shiva.exe'} not found")
+
+    out = dist / name
+    shutil.rmtree(out, ignore_errors=True)
+    dist.mkdir(exist_ok=True)
+    shutil.copytree(src_dist, out)
+
+    for e in AGE_DIR.glob("*.exe"):  # the silent-skip pitfall: assert instead of trusting
+        if not (out / "age" / e.name).is_file():
+            die(f"age/{e.name} missing from the build")
+    for _src, rel in pdfium_files():
+        if not (out / rel).is_file():
+            die(f"{rel} missing from the build")
+    for src, rel in LICENSE_FILES:
+        if not src.is_file():
+            die(f"licence file missing: {src.relative_to(ROOT)}")
+        dest = out / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dest)
+
+    # interface translations: the app looks for translations/ next to Shiva.exe (src/shiva/i18n.py);
+    # shiva_zh_TW.qm is compiled from the catalog table, qtbase_zh_TW.qm is Qt's own text (file dialog buttons)
+    import compile_translations
+    qm_dir = build_dir / "translations"
+    qm = compile_translations.build(qm_dir)
+    (out / "translations").mkdir(exist_ok=True)
+    shutil.copyfile(qm, out / "translations" / qm.name)
+    qt_qm = compile_translations.qt_base_qm()
+    if qt_qm is None:
+        die("qtbase_zh_TW.qm not found in the PySide6 wheel")
+    shutil.copyfile(qt_qm, out / "translations" / qt_qm.name)
+
+    # wheels that bundle compiled libraries carry their licence texts in dist-info/licenses; ship them
+    for pkg, minimum in (("pypdfium2", 3), ("pillow", 1), ("pikepdf", 3), ("mutagen", 1)):
+        lic_src = Path(md.distribution(pkg)._path) / "licenses"
+        n_lic = 0
+        for f in sorted(p for p in lic_src.rglob("*") if p.is_file()):
+            dest = out / "licenses" / pkg / f.relative_to(lic_src)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(f, dest)
+            n_lic += 1
+        if n_lic < minimum:
+            die(f"{pkg} licence files not found in the wheel metadata")
+
+    manifest = tomllib.loads((ROOT / "third_party" / "MANIFEST.toml").read_text(encoding="utf-8"))
+    info = [f"Shiva {version}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",
+            f"python: {sys.version.split()[0]}", f"nuitka: {md.version('nuitka')}",
+            f"PySide6: {md.version('PySide6_Essentials')}",
+            f"pypdfium2: {md.version('pypdfium2')}", f"age: {manifest['age']['version']}",
+            "", "Reproducibility: same source + the versions above + pinned age (third_party/MANIFEST.toml)",
+            "should give the same file list; Nuitka output is not guaranteed to be byte-identical."]
+    (out / "BUILD-INFO.txt").write_text("\n".join(info) + "\n", encoding="utf-8", newline="\n")
+
+    selftest(out)
+
+    zip_path = dist / f"{name}.zip"
+    zip_path.unlink(missing_ok=True)
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(out.rglob("*")):
+            if f.is_file():
+                z.write(f, Path(name) / f.relative_to(out))
+    digest = sha256(zip_path)
+    (dist / "SHA256SUMS.txt").write_text(f"{digest} *{zip_path.name}\n", encoding="utf-8", newline="\n")
+    print(f"OK {zip_path.name}  {zip_path.stat().st_size / 1e6:.1f} MB  sha256={digest}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

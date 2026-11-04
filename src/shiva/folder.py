@@ -1,0 +1,333 @@
+"""Folder encryption: tar streamed into age (no plaintext archive on disk), verified, then optionally shredded.
+
+Key rules: the plan (manifest) is made up front and refuses anything Shiva could not restore; only
+manifest entries are ever shredded and only if unchanged; restore never uses tarfile extraction, it
+validates and writes every entry itself with exclusive-create.
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import stat
+import tarfile
+import threading
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from . import agecli, names, output, storage
+from .shred import ShredReport, ShredRefused, _named_streams, _wipe_streams, is_link, shred_file, shred_tree
+
+MARKER = ".shiva-staging-marker"
+MAX_MEMBERS = 1_000_000
+_CLOUD_ATTRS = 0x400000 | 0x80000 | 0x100000
+
+
+class FolderRefused(ValueError):
+    """The folder (or archive) cannot be handled safely; nothing was changed."""
+
+    def __init__(self, msg: str = "", code: str | None = None):
+        super().__init__(msg)
+        self.code = code
+
+
+class RestoreIncomplete(RuntimeError):
+    """Everything was restored but could not be moved to its final name; the data is kept."""
+    code = "restore_incomplete"
+
+
+@dataclass(frozen=True)
+class Entry:
+    rel: str  # '/'-separated, relative to the folder
+    kind: str  # "dir" or "file"
+    size: int
+    mtime_ns: int
+    ino: int
+
+
+@dataclass
+class Plan:
+    root: Path
+    entries: list[Entry] = field(default_factory=list)
+    hidden_streams: int = 0  # NTFS alternate streams (other than Zone.Identifier) that are NOT archived
+
+    def path(self, e: Entry) -> Path:
+        return self.root.joinpath(*e.rel.split("/"))
+
+
+def _real_streams(path: Path) -> int:
+    return sum(1 for n in _named_streams(path) if n.lower() != "zone.identifier")
+
+
+def plan_folder(root: Path, shred_original: bool) -> Plan:
+    root = Path(root)
+    st = os.lstat(root)
+    if is_link(st) or not stat.S_ISDIR(st.st_mode):
+        raise FolderRefused(f"not a plain folder (link, junction or file): {root.name}")
+    plan = Plan(root)
+    guard = names.CaseGuard()
+    base_len = len(os.path.abspath(root))
+
+    def walk(d: Path, prefix: str) -> None:
+        with os.scandir(d) as it:
+            items = sorted(it, key=lambda e: e.name)
+        for e in items:
+            rel = prefix + e.name
+            if not prefix and e.name.lower() == MARKER:
+                # restore creates its own marker with this name first: such a file could never be restored
+                raise FolderRefused(f"'{e.name}' is a name Shiva uses while restoring folders; "
+                                    "rename it before archiving this folder")
+            try:
+                names.split_rel(rel)
+                guard.add(rel)
+                names.check_length(base_len, rel)
+            except names.UnsafeName as ex:
+                raise FolderRefused(str(ex)) from ex
+            est = os.lstat(e.path)  # DirEntry.stat() leaves st_ino and st_nlink at 0 on Windows
+            if is_link(est):
+                if getattr(est, "st_file_attributes", 0) & _CLOUD_ATTRS and not stat.S_ISLNK(est.st_mode):
+                    raise FolderRefused(f"'{rel}' is an online-only or cloud placeholder file: "
+                                        "make it available offline first")
+                raise FolderRefused(f"'{rel}' is a link or junction; Shiva does not follow links")
+            if stat.S_ISDIR(est.st_mode):
+                plan.hidden_streams += _real_streams(Path(e.path))
+                plan.entries.append(Entry(rel, "dir", 0, est.st_mtime_ns, est.st_ino))
+                walk(Path(e.path), rel + "/")
+            elif stat.S_ISREG(est.st_mode):
+                if shred_original and est.st_nlink > 1:
+                    raise FolderRefused(f"'{rel}' has hard links; overwriting it would destroy the other names")
+                plan.hidden_streams += _real_streams(Path(e.path))
+                plan.entries.append(Entry(rel, "file", est.st_size, est.st_mtime_ns, est.st_ino))
+            else:
+                raise FolderRefused(f"'{rel}' is not a regular file or folder")
+
+    walk(root, "")
+    plan.hidden_streams += _real_streams(root)
+    if shred_original and plan.hidden_streams:
+        raise FolderRefused(f"{plan.hidden_streams} hidden NTFS data stream(s) are not archived and would be "
+                            "destroyed by overwriting; turn off 'overwrite the original' or remove them")
+    return plan
+
+
+def _write_tar(plan: Plan, writer, cancel) -> None:
+    tar = tarfile.open(fileobj=writer, mode="w|", format=tarfile.PAX_FORMAT)
+    for e in plan.entries:
+        if cancel is not None and cancel.is_set():
+            raise agecli.Cancelled("cancelled")
+        ti = tarfile.TarInfo(e.rel)  # built by hand: add() would turn hard links into link entries
+        ti.mtime = e.mtime_ns // 1_000_000_000
+        ti.uid = ti.gid = 0
+        ti.uname = ti.gname = ""
+        if e.kind == "dir":
+            ti.type, ti.mode = tarfile.DIRTYPE, 0o755
+            tar.addfile(ti)
+        else:
+            ti.type, ti.mode, ti.size = tarfile.REGTYPE, 0o644, e.size
+            with open(plan.path(e), "rb") as f:
+                tar.addfile(ti, f)
+    tar.close()
+
+
+def _verify_tar(plan: Plan, reader) -> None:
+    tar = tarfile.open(fileobj=reader, mode="r|")
+    it = iter(plan.entries)
+    for m in tar:
+        e = next(it, None)
+        ok = (e is not None and m.name == e.rel and not m.issparse()
+              and ((e.kind == "dir" and m.isdir()) or (e.kind == "file" and m.isreg() and m.size == e.size)))
+        if not ok:
+            raise agecli.AgeError(f"verification failed: archive entry {m.name!r} does not match the folder", "verify_failed")
+        if m.isreg():
+            f = tar.extractfile(m)
+            while f.read(1 << 20):
+                pass
+    if next(it, None) is not None:
+        raise agecli.AgeError("verification failed: the archive is missing entries", "verify_failed")
+
+
+def _shred_manifest(plan: Plan, report: ShredReport) -> int:
+    """Shred only what was archived and is unchanged. Returns how many items were left in place."""
+    left = 0
+    for e in plan.entries:
+        if e.kind != "file":
+            continue
+        p = plan.path(e)
+        try:
+            st = os.lstat(p)
+        except FileNotFoundError:
+            continue
+        if is_link(st) or (st.st_size, st.st_mtime_ns, st.st_ino) != (e.size, e.mtime_ns, e.ino):
+            left += 1
+            continue
+        try:
+            shred_file(p, report)
+        except (ShredRefused, OSError):
+            left += 1
+    dirs = [plan.path(e) for e in plan.entries if e.kind == "dir"]
+    for d in reversed([plan.root] + dirs):  # children before parents, root last; rmdir fails on a non-empty folder
+        try:
+            if is_link(os.lstat(d)):
+                left += 1
+                continue
+            _wipe_streams(d, report)
+            os.rmdir(d)
+            report.dirs += 1
+        except OSError:
+            left += 1
+    return left
+
+
+def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool = False,
+                                cancel: threading.Event | None = None, out_dir: Path | None = None):
+    """Returns (output path, ShredReport | None, notes). out_dir must not be inside the folder."""
+    src = Path(src)
+    dst = output.dest_dir(src, out_dir, inside=src) / (src.name + ".tar.age")
+    if dst.exists():
+        raise FileExistsError(dst)
+    plan = plan_folder(src, shred_original)
+    notes = []
+    if plan.hidden_streams:
+        notes.append(f"{plan.hidden_streams} hidden NTFS data stream(s) are not included in the archive")
+    part = output.part_for(dst)
+    try:
+        want = agecli.encrypt_stream(lambda w: _write_tar(plan, w, cancel), part, passphrase, cancel)
+        got = agecli.decrypt_consume(part, passphrase, lambda r: _verify_tar(plan, r), cancel)
+        if got != want:
+            raise agecli.AgeError("verification failed: decrypted archive differs from what was encrypted", "verify_failed")
+        again = plan_folder(src, shred_original)
+        if again.entries != plan.entries:
+            raise agecli.AgeError("the folder changed while it was being encrypted; nothing was removed", "changed_during_run")
+        verified_size = os.stat(part).st_size
+        output.publish(part, dst)
+    except BaseException as e:
+        if not isinstance(e, agecli.OutputExists):
+            output.discard_part(part)
+        raise
+    if os.stat(dst).st_size != verified_size:
+        raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
+    report = None
+    if shred_original:
+        report = ShredReport()
+        report.caveats = storage.assess(src).warnings() + report.caveats
+        left = _shred_manifest(plan, report)
+        if left:
+            report.warning = (f"{left} item(s) were left in the folder because they changed after being "
+                              "archived or could not be removed")
+    return dst, report, notes
+
+
+# ---- restore -------------------------------------------------------------------------------------
+
+def _discard_staging(staging: Path) -> None:
+    """Staging holds plaintext: shred it (fall back to plain removal), best effort."""
+    try:
+        shred_tree(staging)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+def sweep_stale_staging(folder: Path) -> int:
+    """Shred staging folders left by a crashed restore. Only folders carrying our marker are touched,
+    and each is claimed by rename first so one that is in use right now is skipped."""
+    n = 0
+    for d in Path(folder).glob(".*" + output.PART_SUFFIX):
+        try:
+            if not (d.is_dir() and not is_link(os.lstat(d)) and (d / MARKER).is_file()):
+                continue
+            claimed = d.with_name(d.name + ".claimed")
+            if claimed.exists():
+                continue
+            os.rename(d, claimed)
+            _discard_staging(claimed)
+            n += 1
+        except OSError:
+            continue
+    return n
+
+
+def _extract(reader, staging: Path, free: int) -> None:
+    tar = tarfile.open(fileobj=reader, mode="r|")
+    guard = names.CaseGuard()
+    base_len = len(str(staging))
+    count = total = 0
+    for m in tar:
+        count += 1
+        if count > MAX_MEMBERS:
+            raise FolderRefused("archive has too many entries")
+        if m.issparse() or not (m.isreg() or m.isdir()):
+            raise FolderRefused(f"unsupported entry type for {m.name!r} (only files and folders are restored)")
+        try:
+            parts = names.split_rel(m.name)
+            rel = "/".join(parts)
+            names.check_length(base_len, rel)
+            guard.add(rel)
+        except names.UnsafeName as ex:
+            raise FolderRefused(f"unsafe entry in archive: {ex}") from ex
+        path = staging.joinpath(*parts)
+        if not staging.is_dir():  # claimed or removed by someone else: never recreate it silently
+            raise FolderRefused("the restore folder disappeared while restoring; nothing was kept")
+        if m.isdir():
+            os.makedirs(path, exist_ok=True)
+            continue
+        os.makedirs(path.parent, exist_ok=True)
+        src = tar.extractfile(m)
+        with open(path, "xb") as out:  # exclusive: a collision we missed becomes an error, not an overwrite
+            while True:
+                chunk = src.read(1 << 20)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > free:
+                    raise FolderRefused("not enough free disk space to restore this archive", "disk_full")
+                out.write(chunk)
+        try:
+            os.utime(path, (m.mtime, m.mtime))
+        except (OSError, OverflowError, ValueError):
+            pass
+
+
+def decrypt_folder(src: Path, passphrase: str, cancel: threading.Event | None = None,
+                   out_dir: Path | None = None) -> Path:
+    """Restore NAME.tar.age into a new folder NAME next to it (or in out_dir). Never overwrites or merges."""
+    src = Path(src)
+    if not src.name.lower().endswith(".tar.age"):
+        raise ValueError("not a .tar.age file")
+    base = output.dest_dir(src, out_dir)
+    out = base / src.name[:-len(".tar.age")]
+    if out.exists():
+        raise FileExistsError(out)
+    try:
+        names.check_component(out.name)
+    except names.UnsafeName as ex:
+        raise FolderRefused(str(ex)) from ex
+    free = shutil.disk_usage(base).free
+    if free < src.stat().st_size:
+        raise FolderRefused("not enough free disk space to restore this archive", "disk_full")
+    staging = out.with_name("." + out.name + output.PART_SUFFIX)
+    os.mkdir(staging)  # FileExistsError here: not ours, leave it alone
+    mk = None
+    try:
+        # The marker stays open for the whole restore: Windows then refuses to rename the folder, so a second
+        # Shiva window sweeping stale staging folders cannot claim and shred one that is still in use.
+        mk = open(staging / MARKER, "xb")
+        mk.write(b"shiva staging folder; safe to shred if no Shiva job is running\n")
+        mk.flush()
+        agecli.decrypt_consume(src, passphrase, lambda r: _extract(r, staging, free), cancel)
+    except BaseException:
+        if mk is not None:
+            mk.close()
+        _discard_staging(staging)
+        raise
+    # Complete and authenticated (age exited 0). From here on the data is never shredded.
+    mk.close()
+    (staging / MARKER).unlink(missing_ok=True)
+    last = None
+    for _ in range(5):
+        try:
+            os.rename(staging, out)
+            return out
+        except FileExistsError:
+            raise RestoreIncomplete(f"'{out.name}' appeared meanwhile; the restored data is in '{staging.name}'")
+        except OSError as e:  # e.g. antivirus holding a file
+            last = e
+            threading.Event().wait(0.5)
+    raise RestoreIncomplete(f"restored, but could not rename '{staging.name}' to '{out.name}': {last}")

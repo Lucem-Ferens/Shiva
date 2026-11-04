@@ -1,0 +1,51 @@
+name: upstream-check
+# Report-only check. Opens/updates one issue when a newer upstream release exists.
+# Runs only when started by hand (Actions tab). To run it weekly, restore the `schedule` trigger below.
+on:
+  # schedule:
+  #   - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check upstream releases
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          python tools/check_upstream.py | tee report.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      - name: Create or update the single tracking issue
+        if: steps.check.outputs.code == '10'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Upstream update available"
+          n=$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
+                --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          if [ -n "$n" ]; then
+            gh issue edit "$n" --body-file report.txt
+          else
+            gh issue create --title "$title" --body-file report.txt --label dependencies \
+              || gh issue create --title "$title" --body-file report.txt
+          fi
+      - name: Close the tracking issue when everything is current
+        if: steps.check.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Upstream update available"
+          n=$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
+                --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          if [ -n "$n" ]; then gh issue close "$n" --comment "All tracked components are current."; fi

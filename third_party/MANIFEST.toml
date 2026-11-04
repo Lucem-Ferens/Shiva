@@ -1,0 +1,81 @@
+# Third-party components. Modelled on Chromium's README.chromium fields.
+# tools/check_upstream.py reads this file; keep keys stable.
+#
+# kind = "bundled"  -> upstream binary shipped unmodified in the portable folder
+# kind = "ported"   -> upstream source adapted into src/ (needs manual diff review)
+# kind = "tracked"  -> not shipped; watched for reference only
+
+[age]
+kind = "bundled"
+repo = "FiloSottile/age"
+version = "1.3.2"
+asset = "age-v1.3.2-windows-amd64.zip"
+sha256 = "f48d8f8f9ebe903ab5027ed067652f2cc1db94bc206976430133b905dcd8e8c7"
+license = "BSD-3-Clause"
+verification = "sha256 pinned (measured locally 2026-11-02); sigsum-verify not yet automated"
+security_critical = true
+update_mechanism = "tools/check_upstream.py report, then tools/fetch_third_party.py after review"
+last_reviewed = "2026-11-02"
+
+[mat2]
+kind = "ported"
+repo = "jvoisin/mat2"
+version = "0.15.0"          # exact base: tag 0.15.0, libmat2/office.py and libmat2/archive.py (read 2026-11-02)
+license = "LGPL-3.0-or-later"
+ported_to = "src/shiva/metadata/office.py, src/shiva/metadata/zipclean.py"   # per-file headers name the upstream file and our changes
+# Not ported from mat2 (own code, GPL): jpeg.py, png.py, gif.py, webp.py, audio.py, pdf.py (mat2 uses GdkPixbuf/Poppler/mutagen differently).
+security_critical = true
+update_mechanism = "monthly manual diff of upstream vs base version"
+last_reviewed = "2026-11-02"
+
+[bleachbit]
+kind = "tracked"            # no BleachBit code is ported (checked 2026-11-04); shred.py is our own and only cites its documentation
+repo = "bleachbit/bleachbit"
+version = "6.0.6"           # version noted by research on 2026-11-02; reference only
+license = "GPL-3.0-or-later"
+security_critical = false
+update_mechanism = "monthly release-notes read for shredding caveats; if code is ever ported, switch to kind = \"ported\" with ported_to and a base commit"
+last_reviewed = "2026-11-02"
+
+# Python runtime dependencies (installed from PyPI wheels, frozen into the build by Nuitka).
+# User approved adding these on 2026-11-02 for Milestone 4a (Pillow, pikepdf) and 4b (mutagen).
+[pillow]
+kind = "bundled"
+repo = "python-pillow/Pillow"
+version = "13.0.0"
+license = "MIT-CMU"
+verification = "PyPI wheel, version and licence read from installed metadata 2026-11-02; hash pinning not yet automated"
+security_critical = true     # parses untrusted images; runs in the worker subprocess
+update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
+last_reviewed = "2026-11-02"
+
+[pikepdf]
+kind = "bundled"
+repo = "pikepdf/pikepdf"
+version = "10.17.0"          # wheel bundles qpdf 12.4.2
+license = "MPL-2.0"
+verification = "PyPI wheel, version and licence read from installed metadata 2026-11-02; hash pinning not yet automated"
+security_critical = true     # parses untrusted PDFs; runs in the worker subprocess
+update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
+last_reviewed = "2026-11-02"
+
+[mutagen]
+kind = "bundled"
+repo = "quodlibet/mutagen"
+version = "1.48.1"
+license = "GPL-2.0-or-later"
+verification = "PyPI wheel, version and licence read from installed metadata 2026-11-02; hash pinning not yet automated"
+security_critical = false
+update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
+last_reviewed = "2026-11-02"
+
+# User approved adding pypdfium2 on 2026-11-02 (for the optional "flatten PDF pages to images" feature).
+[pypdfium2]
+kind = "bundled"
+repo = "pypdfium2-team/pypdfium2"
+version = "5.14.0"           # wheel bundles PDFium (BSD-3-Clause / Apache-2.0; build licences in the wheel's dist-info)
+license = "BSD-3-Clause OR Apache-2.0"
+verification = "PyPI wheel, version and licence read from installed metadata 2026-11-02; hash pinning not yet automated"
+security_critical = true     # renders untrusted PDFs; runs in the worker subprocess
+update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
+last_reviewed = "2026-11-02"

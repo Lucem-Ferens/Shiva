@@ -1,0 +1,54 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+*.build/
+*.dist/
+*.egg-info/
+.pytest_cache/
+third_party/bin/
+*.age
+*.key
+*.shiva-part
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+credentials*
+secrets.*
+.npmrc
+.pypirc
+.netrc
+
+# Personal and agent-local files
+.scratch/
+.vscode/
+.idea/
+*.code-workspace
+
+# Data, logs, clutter
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+dist/
+
+# Compiled Qt translations (built from src/shiva/translations/zh_TW.py by tools/compile_translations.py)
+*.qm
+
+# local scratch and session snapshots
+temp/
