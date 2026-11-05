@@ -281,3 +281,55 @@ def test_a_cleaned_file_that_cannot_be_overwritten_after_a_failed_read_back_is_r
     with pytest.raises(CleanError) as e:
         runner.clean_file(img)
     assert [c.outcome for c in e.value.cleanup_problems] == [output.PLAIN_DELETE]
+
+
+def test_a_cleaned_file_replaced_by_another_program_is_left_alone(tmp_path: Path, monkeypatch):
+    from shiva.metadata import CleanError, runner
+    img = _png(tmp_path / "a.png")
+    real_publish = output.publish
+
+    def publish_then_replace(part, final):
+        real_publish(part, final)
+        final.unlink()
+        final.write_bytes(b"someone else's file")
+
+    monkeypatch.setattr(output, "publish", publish_then_replace)
+    with pytest.raises(CleanError, match="replaced by another program"):
+        runner.clean_file(img)
+    assert (tmp_path / "a.cleaned.png").read_bytes() == b"someone else's file"
+
+
+def test_a_selected_leftover_is_not_swept_before_it_is_processed(tmp_path: Path):
+    from shiva import steps
+    jobs._SWEEP_REPORTED.clear()
+    left = _part(tmp_path, ".x.bin.shiva-part", b"leftover")
+    res = steps.run_steps([left], "", steps.StepOptions(clean=False, encrypt=False, shred=True))
+    assert res[0].ok and not left.exists()                       # shredded as the user asked, not swept first
+
+
+@pytest.mark.skipif(not (agecli.bin_dir() / "age.exe").is_file(), reason="age binaries absent")
+def test_a_stuck_leftover_is_tried_once_per_run_and_reported_once(tmp_path: Path, monkeypatch):
+    from shiva import steps
+    jobs._SWEEP_REPORTED.clear()
+    monkeypatch.setattr(output, "shred_file", _no_shred)
+    real = Path.unlink
+    old = time.time() - 3600
+    os.utime(_part(tmp_path, ".stuck.bin.shiva-part"), (old, old))
+    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: _no_shred() if ".stuck.bin.shiva-part" in self.name else real(self, *a, **k))
+    files = []
+    for n in ("a.bin", "b.bin", "c.bin"):
+        f = tmp_path / n; f.write_bytes(b"data"); files.append(f)
+    attempts = []
+    real_discard = output.discard_part
+    monkeypatch.setattr(output, "discard_part", lambda p: (attempts.append(p), real_discard(p))[1])
+    res = steps.run_steps(files, "pw-pw-pw-pw", steps.StepOptions(clean=False, encrypt=True))
+    assert len(attempts) == 1 and len(res[0].plaintext_left) == 1
+    assert not any(r.plaintext_left for r in res[1:])
+    jobs._SWEEP_REPORTED.clear()
+
+
+def test_a_claimed_item_looks_busy_right_after_the_claim(tmp_path: Path):
+    p = _part(tmp_path, ".old.bin.shiva-part")
+    os.utime(p, (time.time() - 3600, time.time() - 3600))
+    claimed = output._claimable(p)
+    assert claimed is not None and output._claimable(claimed) is None      # a second taker finds it fresh and leaves it

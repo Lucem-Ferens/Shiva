@@ -177,6 +177,7 @@ def clean_file(src: Path, options: dict | None = None, cancel: threading.Event |
             f.flush(); os.fsync(f.fileno())
         if part.stat().st_size != len(outcome.data):
             raise CleanError("Output size mismatch after writing; nothing was kept")
+        part_id = part.stat().st_ino        # the file's identity, to recognise it again after publishing
         output.publish(part, final)
     except BaseException as e:
         if created:
@@ -184,6 +185,13 @@ def clean_file(src: Path, options: dict | None = None, cancel: threading.Event |
         raise
     # read the published file back: it must be exactly the verified bytes before anyone relies on it
     if hashlib.sha256(final.read_bytes()).digest() != hashlib.sha256(outcome.data).digest():
+        try:
+            still_ours = part_id != 0 and final.stat().st_ino == part_id
+        except OSError:
+            still_ours = False
+        if not still_ours:      # another program replaced it: that file is not ours to overwrite
+            raise CleanError("The cleaned file was replaced by another program after it was written; "
+                             "Shiva left it alone and nothing else was touched")
         err = CleanError("The cleaned file changed after it was written; it was removed and nothing else was touched")
         output.attach(err, output.discard_part(final))      # it holds cleaned plaintext: overwrite it, and report if that fails
         raise err

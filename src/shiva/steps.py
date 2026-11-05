@@ -111,14 +111,14 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
 def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResult:
     if p.suffix.lower() == ".age":
         if opts.decrypt_age:                             # decrypt, never combined with other steps
-            return jobs.run_jobs([p], pw, False, cancel=cancel, out_dir=opts.out_dir)[0]
+            return jobs.run_jobs([p], pw, False, cancel=cancel, out_dir=opts.out_dir, sweep=False)[0]
         if opts.shred and not opts.clean and not opts.encrypt:
             return _shred_only(p)                        # the Shred tab may shred .age files
         return JobResult(p, False, "This is an encrypted .age file: it can only be decrypted or shredded here. "
                                    "Nothing was changed.", error_kind="unsupported")
     if not opts.clean:
         if opts.encrypt:
-            return jobs.run_jobs([p], pw, opts.shred, cancel=cancel, out_dir=opts.out_dir)[0]
+            return jobs.run_jobs([p], pw, opts.shred, cancel=cancel, out_dir=opts.out_dir, sweep=False)[0]
         if opts.shred:
             return _shred_only(p)
         return JobResult(p, False, "No step selected")

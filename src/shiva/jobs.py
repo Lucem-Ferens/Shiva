@@ -1,6 +1,7 @@
 """Qt-free batch job runner used by the GUI (and testable without a display)."""
 from __future__ import annotations
 
+import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -71,8 +72,9 @@ def sweep_leftovers(paths, out_dir: Path | None, log: Callable[[str], None]) -> 
     if out_dir is not None and output.folder_exists(out_dir):
         parents.add(Path(out_dir))
     problems: list[output.Cleanup] = []
+    skip = {os.path.normcase(os.path.abspath(p)) for p in paths}       # items the user chose are never swept
     for parent in parents:
-        n = output.sweep_stale_parts(parent, problems) + folder.sweep_stale_staging(parent, problems)
+        n = output.sweep_stale_parts(parent, problems, skip) + folder.sweep_stale_staging(parent, problems, skip)
         if n:
             log(f"Removed {n} leftover temporary item(s) from an interrupted run in {parent.name or parent}")
     return problems
@@ -91,10 +93,11 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
              log: Callable[[str], None] = lambda s: None,
              cancel: threading.Event | None = None,
              progress: Callable[[int, int], None] = lambda done, total: None,
-             out_dir: Path | None = None) -> list[JobResult]:
-    """Encrypt each file (or decrypt if it ends with .age). One failure never stops the others."""
+             out_dir: Path | None = None, sweep: bool = True) -> list[JobResult]:
+    """Encrypt each file (or decrypt if it ends with .age). One failure never stops the others.
+    `sweep=False`: the caller already removed leftovers for this run."""
     results: list[JobResult] = []
-    sweep_problems = sweep_leftovers(paths, out_dir, log)
+    sweep_problems = sweep_leftovers(paths, out_dir, log) if sweep else []
     for i, p in enumerate(paths):
         p = Path(p)
         if cancel is not None and cancel.is_set():

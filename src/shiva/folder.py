@@ -235,7 +235,7 @@ def _discard_staging(staging: Path) -> output.Cleanup:
     return output.Cleanup(output.LEFT if os.path.lexists(staging) else output.PLAIN_DELETE, staging)
 
 
-def sweep_stale_staging(folder: Path, problems: list[output.Cleanup] | None = None) -> int:
+def sweep_stale_staging(folder: Path, problems: list[output.Cleanup] | None = None, skip=None) -> int:
     """Shred staging folders left by a crashed restore. Only folders carrying our marker are touched (a `.claimed`
     one, left by a crash or a failed discard, is retried once idle), and each is claimed by rename first so one that
     is in use right now is skipped. Items not cleanly overwritten are appended to `problems`."""
@@ -243,7 +243,7 @@ def sweep_stale_staging(folder: Path, problems: list[output.Cleanup] | None = No
     for d in [*Path(folder).glob(".*" + output.PART_SUFFIX),
               *Path(folder).glob(".*" + output.PART_SUFFIX + output.CLAIMED_SUFFIX + "*")]:
         try:
-            if not (d.is_dir() and not is_link(os.lstat(d))):
+            if not (d.is_dir() and not is_link(os.lstat(d))) or output.is_selected(d, skip):
                 continue
             claimed_already = output.is_claimed(d.name)
             if not claimed_already and not (d / MARKER).is_file():

@@ -169,15 +169,30 @@ def _claimable(p: Path) -> Path | None:
             return None
         retaken = p.with_name(p.name.split(CLAIMED_SUFFIX)[0] + CLAIMED_SUFFIX + "-" + secrets.token_hex(4))
         os.rename(p, retaken)
+        _touch(retaken)
         return retaken
     claimed = p.with_name(p.name + CLAIMED_SUFFIX)
     if claimed.exists():
         return None
     os.rename(p, claimed)
+    _touch(claimed)
     return claimed
 
 
-def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None) -> int:
+def _touch(p: Path) -> None:
+    """A rename keeps the old modification time, which would make a freshly claimed item look idle at once."""
+    try:
+        os.utime(p, None)
+    except OSError:
+        pass
+
+
+def is_selected(p: Path, skip) -> bool:
+    """True when `p` is one of the paths the user chose for this run: a run never sweeps its own input."""
+    return bool(skip) and os.path.normcase(os.path.abspath(p)) in skip
+
+
+def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None, skip=None) -> int:
     """Shred leftover *.shiva-part files from a crashed earlier run. Returns how many were handled; those not cleanly
     overwritten are appended to `problems`.
 
@@ -190,7 +205,7 @@ def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None) -> in
     n = 0
     for p in [*Path(folder).glob("*" + PART_SUFFIX), *Path(folder).glob("*" + PART_SUFFIX + CLAIMED_SUFFIX + "*")]:
         try:
-            if not (p.name.startswith(".") and p.is_file()):
+            if not (p.name.startswith(".") and p.is_file()) or is_selected(p, skip):
                 continue
             target = _claimable(p)
             if target is None:

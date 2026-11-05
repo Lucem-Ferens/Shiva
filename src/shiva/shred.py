@@ -183,9 +183,9 @@ def _check_file(path: Path) -> os.stat_result:
 
 
 class StreamListError(ShredRefused):
-    code = "streams_unreadable"     # errors.STREAMS_UNREADABLE
     """Windows would not list the data streams of a path, so it cannot be shredded safely. Raised before anything is
     written, so the target is untouched."""
+    code = "streams_unreadable"     # errors.STREAMS_UNREADABLE
 
 
 _ERROR_HANDLE_EOF = 38           # the documented end of the list (also: a folder without streams)
