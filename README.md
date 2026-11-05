@@ -95,7 +95,16 @@ python tools/compile_translations.py   # compile the Traditional Chinese catalog
 set PYTHONPATH=src && python -m shiva
 ```
 
-Build the portable folder with `python tools/build.py` (Nuitka standalone; takes a few minutes).
+Build the portable folder with `python tools/build.py` (Nuitka standalone; takes a few minutes). The build accepts only
+the package versions pinned in `requirements/lock.txt` and stops on any difference. Set up that environment with:
+
+```
+python -m venv .venv
+.venv\Scripts\python -m pip install --require-hashes -r requirements/lock.txt
+```
+
+Use Python 3.12.11 or newer for release builds. `requirements/lock.in` lists the direct requirements; regenerate the
+lock with `tools/make_lock.py` (needs `pip-tools`). Each build also writes a CycloneDX bill of materials next to the zip.
 
 ## Development
 

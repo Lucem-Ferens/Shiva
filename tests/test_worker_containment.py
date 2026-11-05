@@ -81,7 +81,10 @@ _SPAWN_AFTER_GO = (
 @needs_nt
 @pytest.mark.parametrize("max_processes, expected", [(1, "blocked"), (None, "spawned")])
 def test_process_limit_stops_the_worker_from_starting_another_process(max_processes, expected):
-    p = subprocess.Popen([sys.executable, "-c", _SPAWN_AFTER_GO], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    # a virtual environment's python.exe is a launcher that starts the real interpreter as a second process,
+    # which the limit would block before the test code runs; use the real interpreter
+    real_python = getattr(sys, "_base_executable", sys.executable)
+    p = subprocess.Popen([real_python, "-c", _SPAWN_AFTER_GO], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     handle = winjob.adopt_limited(p, 2 * 1024 * 1024 * 1024, max_processes=max_processes)
     try:
         assert handle is not None

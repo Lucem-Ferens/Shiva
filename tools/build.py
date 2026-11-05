@@ -5,15 +5,20 @@ Usage (from the repository root, after `python tools/fetch_third_party.py`):
 
 Output (git-ignored): dist/Shiva-<version>-win64/ , dist/Shiva-<version>-win64.zip, dist/SHA256SUMS.txt
 
-Steps: compile -> check every bundled file is really there (Nuitka's --include-data-dir silently skips
+Steps: check the environment against requirements/lock.txt (stops on any difference) -> compile -> check every bundled file is really there (Nuitka's --include-data-dir silently skips
 .exe files, so each one is listed explicitly) -> add licence texts -> run `Shiva.exe --selftest` with a
-stripped PATH -> zip -> SHA-256. Fails loudly on any problem.
+stripped PATH -> zip -> SHA-256 -> software bill of materials. Fails loudly on any problem.
+
+Set up the environment the build accepts:
+    python -m venv .venv && .venv/Scripts/python -m pip install --require-hashes -r requirements/lock.txt
 """
 from __future__ import annotations
 
 import hashlib
 import importlib.metadata as md
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +30,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AGE_DIR = ROOT / "third_party" / "bin" / "age"
+LOCK = ROOT / "requirements" / "lock.txt"
+MIN_PYTHON = (3, 12, 11)        # earlier 3.12 releases lack security fixes
 LICENSE_FILES = [  # (source, name inside the portable folder)
     (ROOT / "LICENSE", "LICENSE.txt"),
     (ROOT / "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md"),
@@ -82,6 +89,47 @@ def dependency_versions(roots: list[str]) -> dict[str, str]:
     return seen
 
 
+def locked_versions() -> dict[str, str]:
+    """name -> version of every package pinned in requirements/lock.txt (names normalised like pip does)."""
+    if not LOCK.is_file():
+        die("requirements/lock.txt missing")
+    pins = re.findall(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s\\]+)", LOCK.read_text(encoding="utf-8"), re.M)
+    return {re.sub(r"[-_.]+", "-", n).lower(): v for n, v in pins}
+
+
+def check_environment(project_dependencies: list[str]) -> None:
+    """Stop when the running environment differs from the lock: a missing, extra-versioned or unlisted package."""
+    lock = locked_versions()
+    problems = []
+    for name, want in sorted(lock.items()):
+        try:
+            have = md.version(name)
+        except md.PackageNotFoundError:
+            problems.append(f"{name} {want} is in the lock but not installed")
+            continue
+        if have != want:
+            problems.append(f"{name}: installed {have}, lock says {want}")
+    for name in sorted(dependency_versions(project_dependencies)):
+        if re.sub(r"[-_.]+", "-", name).lower() not in lock:
+            problems.append(f"{name} is needed at run time but is not in the lock")
+    if problems:
+        die("the environment does not match requirements/lock.txt:\n  " + "\n  ".join(problems)
+            + "\nInstall with: python -m pip install --require-hashes -r requirements/lock.txt")
+
+
+def write_sbom(path: Path, version: str, packages: dict[str, str], age_version: str, commit: str) -> None:
+    """CycloneDX 1.5 list of what the build contains: Python packages and the bundled age release."""
+    components = [{"type": "library", "name": n, "version": v, "purl": f"pkg:pypi/{n}@{v}"} for n, v in sorted(packages.items())]
+    components.append({"type": "application", "name": "age", "version": age_version,
+                       "purl": f"pkg:github/FiloSottile/age@v{age_version.lstrip('v')}"})
+    doc = {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1,
+           "metadata": {"timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "component": {"type": "application", "name": "Shiva", "version": version,
+                                      "description": f"built from commit {commit}"}},
+           "components": components}
+    path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
 def compile_app(build_dir: Path) -> Path:
     exes = sorted(AGE_DIR.glob("*.exe"))
     if not (AGE_DIR / "age.exe").is_file() or not (AGE_DIR / "age-plugin-batchpass.exe").is_file():
@@ -129,6 +177,11 @@ def main() -> int:
     if os.name != "nt":
         die("the portable build targets Windows")
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    project_deps = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"]
+    check_environment(project_deps)
+    if sys.version_info < MIN_PYTHON:
+        print(f"WARNING: Python {sys.version.split()[0]} is older than {'.'.join(map(str, MIN_PYTHON))}; "
+              "install a newer 3.12 before building a release.", file=sys.stderr)
     build_dir = ROOT / "build"
     dist = ROOT / "dist"
     name = f"Shiva-{version}-win64"
@@ -183,7 +236,8 @@ def main() -> int:
 
     manifest = tomllib.loads((ROOT / "third_party" / "MANIFEST.toml").read_text(encoding="utf-8"))
     info = [f"Shiva {version}", f"commit: {source_commit()}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",
-            f"python: {sys.version.split()[0]}", f"nuitka: {md.version('nuitka')}",
+            f"python: {sys.version.split()[0]}" + ("  (older than the recommended minimum)" if sys.version_info < MIN_PYTHON else ""),
+            f"lock: requirements/lock.txt sha256 {sha256(LOCK)[:16]}...", f"nuitka: {md.version('nuitka')}",
             f"age: {manifest['age']['version']}", "", "Python packages (direct and pulled in):",
             *[f"  {k}=={v}" for k, v in sorted(dependency_versions(
                 tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"]).items())],
@@ -201,6 +255,8 @@ def main() -> int:
                 z.write(f, Path(name) / f.relative_to(out))
     digest = sha256(zip_path)
     (dist / "SHA256SUMS.txt").write_text(f"{digest} *{zip_path.name}\n", encoding="utf-8", newline="\n")
+    packages = dependency_versions(project_deps)
+    write_sbom(dist / f"{name}-sbom.cdx.json", version, packages, manifest["age"]["version"], source_commit())
     print(f"OK {zip_path.name}  {zip_path.stat().st_size / 1e6:.1f} MB  sha256={digest}")
     return 0
 
