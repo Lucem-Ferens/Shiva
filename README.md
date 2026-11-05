@@ -73,7 +73,7 @@ Details and methods: [`docs/formats.md`](docs/formats.md).
 - **File names stay visible** in the names of `.age` files.
 - **Cleaning reads the whole file into memory.** Files larger than 256 MB are not cleaned; the list says so when you add them.
 - **Files from sources you do not trust.** Cleaning parses the file with libraries such as Pillow and pikepdf, in a separate
-  helper process that has a memory limit, is stopped on cancel or timeout, and cannot start other programs (in the packaged
+  helper process that has a memory limit, is stopped on cancel or timeout, and cannot start other programs directly (in the packaged
   build). It is **not a sandbox**: the helper still has your Windows user's rights, so a flaw in a library that a crafted file
   triggers could read or change files you can. Keep Windows and Shiva up to date.
 - **The passphrase is visible to your own programs while age runs.** It reaches age through the child process environment,

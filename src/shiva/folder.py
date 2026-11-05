@@ -204,7 +204,7 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
         output.publish(part, dst)
     except BaseException as e:
         if not isinstance(e, agecli.OutputExists):
-            output.attach(e, output.discard_part(part))
+            output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
         raise
     if os.stat(dst).st_size != verified_size:
         raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
@@ -229,6 +229,8 @@ def _discard_staging(staging: Path) -> output.Cleanup:
         return output.Cleanup(output.OVERWRITTEN, staging)
     except Exception:
         pass
+    if not os.path.lexists(staging):    # another window took the folder over (a rename) and is shredding it there
+        return output.Cleanup(output.ABSENT, staging)
     shutil.rmtree(staging, ignore_errors=True)
     return output.Cleanup(output.LEFT if os.path.lexists(staging) else output.PLAIN_DELETE, staging)
 
@@ -238,11 +240,12 @@ def sweep_stale_staging(folder: Path, problems: list[output.Cleanup] | None = No
     one, left by a crash or a failed discard, is retried once idle), and each is claimed by rename first so one that
     is in use right now is skipped. Items not cleanly overwritten are appended to `problems`."""
     n = 0
-    for d in [*Path(folder).glob(".*" + output.PART_SUFFIX), *Path(folder).glob(".*" + output.PART_SUFFIX + output.CLAIMED_SUFFIX)]:
+    for d in [*Path(folder).glob(".*" + output.PART_SUFFIX),
+              *Path(folder).glob(".*" + output.PART_SUFFIX + output.CLAIMED_SUFFIX + "*")]:
         try:
             if not (d.is_dir() and not is_link(os.lstat(d))):
                 continue
-            claimed_already = d.name.endswith(output.CLAIMED_SUFFIX)
+            claimed_already = output.is_claimed(d.name)
             if not claimed_already and not (d / MARKER).is_file():
                 continue
             target = output._claimable(d)       # renames a fresh one; None while a claimed one is still busy

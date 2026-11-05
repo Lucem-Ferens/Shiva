@@ -499,7 +499,6 @@ def result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_bef
     """One result row. Storage jargon (the per-file notes of a shred) and the engine's own reason line of a successful
     item go to `technical`; the row says only what may remain. A successful shred at a risky location is a Warning."""
     rr = _result_row(r, tab, ticked, size_before, size_after, uncleanable)
-    _add_cleanup_lines(rr, r)
     tech = []
     if tab == "shred":
         tech += [x for x in rr.details if x.startswith("Note: ")]
@@ -513,6 +512,7 @@ def result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_bef
         rr.text = "Shredded (best effort)."
     elif tab != "shred" and r.ok and r.original_removed and risk_lines and rr.status == "Done":
         rr.status, rr.text = "Warning", rr.text + " " + RISK_ROW        # one event, one status (same rule as the Shred tab)
+    _add_cleanup_lines(rr, r)     # last: it turns Done into Warning, which the risk rules above would then skip
     return rr
 
 

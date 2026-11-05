@@ -13,6 +13,8 @@ Callers use these names through the module (`output.publish(...)`), so one monke
 from __future__ import annotations
 
 import os
+import secrets
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -152,12 +154,22 @@ def attach(exc: BaseException, cleanup: Cleanup) -> None:
         exc.cleanup_problems = [*getattr(exc, "cleanup_problems", []), cleanup]
 
 
+def is_claimed(name: str) -> bool:
+    return PART_SUFFIX + CLAIMED_SUFFIX in name
+
+
 def _claimable(p: Path) -> Path | None:
-    """The path to discard for a leftover `p`, or None to skip it. A fresh .shiva-part file is claimed by renaming it;
-    a .claimed item (a crash between claim and discard, or a discard that failed) is retried once it has been idle."""
-    if p.name.endswith(CLAIMED_SUFFIX):
-        import time
-        return p if time.time() - os.lstat(p).st_mtime > CLAIMED_IDLE_S else None
+    """The path to discard for a leftover `p`, or None to skip it. A fresh .shiva-part item is claimed by renaming it.
+    A claimed one (a crash between claim and discard, or a discard that failed) is retried once it has been idle, and
+    taken over by a rename to a new name: of two windows doing that, only one rename succeeds (the other raises
+    OSError), and Windows refuses it while a file inside is open. The idle time alone is not enough: a folder's own
+    time does not change while files in a subfolder are being shredded."""
+    if is_claimed(p.name):
+        if time.time() - os.lstat(p).st_mtime <= CLAIMED_IDLE_S:
+            return None
+        retaken = p.with_name(p.name.split(CLAIMED_SUFFIX)[0] + CLAIMED_SUFFIX + "-" + secrets.token_hex(4))
+        os.rename(p, retaken)
+        return retaken
     claimed = p.with_name(p.name + CLAIMED_SUFFIX)
     if claimed.exists():
         return None
@@ -176,7 +188,7 @@ def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None) -> in
     publish, so nothing of the user's is lost. A `.claimed` file left behind is retried by a later sweep.
     """
     n = 0
-    for p in [*Path(folder).glob("*" + PART_SUFFIX), *Path(folder).glob("*" + PART_SUFFIX + CLAIMED_SUFFIX)]:
+    for p in [*Path(folder).glob("*" + PART_SUFFIX), *Path(folder).glob("*" + PART_SUFFIX + CLAIMED_SUFFIX + "*")]:
         try:
             if not (p.name.startswith(".") and p.is_file()):
                 continue

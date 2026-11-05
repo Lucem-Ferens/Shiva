@@ -85,7 +85,7 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         output.publish(part, dst)
     except BaseException as e:
         if not isinstance(e, agecli.OutputExists):
-            output.attach(e, output.discard_part(part))
+            output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
         raise
     if os.stat(dst).st_size != verified_size:
         raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")

@@ -51,6 +51,17 @@ def die(msg: str) -> None:
     raise SystemExit(1)
 
 
+def source_commit() -> str:
+    """Short id of the commit being built, marked when the working tree has uncommitted changes (public: no names)."""
+    try:
+        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True,
+                               text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    return head + (" + uncommitted changes" if dirty else "")
+
+
 def dependency_versions(roots: list[str]) -> dict[str, str]:
     """Installed version of every runtime package the app needs: the direct dependencies and what they pull in."""
     import re
@@ -171,7 +182,7 @@ def main() -> int:
             die(f"{pkg} licence files not found in the wheel metadata")
 
     manifest = tomllib.loads((ROOT / "third_party" / "MANIFEST.toml").read_text(encoding="utf-8"))
-    info = [f"Shiva {version}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",
+    info = [f"Shiva {version}", f"commit: {source_commit()}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",
             f"python: {sys.version.split()[0]}", f"nuitka: {md.version('nuitka')}",
             f"age: {manifest['age']['version']}", "", "Python packages (direct and pulled in):",
             *[f"  {k}=={v}" for k, v in sorted(dependency_versions(
