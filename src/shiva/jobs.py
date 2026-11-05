@@ -65,6 +65,28 @@ def preflight_warnings(paths: list[Path]) -> list[str]:
     return [w for ws in seen.values() for w in ws]
 
 
+def sweep_leftovers(paths, out_dir: Path | None, log: Callable[[str], None]) -> list[output.Cleanup]:
+    """Remove leftover temporary items of interrupted runs from the folders a run touches; returns those not cleanly overwritten."""
+    parents = {Path(p).parent for p in paths}
+    if out_dir is not None and output.folder_exists(out_dir):
+        parents.add(Path(out_dir))
+    problems: list[output.Cleanup] = []
+    for parent in parents:
+        n = output.sweep_stale_parts(parent, problems) + folder.sweep_stale_staging(parent, problems)
+        if n:
+            log(f"Removed {n} leftover temporary item(s) from an interrupted run in {parent.name or parent}")
+    return problems
+
+
+def report_leftovers(results: list[JobResult], problems: list[output.Cleanup], log: Callable[[str], None]) -> None:
+    """Say once per session, on the first row, which leftovers could not be cleanly overwritten."""
+    fresh = [c for c in problems if str(c.path) not in _SWEEP_REPORTED]
+    _SWEEP_REPORTED.update(str(c.path) for c in fresh)
+    if fresh and results:
+        note_cleanup(results[0], fresh)
+        log("WARNING: leftover temporary items could not be overwritten: " + ", ".join(str(c.path) for c in fresh))
+
+
 def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
              log: Callable[[str], None] = lambda s: None,
              cancel: threading.Event | None = None,
@@ -72,14 +94,7 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
              out_dir: Path | None = None) -> list[JobResult]:
     """Encrypt each file (or decrypt if it ends with .age). One failure never stops the others."""
     results: list[JobResult] = []
-    parents = {Path(p).parent for p in paths}
-    if out_dir is not None and output.folder_exists(out_dir):
-        parents.add(Path(out_dir))
-    sweep_problems: list[output.Cleanup] = []
-    for parent in parents:
-        n = output.sweep_stale_parts(parent, sweep_problems) + folder.sweep_stale_staging(parent, sweep_problems)
-        if n:
-            log(f"Removed {n} leftover temporary item(s) from an interrupted run in {parent.name or parent}")
+    sweep_problems = sweep_leftovers(paths, out_dir, log)
     for i, p in enumerate(paths):
         p = Path(p)
         if cancel is not None and cancel.is_set():
@@ -120,9 +135,5 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
             results.append(failure(p, e))
         log(f"{'OK  ' if results[-1].ok else 'FAIL'} {p.name}: {results[-1].message}")
     progress(len(paths), len(paths))
-    fresh = [c for c in sweep_problems if str(c.path) not in _SWEEP_REPORTED]
-    _SWEEP_REPORTED.update(str(c.path) for c in fresh)
-    if fresh and results:       # a leftover from an earlier run could not be cleaned: say so on the first row
-        note_cleanup(results[0], fresh)
-        log("WARNING: leftover temporary items could not be overwritten: " + ", ".join(str(c.path) for c in fresh))
+    report_leftovers(results, sweep_problems, log)
     return results

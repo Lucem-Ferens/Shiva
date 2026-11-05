@@ -184,6 +184,7 @@ def clean_file(src: Path, options: dict | None = None, cancel: threading.Event |
         raise
     # read the published file back: it must be exactly the verified bytes before anyone relies on it
     if hashlib.sha256(final.read_bytes()).digest() != hashlib.sha256(outcome.data).digest():
-        final.unlink(missing_ok=True)
-        raise CleanError("The cleaned file changed after it was written; it was removed and nothing else was touched")
+        err = CleanError("The cleaned file changed after it was written; it was removed and nothing else was touched")
+        output.attach(err, output.discard_part(final))      # it holds cleaned plaintext: overwrite it, and report if that fails
+        raise err
     return CleanFileResult(src, final, outcome, snap)

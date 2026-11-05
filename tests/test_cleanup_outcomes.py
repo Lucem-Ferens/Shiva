@@ -221,3 +221,63 @@ def test_taking_over_renames_so_a_second_taker_finds_nothing(tmp_path: Path):
     assert first is not None and first.name.startswith(d.name + "-") and not d.exists()
     with pytest.raises(OSError):
         output._claimable(d)                                          # the other window's rename: nothing left to take
+
+
+def _png(path: Path) -> Path:
+    import io
+    from PIL import Image
+    from PIL.PngImagePlugin import PngInfo
+    info = PngInfo(); info.add_text("Author", "Someone")
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), (1, 2, 3)).save(buf, "PNG", pnginfo=info)
+    path.write_bytes(buf.getvalue())
+    return path
+
+
+def test_a_run_that_only_cleans_sweeps_a_leftover_part_file(tmp_path: Path):
+    from shiva import steps
+    jobs._SWEEP_REPORTED.clear()
+    img = _png(tmp_path / "a.png")
+    stale = _part(tmp_path, ".a.cleaned.png.shiva-part", b"cleaned plaintext")
+    res = steps.run_steps([img], "", steps.StepOptions(clean=True, encrypt=False))
+    assert res[0].ok and not stale.exists()
+
+
+def test_a_leftover_found_by_a_clean_only_run_is_reported_when_it_cannot_be_overwritten(tmp_path: Path, monkeypatch):
+    from shiva import steps
+    jobs._SWEEP_REPORTED.clear()
+    monkeypatch.setattr(output, "shred_file", _no_shred)
+    img = _png(tmp_path / "a.png")
+    _part(tmp_path, ".a.cleaned.png.shiva-part")
+    res = steps.run_steps([img], "", steps.StepOptions(clean=True, encrypt=False))
+    assert len(res[0].plaintext_deleted) == 1
+    jobs._SWEEP_REPORTED.clear()
+
+
+def test_a_cleaned_file_that_fails_the_read_back_is_overwritten_not_just_deleted(tmp_path: Path, monkeypatch):
+    from shiva.metadata import CleanError, runner
+    img = _png(tmp_path / "a.png")
+    real_publish = output.publish
+
+    def publish_then_damage(part, final):
+        real_publish(part, final)
+        final.write_bytes(final.read_bytes() + b"x")
+
+    monkeypatch.setattr(output, "publish", publish_then_damage)
+    overwritten: list[Path] = []
+    real_shred = output.shred_file
+    monkeypatch.setattr(output, "shred_file", lambda p, *a, **k: (overwritten.append(Path(p)), real_shred(p, *a, **k))[1])
+    with pytest.raises(CleanError):
+        runner.clean_file(img)
+    assert len(overwritten) == 1 and not overwritten[0].exists()
+
+
+def test_a_cleaned_file_that_cannot_be_overwritten_after_a_failed_read_back_is_reported(tmp_path: Path, monkeypatch):
+    from shiva.metadata import CleanError, runner
+    img = _png(tmp_path / "a.png")
+    real_publish = output.publish
+    monkeypatch.setattr(output, "publish", lambda part, final: (real_publish(part, final), final.write_bytes(b"damaged"))[0])
+    monkeypatch.setattr(output, "shred_file", _no_shred)
+    with pytest.raises(CleanError) as e:
+        runner.clean_file(img)
+    assert [c.outcome for c in e.value.cleanup_problems] == [output.PLAIN_DELETE]

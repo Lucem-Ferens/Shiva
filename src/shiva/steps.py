@@ -84,6 +84,7 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
               progress: Callable[[int, int], None] = lambda d, t: None) -> list[JobResult]:
     from . import clean_pipeline
     results: list[JobResult] = []
+    sweep_problems = jobs.sweep_leftovers(paths, opts.out_dir, log)     # also for runs that only clean
     for i, p in enumerate(paths):
         p = Path(p)
         progress(i, len(paths))
@@ -103,6 +104,7 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
             results.append(jobs.failure(p, e))
         log(f"{'OK  ' if results[-1].ok else 'FAIL'} {p.name}: {results[-1].message}")
     progress(len(paths), len(paths))
+    jobs.report_leftovers(results, sweep_problems, log)
     return results
 
 
