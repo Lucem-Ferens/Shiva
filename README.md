@@ -12,6 +12,23 @@ optional pipeline that chains them: **clean, then encrypt, then verify by trial 
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)
 ![Status: early, 0.0.3](https://img.shields.io/badge/status-early%200.0.3-orange)
 
+## Download and start
+
+1. Download `Shiva-<version>-win64.zip` and `SHA256SUMS.txt` from the [Releases](../../releases) page.
+2. Check the zip: in PowerShell run `Get-FileHash Shiva-<version>-win64.zip` and compare the hash with the line in
+   `SHA256SUMS.txt`.
+3. Unzip anywhere and run `Shiva.exe`. There is no installer.
+
+Requires 64-bit Windows 10 or newer. The program is **not code-signed**, so Windows SmartScreen or an antivirus may warn
+on first run; the hash check above is how you confirm the file is the one published.
+
+## Quick start
+
+1. Pick a page: **Clean**, **Encrypt** or **Shred**.
+2. Drop files or folders into the list.
+3. Tick only the options you want (all are off by default) and press the action button.
+4. Read the result list. Each row says what happened and whether the original is untouched.
+
 ## What it does
 
 | Page | What you get |
@@ -78,44 +95,15 @@ Details and methods: [`docs/formats.md`](docs/formats.md).
   triggers could read or change files you can. Keep Windows and Shiva up to date.
 - **The passphrase is visible to your own programs while age runs.** It reaches age through the child process environment,
   so another program running as the same Windows user can read it during that time, as it could read Shiva's own memory.
-- Not yet tested on a clean second machine or against a live OneDrive / Dropbox folder.
 
 ## Not implemented yet
 
 Key-based (recipient) encryption in the window, MP4 / MOV / WAV / TIFF / HEIC / RAW cleaning, and German.
 
-## Run from source
+## Build and contribute
 
-Requires Windows and Python 3.12 or newer.
-
-```
-pip install -e .[dev]                  # or install the dependencies listed in pyproject.toml
-python tools/fetch_third_party.py      # download the pinned age binaries and verify their SHA256
-python tools/compile_translations.py   # compile the Traditional Chinese catalogue
-set PYTHONPATH=src && python -m shiva
-```
-
-Build the portable folder with `python tools/build.py` (Nuitka standalone; takes a few minutes). The build accepts only
-the package versions pinned in `requirements/lock.txt` and stops on any difference. Set up that environment with:
-
-```
-python -m venv .venv
-.venv\Scripts\python -m pip install --require-hashes -r requirements/lock.txt
-```
-
-Use the newest Python 3.13 or later release that has a Windows installer for release builds (3.12 releases after 3.12.10
-are source-only). The hashes cover every package in the lock; pip installs the compiler's own build tools (setuptools,
-wheel) without hash checking. `requirements/lock.in` lists the direct requirements; regenerate the
-lock with `tools/make_lock.py` (needs `pip-tools`). Each build also writes a CycloneDX list of the Python packages and age next to the zip.
-
-## Development
-
-```
-set PYTHONPATH=src && python -m pytest -q    # tests that need the age binaries skip if they are absent
-python tools/check_upstream.py               # compare pinned versions with upstream releases
-```
-
-Bundled components are pinned with versions and SHA256 in [`third_party/MANIFEST.toml`](third_party/MANIFEST.toml).
+Build steps, tests and the dependency lock are in [`docs/BUILDING.md`](docs/BUILDING.md). Bugs and questions go to the
+[issue tracker](../../issues). Report security problems privately, as described in [`SECURITY.md`](SECURITY.md).
 
 ## License
 
