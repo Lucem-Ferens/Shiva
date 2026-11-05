@@ -15,6 +15,8 @@ from shiva import agecli, errors, folder, jobs, ui_model
     (agecli.AgeError("x", "age_failed"), "age_failed"),
     (agecli.AgeError("x", "verify_failed"), "verify_failed"),
     (folder.FolderRefused("x", "disk_full"), "disk_full"),
+    (folder.FolderRefused("x", "folder_path_too_long"), "folder_path_too_long"),
+    (folder.FolderRefused("x", "restore_path_too_long"), "restore_path_too_long"),
     (folder.RestoreIncomplete("x"), "restore_incomplete"),
     (FileExistsError("x"), "output_exists"),
     (ValueError("anything else"), None),

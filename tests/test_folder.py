@@ -287,3 +287,45 @@ def test_jobs_routes_folders_and_tar_age(tmp_path: Path):
     assert res[0].ok and res[0].original_removed and not src.exists()
     res = jobs.run_jobs([tmp_path / "d.tar.age"], "pw", shred_original=False)
     assert res[0].ok and (tmp_path / "d" / "a.txt").read_bytes() == files["a.txt"]
+
+
+def _rel_with_length(n: int) -> str:
+    """A two-component relative path of exactly n characters ('a...a/b...b')."""
+    first = min(100, n - 2)
+    return "a" * first + "/" + "b" * (n - first - 1)
+
+
+@needs_age
+def test_path_at_the_exact_limit_survives_encrypt_shred_and_restore(tmp_path: Path):
+    src = tmp_path / "Src"; src.mkdir()
+    room = names.MAX_PATH - names.STAGING_OVERHEAD - len(os.path.abspath(src)) - 1   # longest rel the plan accepts
+    rel = _rel_with_length(room)
+    (src / rel).parent.mkdir(parents=True)
+    (src / rel).write_bytes(b"deep")
+    arch, rep, _ = folder.encrypt_folder_verify_shred(src, "pw", shred_original=True)
+    assert not src.exists() and rep is not None and rep.warning is None
+    out = folder.decrypt_folder(arch, "pw")          # same place: this is where it was refused before
+    assert (out / rel).read_bytes() == b"deep"
+
+
+@needs_age
+def test_path_one_character_over_the_limit_is_refused_before_anything_changes(tmp_path: Path):
+    src = tmp_path / "Src"; src.mkdir()
+    room = names.MAX_PATH - names.STAGING_OVERHEAD - len(os.path.abspath(src)) - 1
+    rel = _rel_with_length(room + 1)
+    (src / rel).parent.mkdir(parents=True)
+    (src / rel).write_bytes(b"deep")
+    with pytest.raises(FolderRefused) as ei:
+        folder.encrypt_folder_verify_shred(src, "pw", shred_original=True)
+    assert ei.value.code == "folder_path_too_long"
+    assert (src / rel).read_bytes() == b"deep" and not (tmp_path / "Src.tar.age").exists()
+
+
+@needs_age
+def test_archive_path_too_long_for_the_output_folder_has_its_own_code_and_leaves_no_folder(tmp_path: Path):
+    arch = tmp_path / "Big.tar.age"
+    hostile_archive(arch, [("a" * 100, None, {}), ("a" * 100 + "/" + "b" * 200, b"x", {})])
+    with pytest.raises(FolderRefused) as ei:
+        folder.decrypt_folder(arch, "pw")
+    assert ei.value.code == "restore_path_too_long"
+    assert not (tmp_path / "Big").exists() and not list(tmp_path.glob(".*shiva-part*"))

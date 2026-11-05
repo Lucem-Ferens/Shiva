@@ -691,7 +691,7 @@ class TabPage(QWidget):
         if self.outCheck.isChecked() and not self.outCheck.isHidden():
             if d is None:
                 self._out_problem = tr("Choose the folder for the results.")
-            elif not d.is_dir():
+            elif not output.folder_exists(d):
                 self._out_problem = tr("The output folder does not exist.")
             else:
                 dirs = [r.path for r in self.rows if r.facts.is_dir and r.info.run]

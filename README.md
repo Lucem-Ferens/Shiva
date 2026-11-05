@@ -71,6 +71,13 @@ Details and methods: [`docs/formats.md`](docs/formats.md).
 - **Cleaning removes what it knows about.** It does not remove visible content, watermarks, pixel-noise fingerprints,
   file names, sizes, or the new file's timestamps. The result says so.
 - **File names stay visible** in the names of `.age` files.
+- **Cleaning reads the whole file into memory.** Files larger than 256 MB are not cleaned; the list says so when you add them.
+- **Files from sources you do not trust.** Cleaning parses the file with libraries such as Pillow and pikepdf, in a separate
+  helper process that has a memory limit, is stopped on cancel or timeout, and cannot start other programs (in the packaged
+  build). It is **not a sandbox**: the helper still has your Windows user's rights, so a flaw in a library that a crafted file
+  triggers could read or change files you can. Keep Windows and Shiva up to date.
+- **The passphrase is visible to your own programs while age runs.** It reaches age through the child process environment,
+  so another program running as the same Windows user can read it during that time, as it could read Shiva's own memory.
 - Not yet tested on a clean second machine or against a live OneDrive / Dropbox folder.
 
 ## Not implemented yet

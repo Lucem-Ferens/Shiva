@@ -43,6 +43,8 @@ Always reported: SSD wear levelling, NTFS journal, shadow copies, cloud sync can
 
 ## Metadata cleaning
 Never copies an unsupported file through silently. Unsupported = refused or reported "not cleaned".
+A file is read into memory whole, so a file larger than 256 MB is reported "not cleaned". Parsing runs in a
+helper process with a memory limit; it is not a security sandbox (see the README, Honest limits).
 | Format | Status | Method |
 |---|---|---|
 | JPEG | done | lossless segment strip, pixel-equality check |

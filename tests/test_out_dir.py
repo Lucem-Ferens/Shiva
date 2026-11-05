@@ -172,7 +172,11 @@ def test_check_out_dir_refuses_unc_loopback_into_source(tmp_path):
     src = tmp_path / "Src"; (src / "sub").mkdir(parents=True); (tmp_path / "Other").mkdir()
     drive, rest = os.path.splitdrive(str(src))
     unc = Path("\\\\localhost\\" + drive[0] + "$" + rest) / "sub"
-    if not unc.is_dir():
+    try:
+        reachable = unc.is_dir()
+    except OSError:          # "access denied" on the administrative share, depending on the machine's policy
+        reachable = False
+    if not reachable:
         pytest.skip("administrative share not reachable here")
     with pytest.raises(output.OutputFolderError):
         output.check_out_dir(unc, inside=src)
@@ -294,3 +298,23 @@ def test_gui_risky_output_location_warns_inline_without_a_second_window(w, dirs,
     assert "cloud-synced" in t and t.startswith("⚠ Warning:")
     _run(w)
     assert list(out.iterdir())
+
+
+def _access_denied(self, *a, **k):
+    raise OSError(13, "Access is denied", None, 65)
+
+
+def test_unreachable_output_folder_is_an_output_folder_error_not_a_crash(tmp_path, monkeypatch):
+    monkeypatch.setattr(Path, "is_dir", _access_denied)
+    with pytest.raises(output.OutputFolderError, match="Can't open the output folder"):
+        output.check_out_dir(tmp_path / "share")
+    assert output.folder_exists(tmp_path / "share") is False
+
+
+def test_jobs_survive_an_unreachable_output_folder(tmp_path, monkeypatch):
+    from shiva import jobs
+    f = tmp_path / "a.bin"; f.write_bytes(b"data")
+    real = Path.is_dir
+    monkeypatch.setattr(Path, "is_dir", lambda self, *a, **k: _access_denied(self) if self.name == "share" else real(self))
+    r = jobs.run_jobs([f], "pw-pw-pw-pw", shred_original=False, out_dir=tmp_path / "share")[0]
+    assert not r.ok and r.original_removed is False and f.read_bytes() == b"data"

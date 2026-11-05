@@ -16,7 +16,7 @@ from typing import Callable
 from . import agecli, jobs, storage
 from .jobs import JobResult
 from .metadata import CleanCancelled, CleanError, Unsupported, runner
-from .shred import ShredRefused, check_target, shred_tree
+from .shred import ShredRefused, StreamListError, check_target, shred_tree
 
 
 @dataclass
@@ -93,9 +93,9 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
             continue
         try:
             results.append(_one(p, passphrase, opts, cancel, clean_pipeline))
-        except (agecli.Cancelled, CleanCancelled):
-            results.append(JobResult(p, False, "Cancelled; partial output removed", cancelled=True,
-                                     error_kind="cancelled"))
+        except (agecli.Cancelled, CleanCancelled) as e:
+            results.append(jobs.note_cleanup(JobResult(p, False, "Cancelled; partial output removed", cancelled=True,
+                                                       error_kind="cancelled"), getattr(e, "cleanup_problems", [])))
         except Unsupported as e:
             results.append(JobResult(p, False, f"Not cleaned: {e}. Nothing was changed.", error_kind="unsupported",
                                      error_code=getattr(e, "code", None)))
@@ -170,6 +170,8 @@ def _shred_only(p: Path) -> JobResult:
     where = storage.assess(p).warnings()
     try:
         rep = shred_tree(p)  # handles a single file and a folder, refuses links
+    except StreamListError as e:    # raised before the first write
+        return JobResult(p, False, f"Not shredded: {e} Nothing was changed.", error_kind="unsupported")
     except Exception as e:
         if p.exists():
             # a midway failure may already have destroyed some content: never claim the original is intact

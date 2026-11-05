@@ -468,6 +468,10 @@ FAIL_TEXT = {
     "permission": "Windows denied access to the file or the output folder. Check the permissions or choose another "
                   "output folder.",
     "path_too_long": "The output path is too long. Shorten the file name or choose an output folder with a shorter path.",
+    "folder_path_too_long": "A path inside this folder is too long to restore later. Shorten the names inside the folder "
+                            "and run again.",
+    "restore_path_too_long": "A path inside this archive is too long for this output folder. Choose an output folder with "
+                             "a shorter path.",
     "changed_during_run": "The file changed during the run. Close any program that edits it and run again.",
     "verify_failed": "The trial decrypt did not match, so the encrypted copy was removed. Run again.",
     "changed_after_verify": "The output changed after it was verified. Delete it and run again.",
@@ -476,11 +480,26 @@ FAIL_TEXT = {
 }
 
 
+def _add_cleanup_lines(rr: ResultRow, r: JobResult) -> None:
+    """Temporary plaintext that could not be overwritten must show on the row, whatever else happened to the item."""
+    if not (r.plaintext_left or r.plaintext_deleted):
+        return
+    if r.plaintext_left:
+        rr.text += f" Readable temporary data may still be in {Path(r.plaintext_left[0]).parent}. Shred or delete it yourself."
+        rr.details += [f"Still there: {p}" for p in r.plaintext_left]
+    if r.plaintext_deleted:
+        rr.text += " A temporary file with readable data was deleted without being overwritten."
+        rr.details += [f"Deleted, not overwritten: {p}" for p in r.plaintext_deleted]
+    if rr.status == "Done":
+        rr.status = "Warning"
+
+
 def result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_before: int | None = None,
                size_after: int | None = None, uncleanable: bool = False, risk_lines=()) -> ResultRow:
     """One result row. Storage jargon (the per-file notes of a shred) and the engine's own reason line of a successful
     item go to `technical`; the row says only what may remain. A successful shred at a risky location is a Warning."""
     rr = _result_row(r, tab, ticked, size_before, size_after, uncleanable)
+    _add_cleanup_lines(rr, r)
     tech = []
     if tab == "shred":
         tech += [x for x in rr.details if x.startswith("Note: ")]

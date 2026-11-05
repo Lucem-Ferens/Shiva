@@ -10,6 +10,7 @@ from . import agecli, errors, folder, output, pipeline, storage
 
 
 OUTPUT_EXISTS = errors.OUTPUT_EXISTS
+_SWEEP_REPORTED: set[str] = set()   # leftovers already reported in this session (one warning per item)
 
 
 @dataclass
@@ -31,13 +32,23 @@ class JobResult:
     original_untouched: bool = False                    # shred_attempted but the original was neither removed nor modified
     renamed: bool = False                               # the output name got a number because the usual name was taken
     conflict: Path | None = None                      # error_code "output_exists": the existing file or folder in the way
+    plaintext_left: list[str] = field(default_factory=list)     # readable temporary items that could not be removed (paths)
+    plaintext_deleted: list[str] = field(default_factory=list)  # temporary items deleted without being overwritten (paths)
+
+
+def note_cleanup(res: JobResult, items) -> JobResult:
+    """Record plaintext cleanups that were not a clean overwrite (output.Cleanup items) on a result."""
+    for c in items:
+        (res.plaintext_left if c.outcome == output.LEFT else res.plaintext_deleted).append(str(c.path))
+    return res
 
 
 def failure(p: Path, e: BaseException) -> JobResult:
     """A failed item: the technical text stays in `message` (details pane only); `error_code` drives the row text."""
     code, conflict = errors.classify(e, p)
     msg = f"{type(e).__name__}: output already exists: {conflict}" if code == OUTPUT_EXISTS else f"{type(e).__name__}: {e}"
-    return JobResult(p, False, msg, error_kind="error", error_code=code, conflict=conflict)
+    return note_cleanup(JobResult(p, False, msg, error_kind="error", error_code=code, conflict=conflict),
+                        getattr(e, "cleanup_problems", []))
 
 
 def preflight_warnings(paths: list[Path]) -> list[str]:
@@ -62,10 +73,11 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
     """Encrypt each file (or decrypt if it ends with .age). One failure never stops the others."""
     results: list[JobResult] = []
     parents = {Path(p).parent for p in paths}
-    if out_dir is not None and Path(out_dir).is_dir():
+    if out_dir is not None and output.folder_exists(out_dir):
         parents.add(Path(out_dir))
+    sweep_problems: list[output.Cleanup] = []
     for parent in parents:
-        n = output.sweep_stale_parts(parent) + folder.sweep_stale_staging(parent)
+        n = output.sweep_stale_parts(parent, sweep_problems) + folder.sweep_stale_staging(parent, sweep_problems)
         if n:
             log(f"Removed {n} leftover temporary item(s) from an interrupted run in {parent.name or parent}")
     for i, p in enumerate(paths):
@@ -101,10 +113,16 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
                         msg += "; original overwritten and removed (best-effort). " + " ".join(rep.caveats)
             results.append(JobResult(p, True, msg, created=out, original_removed=removed,
                                      original_untouched=bool(rep is not None and rep.warning and rep.untouched)))
-        except agecli.Cancelled:
-            results.append(JobResult(p, False, "Cancelled; partial output removed", cancelled=True))
+        except agecli.Cancelled as e:
+            results.append(note_cleanup(JobResult(p, False, "Cancelled; partial output removed", cancelled=True),
+                                        getattr(e, "cleanup_problems", [])))
         except Exception as e:  # report per file, keep going
             results.append(failure(p, e))
         log(f"{'OK  ' if results[-1].ok else 'FAIL'} {p.name}: {results[-1].message}")
     progress(len(paths), len(paths))
+    fresh = [c for c in sweep_problems if str(c.path) not in _SWEEP_REPORTED]
+    _SWEEP_REPORTED.update(str(c.path) for c in fresh)
+    if fresh and results:       # a leftover from an earlier run could not be cleaned: say so on the first row
+        note_cleanup(results[0], fresh)
+        log("WARNING: leftover temporary items could not be overwritten: " + ", ".join(str(c.path) for c in fresh))
     return results

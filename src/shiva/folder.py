@@ -55,7 +55,11 @@ class Plan:
 
 
 def _real_streams(path: Path) -> int:
-    return sum(1 for n in _named_streams(path) if n.lower() != "zone.identifier")
+    try:
+        found = _named_streams(path)
+    except ShredRefused as ex:   # an unreadable list must not count as "no streams"
+        raise FolderRefused(str(ex)) from ex
+    return sum(1 for n in found if n.lower() != "zone.identifier")
 
 
 def plan_folder(root: Path, shred_original: bool) -> Plan:
@@ -81,7 +85,7 @@ def plan_folder(root: Path, shred_original: bool) -> Plan:
                 guard.add(rel)
                 names.check_length(base_len, rel)
             except names.UnsafeName as ex:
-                raise FolderRefused(str(ex)) from ex
+                raise FolderRefused(str(ex), "folder_path_too_long" if isinstance(ex, names.PathTooLong) else None) from ex
             est = os.lstat(e.path)  # DirEntry.stat() leaves st_ino and st_nlink at 0 on Windows
             if is_link(est):
                 if getattr(est, "st_file_attributes", 0) & _CLOUD_ATTRS and not stat.S_ISLNK(est.st_mode):
@@ -171,7 +175,7 @@ def _shred_manifest(plan: Plan, report: ShredReport) -> int:
             _wipe_streams(d, report)
             os.rmdir(d)
             report.dirs += 1
-        except OSError:
+        except (OSError, ShredRefused):
             left += 1
     return left
 
@@ -200,7 +204,7 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
         output.publish(part, dst)
     except BaseException as e:
         if not isinstance(e, agecli.OutputExists):
-            output.discard_part(part)
+            output.attach(e, output.discard_part(part))
         raise
     if os.stat(dst).st_size != verified_size:
         raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
@@ -217,27 +221,36 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
 
 # ---- restore -------------------------------------------------------------------------------------
 
-def _discard_staging(staging: Path) -> None:
-    """Staging holds plaintext: shred it (fall back to plain removal), best effort."""
+def _discard_staging(staging: Path) -> output.Cleanup:
+    """Staging holds plaintext: shred it. Falls back to plain removal and says so; if even that leaves something, the
+    result is LEFT. Never raises."""
     try:
         shred_tree(staging)
+        return output.Cleanup(output.OVERWRITTEN, staging)
     except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
+        pass
+    shutil.rmtree(staging, ignore_errors=True)
+    return output.Cleanup(output.LEFT if os.path.lexists(staging) else output.PLAIN_DELETE, staging)
 
 
-def sweep_stale_staging(folder: Path) -> int:
-    """Shred staging folders left by a crashed restore. Only folders carrying our marker are touched,
-    and each is claimed by rename first so one that is in use right now is skipped."""
+def sweep_stale_staging(folder: Path, problems: list[output.Cleanup] | None = None) -> int:
+    """Shred staging folders left by a crashed restore. Only folders carrying our marker are touched (a `.claimed`
+    one, left by a crash or a failed discard, is retried once idle), and each is claimed by rename first so one that
+    is in use right now is skipped. Items not cleanly overwritten are appended to `problems`."""
     n = 0
-    for d in Path(folder).glob(".*" + output.PART_SUFFIX):
+    for d in [*Path(folder).glob(".*" + output.PART_SUFFIX), *Path(folder).glob(".*" + output.PART_SUFFIX + output.CLAIMED_SUFFIX)]:
         try:
-            if not (d.is_dir() and not is_link(os.lstat(d)) and (d / MARKER).is_file()):
+            if not (d.is_dir() and not is_link(os.lstat(d))):
                 continue
-            claimed = d.with_name(d.name + ".claimed")
-            if claimed.exists():
+            claimed_already = d.name.endswith(output.CLAIMED_SUFFIX)
+            if not claimed_already and not (d / MARKER).is_file():
                 continue
-            os.rename(d, claimed)
-            _discard_staging(claimed)
+            target = output._claimable(d)       # renames a fresh one; None while a claimed one is still busy
+            if target is None:
+                continue
+            result = _discard_staging(target)
+            if result.problem and problems is not None:
+                problems.append(result)
             n += 1
         except OSError:
             continue
@@ -258,10 +271,11 @@ def _extract(reader, staging: Path, free: int) -> None:
         try:
             parts = names.split_rel(m.name)
             rel = "/".join(parts)
-            names.check_length(base_len, rel)
+            names.check_length(base_len, rel, overhead=0)   # base_len is the staging folder: its overhead is already in it
             guard.add(rel)
         except names.UnsafeName as ex:
-            raise FolderRefused(f"unsafe entry in archive: {ex}") from ex
+            raise FolderRefused(f"unsafe entry in archive: {ex}",
+                                "restore_path_too_long" if isinstance(ex, names.PathTooLong) else None) from ex
         path = staging.joinpath(*parts)
         if not staging.is_dir():  # claimed or removed by someone else: never recreate it silently
             raise FolderRefused("the restore folder disappeared while restoring; nothing was kept")
@@ -312,10 +326,10 @@ def decrypt_folder(src: Path, passphrase: str, cancel: threading.Event | None = 
         mk.write(b"shiva staging folder; safe to shred if no Shiva job is running\n")
         mk.flush()
         agecli.decrypt_consume(src, passphrase, lambda r: _extract(r, staging, free), cancel)
-    except BaseException:
+    except BaseException as e:
         if mk is not None:
             mk.close()
-        _discard_staging(staging)
+        output.attach(e, _discard_staging(staging))
         raise
     # Complete and authenticated (age exited 0). From here on the data is never shredded.
     mk.close()

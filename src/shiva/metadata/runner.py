@@ -35,16 +35,23 @@ def _call_worker(request: dict, data: bytes, cancel: threading.Event | None, tim
         env["PYTHONPATH"] = os.pathsep.join(p for p in sys.path if p)
     proc = subprocess.Popen(_worker_cmd(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                             env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    try:
-        winjob.adopt(proc)
-    except Exception:
-        pass
     limit = None
-    try:  # memory cap: a hostile file makes the worker fail, not the whole machine
-        limit = winjob.adopt_limited(proc, MEMORY_LIMIT)
-    except Exception:
-        pass
     try:
+        # The file is sent only after the worker is contained: in the kill-on-close job, with a memory cap (so a hostile
+        # file makes the worker fail, not the whole machine) and, in the frozen build, unable to start another process.
+        # If Windows refuses any of it, stop here instead of running without the limits.
+        contained = False
+        try:
+            if winjob.adopt(proc):
+                limit = winjob.adopt_limited(proc, MEMORY_LIMIT, max_processes=1 if "__compiled__" in globals() else None)
+                contained = limit is not None
+        except Exception:
+            contained = False
+        if winjob.SUPPORTED and not contained:
+            proc.kill()
+            proc.wait(5)
+            raise CleanError("Windows would not apply the safety limits to the cleaning helper, so cleaning was stopped "
+                             "before the file was read")
         return _talk(proc, request, data, cancel, timeout)
     finally:
         winjob.close_limited(limit)
@@ -171,9 +178,9 @@ def clean_file(src: Path, options: dict | None = None, cancel: threading.Event |
         if part.stat().st_size != len(outcome.data):
             raise CleanError("Output size mismatch after writing; nothing was kept")
         output.publish(part, final)
-    except BaseException:
+    except BaseException as e:
         if created:
-            output.discard_part(part)
+            output.attach(e, output.discard_part(part))
         raise
     # read the published file back: it must be exactly the verified bytes before anyone relies on it
     if hashlib.sha256(final.read_bytes()).digest() != hashlib.sha256(outcome.data).digest():

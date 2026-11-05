@@ -1,10 +1,12 @@
 """Windows Job object with kill-on-close: child processes die with us (crash, kill, window close).
 
-On non-Windows platforms this is a no-op so the test-suite stays portable.
+On non-Windows platforms this is a no-op so the test-suite stays portable (`SUPPORTED` is False there).
 """
 from __future__ import annotations
 
 import os
+
+SUPPORTED = os.name == "nt"
 
 if os.name == "nt":
     import ctypes
@@ -53,22 +55,40 @@ if os.name == "nt":
             _job = h  # handle stays open for the life of our process
         return _job
 
-    def adopt(proc) -> None:
-        """Put a just-started subprocess.Popen into the kill-on-close job."""
-        # Fails harmlessly if the process already belongs to the job via adopt_self().
-        _k32.AssignProcessToJobObject(_get_job(), wintypes.HANDLE(int(proc._handle)))
+    _k32.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)]
+
+    def in_job(proc) -> bool:
+        """True if proc belongs to some job. False also when Windows cannot say (the safe answer for a caller that
+        needs the process contained)."""
+        flag = wintypes.BOOL(0)
+        if not _k32.IsProcessInJob(wintypes.HANDLE(int(proc._handle)), None, ctypes.byref(flag)):
+            return False
+        return bool(flag.value)
+
+    def adopt(proc) -> bool:
+        """Put a just-started subprocess.Popen into the kill-on-close job. True if proc is in a job afterwards:
+        the assignment fails harmlessly when it already belongs to the job via adopt_self(), so the result is checked."""
+        if _k32.AssignProcessToJobObject(_get_job(), wintypes.HANDLE(int(proc._handle))):
+            return True
+        return in_job(proc)
     _adopted_self = False
+    _JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x8
     _JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x100
 
-    def adopt_limited(proc, memory_bytes: int):
+    def adopt_limited(proc, memory_bytes: int, max_processes: int | None = None):
         """Put proc into its own nested job with a per-process memory cap (allocations fail instead of
-        exhausting the machine). Returns a handle that must be passed to close_limited() when proc is done."""
+        exhausting the machine) and, optionally, a cap on the processes in the job (1 = proc cannot start another).
+        Returns a handle that must be passed to close_limited() when proc is done, or None if any limit could not
+        be applied: the caller decides what that means."""
         h = _k32.CreateJobObjectW(None, None)
         if not h:
             return None
         info = _EXT()
         info.BasicLimitInformation.LimitFlags = _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | _JOB_OBJECT_LIMIT_PROCESS_MEMORY
         info.ProcessMemoryLimit = memory_bytes
+        if max_processes is not None:
+            info.BasicLimitInformation.LimitFlags |= _JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+            info.BasicLimitInformation.ActiveProcessLimit = max_processes
         if not _k32.SetInformationJobObject(h, _JobObjectExtendedLimitInformation,
                                             ctypes.byref(info), ctypes.sizeof(info)):
             _k32.CloseHandle(h)
@@ -93,10 +113,13 @@ if os.name == "nt":
             except OSError:
                 pass  # best effort; adopt(proc) below is the fallback
 else:
-    def adopt(proc) -> None:
-        return None
+    def in_job(proc) -> bool:
+        return True
 
-    def adopt_limited(proc, memory_bytes: int):
+    def adopt(proc) -> bool:
+        return True
+
+    def adopt_limited(proc, memory_bytes: int, max_processes: int | None = None):
         return None
 
     def close_limited(handle) -> None:

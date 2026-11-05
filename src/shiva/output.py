@@ -13,6 +13,7 @@ Callers use these names through the module (`output.publish(...)`), so one monke
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from .shred import shred_file
@@ -64,11 +65,24 @@ def _is_inside(d: Path, inside: Path) -> bool:
     return False
 
 
+def folder_exists(p: Path | str) -> bool:
+    """Path.is_dir() that treats an OS error (for example "access denied" on an unreachable network share, which
+    pathlib does not swallow) as "not usable" instead of raising."""
+    try:
+        return Path(p).is_dir()
+    except OSError:
+        return False
+
+
 def check_out_dir(out_dir: Path, inside: Path | None = None) -> Path:
     """Validate a user-chosen output folder: it exists, we can create files in it, and it is not the folder
     `inside` (a folder being encrypted or shredded) or anything within it. Returns the folder."""
     d = Path(out_dir)
-    if not d.is_dir():
+    try:
+        exists = d.is_dir()
+    except OSError as e:
+        raise OutputFolderError(f"Can't open the output folder {d}: {e.strerror or e}") from e
+    if not exists:
         raise OutputFolderError(f"The output folder does not exist: {d}")
     if inside is not None:
         if _is_inside(d, Path(inside)):
@@ -92,35 +106,86 @@ def part_for(final: Path) -> Path:
     return final.with_name("." + final.name + PART_SUFFIX)
 
 
-def discard_part(part: Path) -> None:
-    """Remove our own leftover part file; shred it since a decrypt part holds plaintext."""
+CLAIMED_SUFFIX = ".claimed"
+CLAIMED_IDLE_S = 60   # a claimed item untouched this long belongs to a crashed run, not to a sweep in another window
+
+# What happened to plaintext that had to be removed. Only OVERWRITTEN (and ABSENT: nothing was there) is a clean result.
+OVERWRITTEN = "overwritten"      # shredded: overwritten, renamed, removed (best effort, as everywhere in Shiva)
+PLAIN_DELETE = "plain_delete"    # overwriting failed; the item was deleted without being overwritten
+LEFT = "left"                    # could not be removed at all: readable data is still there
+ABSENT = "absent"
+
+
+@dataclass(frozen=True)
+class Cleanup:
+    outcome: str
+    path: Path
+
+    @property
+    def problem(self) -> bool:
+        return self.outcome in (PLAIN_DELETE, LEFT)
+
+
+def discard_part(part: Path) -> Cleanup:
+    """Remove our own leftover part file; shred it since a decrypt part holds plaintext. Never raises: the result says
+    whether it was overwritten, only deleted, or is still there (plain deletion is the fallback, never "shredded")."""
     if not part.exists():
-        return
+        return Cleanup(ABSENT, part)
     try:
         shred_file(part)
+        return Cleanup(OVERWRITTEN, part)
     except Exception:
-        part.unlink(missing_ok=True)
+        pass
+    try:
+        part.unlink()
+        return Cleanup(PLAIN_DELETE, part)
+    except FileNotFoundError:
+        return Cleanup(PLAIN_DELETE, part)
+    except OSError:
+        return Cleanup(LEFT, part)
 
 
-def sweep_stale_parts(folder: Path) -> int:
-    """Shred leftover *.shiva-part files from a crashed earlier run. Returns how many.
+def attach(exc: BaseException, cleanup: Cleanup) -> None:
+    """Record on the exception that is about to be re-raised that a plaintext cleanup was not clean, so the job
+    result (jobs.failure) can tell the user instead of the problem vanishing behind the original error."""
+    if cleanup.problem:
+        exc.cleanup_problems = [*getattr(exc, "cleanup_problems", []), cleanup]
+
+
+def _claimable(p: Path) -> Path | None:
+    """The path to discard for a leftover `p`, or None to skip it. A fresh .shiva-part file is claimed by renaming it;
+    a .claimed item (a crash between claim and discard, or a discard that failed) is retried once it has been idle."""
+    if p.name.endswith(CLAIMED_SUFFIX):
+        import time
+        return p if time.time() - os.lstat(p).st_mtime > CLAIMED_IDLE_S else None
+    claimed = p.with_name(p.name + CLAIMED_SUFFIX)
+    if claimed.exists():
+        return None
+    os.rename(p, claimed)
+    return claimed
+
+
+def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None) -> int:
+    """Shred leftover *.shiva-part files from a crashed earlier run. Returns how many were handled; those not cleanly
+    overwritten are appended to `problems`.
 
     Each file is first renamed to a claimed name: Windows refuses to rename a file another process still has
     open, so a part file that a running job holds open is skipped. A job's part file is closed for a short time
     between its steps (for example between encrypt and trial decrypt); a sweep in that gap would shred it, and
     the job then fails when it publishes. That is safe: the original is shredded only after a successful
-    publish, so nothing of the user's is lost.
+    publish, so nothing of the user's is lost. A `.claimed` file left behind is retried by a later sweep.
     """
     n = 0
-    for p in Path(folder).glob("*" + PART_SUFFIX):
+    for p in [*Path(folder).glob("*" + PART_SUFFIX), *Path(folder).glob("*" + PART_SUFFIX + CLAIMED_SUFFIX)]:
         try:
             if not (p.name.startswith(".") and p.is_file()):
                 continue
-            claimed = p.with_name(p.name + ".claimed")
-            if claimed.exists():
+            target = _claimable(p)
+            if target is None:
                 continue
-            os.rename(p, claimed)
-            discard_part(claimed)
+            result = discard_part(target)
+            if result.problem and problems is not None:
+                problems.append(result)
             n += 1
         except OSError:
             continue  # in use or not ours to touch

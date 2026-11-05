@@ -8,10 +8,14 @@ _RESERVED |= {f"COM{c}" for c in "123456789¹²³"}
 _RESERVED |= {f"LPT{c}" for c in "123456789¹²³"}
 MAX_COMPONENT = 255
 MAX_PATH = 259  # classic MAX_PATH; long-path support of the frozen exe is not relied on
-STAGING_OVERHEAD = 12  # ".shiva-part" plus a separator, added to every path while restoring
+STAGING_OVERHEAD = 12  # ".shiva-part" plus a separator: a restore writes into a hidden folder this much longer than the result
 
 
 class UnsafeName(ValueError):
+    pass
+
+
+class PathTooLong(UnsafeName):
     pass
 
 
@@ -60,6 +64,9 @@ class CaseGuard:
         self._seen[key] = rel
 
 
-def check_length(base_len: int, rel: str) -> None:
-    if base_len + 1 + len(rel) + STAGING_OVERHEAD > MAX_PATH:
-        raise UnsafeName(f"path would be longer than {MAX_PATH} characters when restored: {rel[:60]!r}...")
+def check_length(base_len: int, rel: str, overhead: int = STAGING_OVERHEAD) -> None:
+    """`base_len` is the length of the folder that holds `rel`. When archiving, that is the source folder and the
+    restore will need `overhead` more (its hidden staging folder). When restoring, pass the staging folder's own
+    length with overhead=0: the overhead is already in it, and counting it twice refuses archives that were accepted."""
+    if base_len + 1 + len(rel) + overhead > MAX_PATH:
+        raise PathTooLong(f"path would be longer than {MAX_PATH} characters when restored: {rel[:60]!r}...")

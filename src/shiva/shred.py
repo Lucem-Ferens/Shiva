@@ -182,8 +182,32 @@ def _check_file(path: Path) -> os.stat_result:
     return st
 
 
+class StreamListError(ShredRefused):
+    """Windows would not list the data streams of a path, so it cannot be shredded safely. Raised before anything is
+    written, so the target is untouched."""
+
+
+_ERROR_HANDLE_EOF = 38           # the documented end of the list (also: a folder without streams)
+_FILE_NAMED_STREAMS = 0x00040000  # volume flag: the file system keeps named streams
+
+
+def _volume_has_streams(path: Path) -> bool:
+    """False only when Windows says the volume keeps no named streams (FAT, exFAT, ...). Any doubt returns True."""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    root = ctypes.create_unicode_buffer(1024)
+    flags = wintypes.DWORD(0)
+    if not k32.GetVolumePathNameW(str(path), root, len(root)):
+        return True
+    if not k32.GetVolumeInformationW(root.value, None, 0, None, None, ctypes.byref(flags), None, 0):
+        return True
+    return bool(flags.value & _FILE_NAMED_STREAMS)
+
+
 def _named_streams(path: Path) -> list[str]:
-    """Names of NTFS alternate data streams (empty list elsewhere or on error)."""
+    """Names of NTFS alternate data streams. An empty list means "checked: none" (or a volume without streams); a
+    listing that fails for any other reason raises StreamListError instead of looking like "none"."""
     if os.name != "nt":
         return []
     import ctypes
@@ -191,6 +215,9 @@ def _named_streams(path: Path) -> list[str]:
 
     class _FSD(ctypes.Structure):
         _fields_ = [("StreamSize", ctypes.c_int64), ("cStreamName", ctypes.c_wchar * 296)]
+
+    def fail(err: int) -> StreamListError:
+        return StreamListError(f"Windows would not list the hidden data streams of {Path(path).name} (error {err}).")
 
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     k32.FindFirstStreamW.restype = wintypes.HANDLE
@@ -200,7 +227,10 @@ def _named_streams(path: Path) -> list[str]:
     data = _FSD()
     h = k32.FindFirstStreamW(str(path), 0, ctypes.byref(data), 0)
     if h in (None, wintypes.HANDLE(-1).value):
-        return []
+        err = ctypes.get_last_error()
+        if err == _ERROR_HANDLE_EOF or not _volume_has_streams(path):
+            return []
+        raise fail(err)
     names = []
     try:
         while True:
@@ -208,14 +238,18 @@ def _named_streams(path: Path) -> list[str]:
             if n != "::$DATA":
                 names.append(n[1:].rsplit(":", 1)[0])
             if not k32.FindNextStreamW(h, ctypes.byref(data)):
+                err = ctypes.get_last_error()
+                if err != _ERROR_HANDLE_EOF:
+                    raise fail(err)
                 break
     finally:
         k32.FindClose(h)
     return names
 
 
-def _wipe_streams(path: Path, report: ShredReport | None) -> None:
-    for name in _named_streams(path):
+def _wipe_streams(path: Path, report: ShredReport | None, names: list[str] | None = None) -> None:
+    """Overwrite the named streams of `path`. Pass `names` (from an earlier _named_streams) to list nothing here."""
+    for name in (_named_streams(path) if names is None else names):
         target = f"{path}:{name}"
         _zero(target, os.stat(target).st_size)
         if report is not None:
@@ -236,18 +270,21 @@ def _zero(target: str, size: int) -> None:
         os.fsync(f.fileno())
 
 
-def shred_file(path: Path, report: ShredReport | None = None, guard: bool = False) -> None:
-    """guard=True also applies the protected-location list (used for the user's own originals)."""
+def shred_file(path: Path, report: ShredReport | None = None, guard: bool = False,
+               streams: list[str] | None = None) -> None:
+    """guard=True also applies the protected-location list (used for the user's own originals). `streams` is the
+    result of an earlier _named_streams(path) (shred_tree lists everything before it writes anything)."""
     path = Path(path)
     if guard:
         check_target(path)
     st = _check_file(path)
+    streams = _named_streams(path) if streams is None else streams   # may raise StreamListError: nothing is changed yet
     kind = special_kind(getattr(st, "st_file_attributes", 0))
     if kind and report is not None and kind not in report.special:
         report.special.append(kind)
         report.caveats.insert(0, SPECIAL_TEXT[kind])
     os.chmod(path, 0o600)
-    _wipe_streams(path, report)
+    _wipe_streams(path, report, streams)
     _zero(str(path), st.st_size)
     renamed = path.with_name(_random_name(len(path.name)))
     while renamed.exists():
@@ -288,8 +325,10 @@ def shred_tree(path: Path) -> ShredReport:
         dirs: list[Path] = []
         links: list[Path] = []
         _plan(path, files, dirs, links)  # all-or-nothing validation
+        # every stream list is read before the first write: one that cannot be read refuses the whole tree untouched
+        streams = {p: _named_streams(p) for p in [*files, *dirs, path]}
         for f in files:
-            shred_file(f, report)
+            shred_file(f, report, streams=streams[f])
         for lk in links:  # remove the link itself, never its target
             if stat.S_ISDIR(os.lstat(lk).st_mode) or lk.is_dir():
                 os.rmdir(lk)
@@ -297,10 +336,10 @@ def shred_tree(path: Path) -> ShredReport:
                 os.unlink(lk)
             report.links_removed += 1
         for d in dirs:
-            _wipe_streams(d, report)
+            _wipe_streams(d, report, streams[d])
             d.rmdir()
             report.dirs += 1
-        _wipe_streams(path, report)
+        _wipe_streams(path, report, streams[path])
         path.rmdir()
         report.dirs += 1
     else:

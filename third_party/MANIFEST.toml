@@ -58,8 +58,9 @@ security_critical = true     # parses untrusted PDFs; runs in the worker subproc
 update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
 last_reviewed = "2026-11-02"
 
+# mutagen is not shipped: the tests use it as an independent check of the audio cleaner.
 [mutagen]
-kind = "bundled"
+kind = "tracked"
 repo = "quodlibet/mutagen"
 version = "1.48.1"
 license = "GPL-2.0-or-later"

@@ -51,13 +51,37 @@ def die(msg: str) -> None:
     raise SystemExit(1)
 
 
+def dependency_versions(roots: list[str]) -> dict[str, str]:
+    """Installed version of every runtime package the app needs: the direct dependencies and what they pull in."""
+    import re
+    seen: dict[str, str] = {}
+    todo = [re.split(r"[<>=!~\[; (]", r.strip())[0] for r in roots]
+    while todo:
+        name = todo.pop()
+        key = name.lower().replace("_", "-")
+        if key in seen:
+            continue
+        try:
+            seen[key] = md.version(name)
+        except md.PackageNotFoundError:
+            continue        # a requirement for another platform
+        for req in md.requires(name) or []:
+            if "extra ==" not in req:
+                todo.append(re.split(r"[<>=!~\[; (]", req.strip())[0])
+    return seen
+
+
 def compile_app(build_dir: Path) -> Path:
     exes = sorted(AGE_DIR.glob("*.exe"))
     if not (AGE_DIR / "age.exe").is_file() or not (AGE_DIR / "age-plugin-batchpass.exe").is_file():
         die("age binaries missing; run tools/fetch_third_party.py first")
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    numeric = ".".join((version.split(".") + ["0"] * 4)[:4])      # Windows file versions are four numbers
     cmd = [sys.executable, "-m", "nuitka", "--standalone", "--assume-yes-for-downloads",
            "--enable-plugin=pyside6", "--windows-console-mode=disable", "--include-package=shiva",
            "--include-package=pypdfium2", "--include-package=pypdfium2_raw",
+           "--product-name=Shiva", "--file-description=Shiva: clean metadata, encrypt and shred files",
+           f"--file-version={numeric}", f"--product-version={numeric}", "--copyright=GPL-3.0-or-later",
            "--output-filename=Shiva.exe", f"--output-dir={build_dir}"]
     pdfium_files()   # Nuitka's dll-files plugin and package-data support copy pdfium.dll and version.json; checked after the build
     cmd += [f"--include-data-files={e}=age/{e.name}" for e in exes]
@@ -135,7 +159,7 @@ def main() -> int:
     shutil.copyfile(qt_qm, out / "translations" / qt_qm.name)
 
     # wheels that bundle compiled libraries carry their licence texts in dist-info/licenses; ship them
-    for pkg, minimum in (("pypdfium2", 3), ("pillow", 1), ("pikepdf", 3), ("mutagen", 1)):
+    for pkg, minimum in (("pypdfium2", 3), ("pillow", 1), ("pikepdf", 3)):
         lic_src = Path(md.distribution(pkg)._path) / "licenses"
         n_lic = 0
         for f in sorted(p for p in lic_src.rglob("*") if p.is_file()):
@@ -149,8 +173,9 @@ def main() -> int:
     manifest = tomllib.loads((ROOT / "third_party" / "MANIFEST.toml").read_text(encoding="utf-8"))
     info = [f"Shiva {version}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",
             f"python: {sys.version.split()[0]}", f"nuitka: {md.version('nuitka')}",
-            f"PySide6: {md.version('PySide6_Essentials')}",
-            f"pypdfium2: {md.version('pypdfium2')}", f"age: {manifest['age']['version']}",
+            f"age: {manifest['age']['version']}", "", "Python packages (direct and pulled in):",
+            *[f"  {k}=={v}" for k, v in sorted(dependency_versions(
+                tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"]).items())],
             "", "Reproducibility: same source + the versions above + pinned age (third_party/MANIFEST.toml)",
             "should give the same file list; Nuitka output is not guaranteed to be byte-identical."]
     (out / "BUILD-INFO.txt").write_text("\n".join(info) + "\n", encoding="utf-8", newline="\n")
