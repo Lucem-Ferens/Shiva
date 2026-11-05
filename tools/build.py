@@ -31,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 AGE_DIR = ROOT / "third_party" / "bin" / "age"
 LOCK = ROOT / "requirements" / "lock.txt"
-MIN_PYTHON = (3, 12, 11)        # earlier 3.12 releases lack security fixes
+MIN_PYTHON = (3, 13, 0)         # 3.12 gets source-only security releases; the last Windows installer is 3.12.10
 LICENSE_FILES = [  # (source, name inside the portable folder)
     (ROOT / "LICENSE", "LICENSE.txt"),
     (ROOT / "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md"),
@@ -181,7 +181,7 @@ def main() -> int:
     check_environment(project_deps)
     if sys.version_info < MIN_PYTHON:
         print(f"WARNING: Python {sys.version.split()[0]} is older than {'.'.join(map(str, MIN_PYTHON))}; "
-              "install a newer 3.12 before building a release.", file=sys.stderr)
+              "install Python 3.13 or newer before building a release.", file=sys.stderr)
     build_dir = ROOT / "build"
     dist = ROOT / "dist"
     name = f"Shiva-{version}-win64"

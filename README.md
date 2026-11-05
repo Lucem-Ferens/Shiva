@@ -103,7 +103,7 @@ python -m venv .venv
 .venv\Scripts\python -m pip install --require-hashes -r requirements/lock.txt
 ```
 
-Use Python 3.12.11 or newer for release builds. `requirements/lock.in` lists the direct requirements; regenerate the
+Use Python 3.13 or newer for release builds (3.12 no longer has Windows installers with security fixes). `requirements/lock.in` lists the direct requirements; regenerate the
 lock with `tools/make_lock.py` (needs `pip-tools`). Each build also writes a CycloneDX bill of materials next to the zip.
 
 ## Development
