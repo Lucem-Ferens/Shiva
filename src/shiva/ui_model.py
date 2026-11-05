@@ -472,6 +472,7 @@ FAIL_TEXT = {
                             "and run again.",
     "restore_path_too_long": "A path inside this archive is too long for this output folder. Choose an output folder with "
                              "a shorter path.",
+    "streams_unreadable": "Windows would not list this item's hidden data. Check the item's permissions and run again.",
     "changed_during_run": "The file changed during the run. Close any program that edits it and run again.",
     "verify_failed": "The trial decrypt did not match, so the encrypted copy was removed. Run again.",
     "changed_after_verify": "The output changed after it was verified. Delete it and run again.",
@@ -554,6 +555,8 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
             if r.error_code == ARCHIVE_MEMBER:
                 return ResultRow("Failed", "Failed. Contains a part that cannot be cleaned. Original unchanged. "
                                  "Learn more", size_text, d + [ARCHIVE_PART_TIP], tip=ARCHIVE_PART_TIP)
+            if r.error_code in FAIL_TEXT:
+                return ResultRow("Failed", f"Failed. {FAIL_TEXT[r.error_code]} Original unchanged.", size_text, d)
             return ResultRow("Failed", "Failed. Not supported. Original unchanged.", size_text, d)
         if r.error_code == OUTPUT_EXISTS and r.conflict is not None:
             # the engine never overwrites: say what is in the way and what to do (the Reason line repeats it in full)

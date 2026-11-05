@@ -173,7 +173,8 @@ def _shred_only(p: Path) -> JobResult:
     try:
         rep = shred_tree(p)  # handles a single file and a folder, refuses links
     except StreamListError as e:    # raised before the first write
-        return JobResult(p, False, f"Not shredded: {e} Nothing was changed.", error_kind="unsupported")
+        return JobResult(p, False, f"Not shredded: {e} Nothing was changed.", error_kind="unsupported",
+                         error_code=e.code)
     except Exception as e:
         if p.exists():
             # a midway failure may already have destroyed some content: never claim the original is intact

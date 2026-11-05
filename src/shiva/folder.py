@@ -58,7 +58,7 @@ def _real_streams(path: Path) -> int:
     try:
         found = _named_streams(path)
     except ShredRefused as ex:   # an unreadable list must not count as "no streams"
-        raise FolderRefused(str(ex)) from ex
+        raise FolderRefused(str(ex), getattr(ex, "code", None)) from ex
     return sum(1 for n in found if n.lower() != "zone.identifier")
 
 

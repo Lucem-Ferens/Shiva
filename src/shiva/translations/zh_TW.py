@@ -286,6 +286,8 @@ _many({
     "A path inside this archive is too long for this output folder.": "封存檔內有路徑對這個輸出資料夾來說太長。",
     "Choose an output folder with a shorter path.": "改選路徑較短的輸出資料夾。",
     "Shorten the file name or choose an output folder with a shorter path.": "縮短檔名，或改選路徑較短的輸出資料夾。",
+    "Windows would not list this item's hidden data.": "Windows 無法列出這個項目的隱藏資料。",
+    "Check the item's permissions and run again.": "檢查這個項目的權限後再執行一次。",
     "The file changed during the run.": "檔案在執行期間被更動。",
     "Close any program that edits it and run again.": "關閉正在編輯它的程式後再執行一次。",
     "The trial decrypt did not match, so the encrypted copy was removed.": "試解密的結果不符，加密副本已移除。",

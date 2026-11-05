@@ -12,6 +12,7 @@ PERMISSION = "permission"
 PATH_TOO_LONG = "path_too_long"
 FOLDER_PATH_TOO_LONG = "folder_path_too_long"     # a path in the folder to archive would not restore
 RESTORE_PATH_TOO_LONG = "restore_path_too_long"   # a path in the archive does not fit the chosen output folder
+STREAMS_UNREADABLE = "streams_unreadable"         # Windows would not list the hidden data streams of an item
 CHANGED_DURING_RUN = "changed_during_run"
 VERIFY_FAILED = "verify_failed"
 CHANGED_AFTER_VERIFY = "changed_after_verify"

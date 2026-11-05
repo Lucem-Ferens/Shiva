@@ -135,3 +135,18 @@ def test_folder_manifest_shred_keeps_what_it_cannot_list(tmp_path: Path, monkeyp
     monkeypatch.setattr(shred, "_named_streams", _boom)
     left = folder._shred_manifest(plan, shred.ShredReport())
     assert left == 3 and (src / "sub" / "a.txt").read_bytes() == b"data"      # the file, sub and the root all stay
+
+
+def test_unreadable_listing_has_its_own_code_on_the_shred_row_and_the_folder_row(tmp_path: Path, monkeypatch):
+    from shiva import jobs, ui_model
+    f = tmp_path / "a.txt"; f.write_bytes(b"data")
+    monkeypatch.setattr(shred, "_named_streams", _boom)
+    row = ui_model.result_row(steps._shred_only(f), "shred")
+    assert row.status == "Failed" and "hidden data" in row.text and "Not supported" not in row.text
+    assert "Original unchanged" in row.text
+    src = tmp_path / "d"; src.mkdir(); (src / "a.txt").write_bytes(b"data")
+    monkeypatch.setattr(folder, "_named_streams", _boom)
+    with pytest.raises(folder.FolderRefused) as ei:
+        folder.plan_folder(src, shred_original=False)
+    row = ui_model.result_row(jobs.failure(src, ei.value), "encrypt")
+    assert "hidden data" in row.text and "Select the row for details" not in row.text

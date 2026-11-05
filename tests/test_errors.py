@@ -18,6 +18,7 @@ from shiva import agecli, errors, folder, jobs, ui_model
     (folder.FolderRefused("x", "folder_path_too_long"), "folder_path_too_long"),
     (folder.FolderRefused("x", "restore_path_too_long"), "restore_path_too_long"),
     (folder.RestoreIncomplete("x"), "restore_incomplete"),
+    (folder.FolderRefused("x", "streams_unreadable"), "streams_unreadable"),
     (FileExistsError("x"), "output_exists"),
     (ValueError("anything else"), None),
     (agecli.AgeError("uncoded"), None),
