@@ -98,7 +98,7 @@ def locked_versions() -> dict[str, str]:
 
 
 def check_environment(project_dependencies: list[str]) -> None:
-    """Stop when the running environment differs from the lock: a missing, extra-versioned or unlisted package."""
+    """Stop when the running environment differs from the lock: a missing, differently versioned, extra or duplicate package."""
     lock = locked_versions()
     problems = []
     for name, want in sorted(lock.items()):
@@ -109,6 +109,16 @@ def check_environment(project_dependencies: list[str]) -> None:
             continue
         if have != want:
             problems.append(f"{name}: installed {have}, lock says {want}")
+    installed: dict[str, list[str]] = {}
+    for dist in md.distributions():         # everything importable, including copies found through PYTHONPATH
+        dist_name = dist.metadata["Name"]
+        if dist_name:
+            installed.setdefault(re.sub(r"[-_.]+", "-", dist_name).lower(), []).append(dist.version)
+    for name, versions in sorted(installed.items()):
+        if name not in lock and name != "pip":
+            problems.append(f"{name} is installed but is not in the lock")
+        elif len(versions) > 1:
+            problems.append(f"{name} is installed more than once ({', '.join(versions)})")
     for name in sorted(dependency_versions(project_dependencies)):
         if re.sub(r"[-_.]+", "-", name).lower() not in lock:
             problems.append(f"{name} is needed at run time but is not in the lock")
@@ -118,7 +128,8 @@ def check_environment(project_dependencies: list[str]) -> None:
 
 
 def write_sbom(path: Path, version: str, packages: dict[str, str], age_version: str, commit: str) -> None:
-    """CycloneDX 1.5 list of what the build contains: Python packages and the bundled age release."""
+    """CycloneDX 1.5 list of the Python packages and the bundled age release. It does not list CPython, OpenSSL, libffi,
+    the C runtime or the libraries embedded in wheels (Qt, qpdf, PDFium); THIRD_PARTY_NOTICES.md names those."""
     components = [{"type": "library", "name": n, "version": v, "purl": f"pkg:pypi/{n}@{v}"} for n, v in sorted(packages.items())]
     components.append({"type": "application", "name": "age", "version": age_version,
                        "purl": f"pkg:github/FiloSottile/age@v{age_version.lstrip('v')}"})
@@ -223,7 +234,7 @@ def main() -> int:
     shutil.copyfile(qt_qm, out / "translations" / qt_qm.name)
 
     # wheels that bundle compiled libraries carry their licence texts in dist-info/licenses; ship them
-    for pkg, minimum in (("pypdfium2", 3), ("pillow", 1), ("pikepdf", 3)):
+    for pkg, minimum in (("pypdfium2", 3), ("pillow", 1), ("pikepdf", 3), ("lxml", 2), ("nuitka", 3)):
         lic_src = Path(md.distribution(pkg)._path) / "licenses"
         n_lic = 0
         for f in sorted(p for p in lic_src.rglob("*") if p.is_file()):
@@ -233,6 +244,13 @@ def main() -> int:
             n_lic += 1
         if n_lic < minimum:
             die(f"{pkg} licence files not found in the wheel metadata")
+
+    # CPython's licence file covers the PSF licence, OpenSSL (Apache-2.0), libffi, bzip2 and the Microsoft runtime terms
+    py_license = Path(sys.base_prefix) / "LICENSE.txt"
+    if not py_license.is_file():
+        die(f"CPython licence file not found: {py_license}")
+    (out / "licenses" / "python").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(py_license, out / "licenses" / "python" / "LICENSE.txt")
 
     manifest = tomllib.loads((ROOT / "third_party" / "MANIFEST.toml").read_text(encoding="utf-8"))
     info = [f"Shiva {version}", f"commit: {source_commit()}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",

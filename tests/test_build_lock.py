@@ -68,3 +68,25 @@ def test_build_stops_when_a_locked_package_is_not_installed(monkeypatch, capsys)
     with pytest.raises(SystemExit):
         build.check_environment(DEPS)
     assert "pikepdf" in capsys.readouterr().err
+
+
+class _FakeDist:
+    def __init__(self, name, version):
+        self.metadata = {"Name": name}
+        self.version = version
+
+
+def test_build_stops_when_an_extra_package_is_installed(monkeypatch, capsys):
+    real = build.md.distributions
+    monkeypatch.setattr(build.md, "distributions", lambda: [*real(), _FakeDist("numpy", "9.9")])
+    with pytest.raises(SystemExit):
+        build.check_environment(DEPS)
+    assert "numpy is installed but is not in the lock" in capsys.readouterr().err
+
+
+def test_build_stops_when_a_locked_package_is_installed_twice(monkeypatch, capsys):
+    real = build.md.distributions
+    monkeypatch.setattr(build.md, "distributions", lambda: [*real(), _FakeDist("Pillow", "0.0.1")])
+    with pytest.raises(SystemExit):
+        build.check_environment(DEPS)
+    assert "pillow is installed more than once" in capsys.readouterr().err
