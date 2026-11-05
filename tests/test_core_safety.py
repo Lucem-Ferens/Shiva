@@ -1,4 +1,4 @@
-"""Regression tests for review-1 defects."""
+"""Regression tests for streaming age, part files, cancelling and the shred guards."""
 import os
 import subprocess
 import threading

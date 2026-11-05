@@ -1,4 +1,4 @@
-"""Trinetra -> Naga -> Agni for one file: clean in memory, encrypt the cleaned bytes (no cleaned plaintext on disk),
+"""Full pipeline for one file: clean in memory, encrypt the cleaned bytes (no cleaned plaintext on disk),
 trial-decrypt, then optionally shred the original.
 
 The original is shredded only if ALL hold: the caller asked for it, the cleaning changed no content or the caller

@@ -1,4 +1,4 @@
-"""Trinetra: metadata cleaning. Each format module exposes pure functions on bytes (no disk, no GUI):
+"""Metadata cleaning. Each format module exposes pure functions on bytes (no disk, no GUI):
 
     clean_xxx(data: bytes, **options) -> CleanOutcome   # raises CleanError / Unsupported
     check_equivalent_xxx(original: bytes, cleaned: bytes) -> None   # raises CleanError if content differs

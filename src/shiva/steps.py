@@ -1,4 +1,4 @@
-"""Independent steps, freely combined: Clean (Trinetra), Encrypt (Naga), Shred (Agni). Qt-free.
+"""Independent steps, freely combined: Clean, Encrypt, Shred. Qt-free.
 
   clean only            -> NAME.cleaned.EXT next to the original (all results go to opts.out_dir when set)
   clean + encrypt       -> NAME.cleaned.EXT.age (cleaned bytes never touch the disk)

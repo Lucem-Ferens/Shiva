@@ -3,17 +3,17 @@
 Shiva is **not** one mandatory workflow. Each function works on its own; the combined pipeline
 (clean -> encrypt -> verify -> shred) is only a convenience. Users can run any single function.
 
-| Function | Codename | Standalone use | Needs the others? |
-|---|---|---|---|
-| Clean metadata | Trinetra | "Clean metadata" button | No |
-| Encrypt / decrypt | Naga | "Encrypt" / "Decrypt" buttons | No |
-| Shred | Agni | "Shred" button | No |
-| Pipeline | - | tick the steps you want | Optional combination |
+| Function | Standalone use | Needs the others? |
+|---|---|---|
+| Clean metadata | "Clean metadata" button | No |
+| Encrypt / decrypt | "Encrypt" / "Decrypt" buttons | No |
+| Shred | "Shred" button | No |
+| Pipeline | tick the steps you want | Optional combination |
 
-Status legend: **done** = in the current code, **4a/4b** = planned in Milestone 4, **later** = needs a bundled tool
-or a review first, **no** = deliberately not supported (the file is refused or reported "not cleaned").
+Status legend: **done** = in the current code, **later** = needs a bundled tool
+or further work first, **no** = deliberately not supported (the file is refused or reported "not cleaned").
 
-## Naga: encryption (age 1.3.2, bundled)
+## Encryption (age 1.3.2, bundled)
 Format-independent: age encrypts a byte stream, so any file type works.
 | Input | Status |
 |---|---|
@@ -26,7 +26,7 @@ Format-independent: age encrypts a byte stream, so any file type works.
 Not supported: files you cannot read, cloud placeholders that are not downloaded, links/junctions inside folders
 (refused with a reason).
 
-## Agni: shredding (best effort, never "secure deletion")
+## Shredding (best effort, never "secure deletion")
 | Input | Status |
 |---|---|
 | Single file | done |
@@ -41,7 +41,7 @@ in it, and its parent folders. The confirmation window lists the full path of ev
 path in the tooltip).
 Always reported: SSD wear levelling, NTFS journal, shadow copies, cloud sync can keep old data.
 
-## Trinetra: metadata cleaning
+## Metadata cleaning
 Never copies an unsupported file through silently. Unsupported = refused or reported "not cleaned".
 | Format | Status | Method |
 |---|---|---|
@@ -54,7 +54,7 @@ Never copies an unsupported file through silently. Unsupported = refused or repo
 | ZIP | done | images, audio, nested zips and office files inside are cleaned (office files inside ignore the category choice and are cleaned with every category); other members: refuse (default), omit or keep via options (GUI checkboxes pending) |
 | M4A/MP4/MOV/AVI/WAV/AIFF | later | needs bundled ffmpeg/ExifTool and a licence check of that binary |
 | TIFF, BMP, HEIC, AVIF, JXL, RAW | later | needs bundled ExifTool |
-| EPUB, SVG, HTML/CSS, torrent | later | port from mat2 after review |
+| EPUB, SVG, HTML/CSS, torrent | later | port from mat2 |
 | Encrypted/signed PDF, XFA-only PDF | no | refused |
 | Anything else | no | reported "not cleaned" |
 What cleaning does not cover (shown in the result): pixel-noise fingerprints, watermarks, visible text, file name, size,

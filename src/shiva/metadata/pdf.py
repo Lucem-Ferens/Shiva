@@ -75,7 +75,7 @@ _LABELS = {
     "doc_id": "Document ID",
     "flatten": "Flatten pages to images (removes covered text)",
 }
-# Content-changing = something a reader could see or use is lost. Decisions per item:
+# Content-changing = something a reader could see or use is lost. Per item:
 #  bookmarks, links, navigation_data (named destinations break GoTo links by name; threads are reading order):
 #      navigation is lost.
 #  annotations, hidden_text, hidden_layers: visible markup or readable (copyable/searchable) text is lost.
@@ -1480,7 +1480,7 @@ def check_equivalent_pdf(original: bytes, cleaned: bytes, categories: set[str]) 
         except pikepdf.PdfError as e:
             raise CleanError(f"Cannot read page content: {e}") from e
         off = _off_ocgs(po)[1]
-        if categories & _CONTENT_CATS:  # same decision as clean_pdf: layers are not removed next to shared forms
+        if categories & _CONTENT_CATS:  # same rule as clean_pdf: layers are not removed next to shared forms
             categories = _effective(categories, off, _skipped_forms(po, off, co))
         content_sel = bool(categories & _CONTENT_CATS)
         for i, (a, b) in enumerate(zip(fo, fc), start=1):

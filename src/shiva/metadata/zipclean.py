@@ -7,7 +7,7 @@
 # name/symlink/encryption refusals were added; members keep their original order (upstream sorts them);
 # output is deterministic; the TAR classes are not ported; the XML helpers use xml.parsers.expat with
 # raising DTD/entity handlers; an independent checker was added.
-"""Trinetra: generic zip cleaner plus the safe-zip and safe-XML helpers shared with office.py.
+"""Generic zip cleaner plus the safe-zip and safe-XML helpers shared with office.py.
 
 Public: clean_zip(data, *, unknown_members="abort") and check_equivalent_zip(original, cleaned, *, unknown_members)."""
 from __future__ import annotations

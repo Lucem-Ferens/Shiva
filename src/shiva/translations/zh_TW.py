@@ -1,5 +1,4 @@
-"""Traditional Chinese (Taiwan) catalog: English source text -> translation. Basic version for testing the interface;
-a professional review and the German catalog come after Milestone 5.
+"""Traditional Chinese (Taiwan) catalog: English source text -> translation. Basic version for testing the interface.
 
 Conventions
 - One key = one line or one sentence (the engine in shiva/i18n.py splits text into lines and sentences).

@@ -1,4 +1,4 @@
-"""Trinetra: lossless audio metadata cleaner for MP3, FLAC, Ogg Vorbis and Opus (byte-level, no re-encoding).
+"""Lossless audio metadata cleaner for MP3, FLAC, Ogg Vorbis and Opus (byte-level, no re-encoding).
 
 Everything is done on bytes in memory. Audio payload (MP3 frames, FLAC frames, Ogg audio pages) is copied verbatim;
 only tag regions are dropped or rewritten. mutagen is deliberately not used for cleaning (the generic

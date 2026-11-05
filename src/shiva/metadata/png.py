@@ -1,4 +1,4 @@
-"""Trinetra: lossless PNG metadata cleaner (byte-level chunk whitelist).
+"""Lossless PNG metadata cleaner (byte-level chunk whitelist).
 
 Kept chunks are copied verbatim (CRCs included), so 16-bit and APNG data stay bit-identical.
 """

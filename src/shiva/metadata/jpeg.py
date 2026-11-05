@@ -1,4 +1,4 @@
-"""Trinetra: lossless JPEG metadata cleaner (segment stripper).
+"""Lossless JPEG metadata cleaner (segment stripper).
 
 Walks the marker structure, copies the image-bearing segments verbatim and drops everything else.
 The entropy-coded data is never decoded or re-encoded, so pixels stay bit-identical.

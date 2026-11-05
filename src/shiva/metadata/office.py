@@ -9,7 +9,7 @@
 # relationships and [Content_Types].xml are filtered for every removed part; comments/tracked changes in all
 # Word parts and ODF annotations are handled; embedded images are cleaned with the sibling modules; an
 # independent checker was added.
-"""Trinetra: OOXML (docx/xlsx/pptx) and ODF (odt/ods/odp) metadata cleaner.
+"""OOXML (docx/xlsx/pptx) and ODF (odt/ods/odp) metadata cleaner.
 
 Public: sniff, clean_office, check_equivalent_office. Content-changing removals (comments, tracked changes,
 omitted members) are reported in CleanOutcome.content_changed."""

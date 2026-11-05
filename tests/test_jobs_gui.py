@@ -13,7 +13,7 @@ def test_encrypt_then_decrypt_batch_with_one_bad_item(tmp_path: Path):
     a = tmp_path / "a.bin"; a.write_bytes(b"A" * 5000)
     d = tmp_path / "folder"; d.mkdir()
     res = jobs.run_jobs([a, d, tmp_path / "missing"], "pw", shred_original=True)
-    assert [r.ok for r in res] == [True, True, False]  # folders are supported since Milestone 3
+    assert [r.ok for r in res] == [True, True, False]  # folders are supported
     assert not a.exists() and (tmp_path / "a.bin.age").exists()
     back = jobs.run_jobs([tmp_path / "a.bin.age"], "pw", shred_original=False)
     assert back[0].ok and (tmp_path / "a.bin").read_bytes() == b"A" * 5000

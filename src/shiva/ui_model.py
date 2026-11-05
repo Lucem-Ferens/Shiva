@@ -17,7 +17,7 @@ from .metadata import ARCHIVE_MEMBER, runner
 TABS = ("clean", "encrypt", "shred")
 TITLES = {"clean": ("Clean metadata", "Images, PDF, Office, audio, ZIP"), "encrypt": ("Encrypt", "Files and folders"),
           "shred": ("Shred", "Overwrite and delete")}
-MIN_PW = 8      # encrypting below this only WARNS (owner decision); decrypting is never length-checked
+MIN_PW = 8      # encrypting below this only WARNS; decrypting is never length-checked
 SHORT_PW_WARNING = "⚠ Short passphrase: use 8 or more characters"
 _OFFLINE_ATTRS = 0x1000 | 0x40000 | 0x400000   # OFFLINE, RECALL_ON_OPEN, RECALL_ON_DATA_ACCESS (cloud placeholders)
 _COUNT_CAP = 100_000

@@ -1,4 +1,4 @@
-"""Trinetra: lossless GIF metadata cleaner (byte-level block whitelist).
+"""Lossless GIF metadata cleaner (byte-level block whitelist).
 
 Kept: header, logical screen descriptor, colour tables, image descriptors + LZW data (verbatim, never
 re-encoded), graphic control extensions, and the NETSCAPE2.0/ANIMEXTS1.0 loop extension.

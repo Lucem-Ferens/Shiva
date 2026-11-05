@@ -1,4 +1,4 @@
-"""Trinetra: lossless WebP metadata cleaner (RIFF chunk whitelist).
+"""Lossless WebP metadata cleaner (RIFF chunk whitelist).
 
 Bitstream chunks (VP8, VP8L, ALPH, ANIM, ANMF frames) are copied verbatim, never re-encoded.
 VP8X flags are rewritten (EXIF/XMP bits cleared, ICC bit only with a kept ICCP); the RIFF size,

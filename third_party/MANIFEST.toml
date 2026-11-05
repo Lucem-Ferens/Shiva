@@ -31,14 +31,13 @@ last_reviewed = "2026-11-02"
 [bleachbit]
 kind = "tracked"            # no BleachBit code is ported (checked 2026-11-04); shred.py is our own and only cites its documentation
 repo = "bleachbit/bleachbit"
-version = "6.0.6"           # version noted by research on 2026-11-02; reference only
+version = "6.0.6"           # version noted on 2026-11-02; reference only
 license = "GPL-3.0-or-later"
 security_critical = false
 update_mechanism = "monthly release-notes read for shredding caveats; if code is ever ported, switch to kind = \"ported\" with ported_to and a base commit"
 last_reviewed = "2026-11-02"
 
 # Python runtime dependencies (installed from PyPI wheels, frozen into the build by Nuitka).
-# User approved adding these on 2026-11-02 for Milestone 4a (Pillow, pikepdf) and 4b (mutagen).
 [pillow]
 kind = "bundled"
 repo = "python-pillow/Pillow"
@@ -69,7 +68,7 @@ security_critical = false
 update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
 last_reviewed = "2026-11-02"
 
-# User approved adding pypdfium2 on 2026-11-02 (for the optional "flatten PDF pages to images" feature).
+# pypdfium2 is used by the optional "flatten PDF pages to images" feature.
 [pypdfium2]
 kind = "bundled"
 repo = "pypdfium2-team/pypdfium2"
