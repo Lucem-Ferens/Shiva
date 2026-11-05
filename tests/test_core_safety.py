@@ -2,6 +2,7 @@
 import os
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -135,7 +136,8 @@ def test_cancel_removes_part_and_keeps_original(tmp_path: Path):
 
 
 def test_stale_part_files_are_swept(tmp_path: Path):
-    stale = tmp_path / ".x.txt.shiva-part"; stale.write_bytes(b"leftover")
+    stale = output.part_for(tmp_path / "x.txt"); stale.write_bytes(b"leftover")
+    os.utime(stale, (time.time() - 3600,) * 2)
     keep = tmp_path / "x.txt"; keep.write_bytes(b"mine")
     assert output.sweep_stale_parts(tmp_path) == 1
     assert not stale.exists() and keep.read_bytes() == b"mine"
@@ -159,9 +161,10 @@ def test_source_changed_during_run_is_not_shredded(tmp_path: Path, monkeypatch):
 
 # ---- early regressions ----
 @needs_age
-def test_h1_existing_file_at_part_name_is_not_destroyed(tmp_path: Path):
+def test_h1_existing_file_at_part_name_is_not_destroyed(tmp_path: Path, monkeypatch):
     src = tmp_path / "doc.bin"; src.write_bytes(b"data")
     user = tmp_path / ".doc.bin.age.shiva-part"; user.write_bytes(b"users own file")
+    monkeypatch.setattr(output, "part_for", lambda final: user)       # force the collision the random name makes unlikely
     with pytest.raises(FileExistsError):
         pipeline.encrypt_verify_shred(src, "pw", shred_original=False)
     assert user.read_bytes() == b"users own file"
@@ -183,7 +186,7 @@ def test_h1_published_file_size_is_rechecked_before_shredding_original(tmp_path:
 
 @needs_nt
 def test_h1_sweep_skips_part_file_held_open_by_another_job(tmp_path: Path):
-    p = tmp_path / ".x.txt.shiva-part"
+    p = output.part_for(tmp_path / "x.txt")
     with open(p, "wb") as held:
         held.write(b"in progress")
         assert output.sweep_stale_parts(tmp_path) == 0

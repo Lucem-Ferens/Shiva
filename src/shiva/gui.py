@@ -1060,6 +1060,7 @@ class MainWindow(QMainWindow):
         self._thread: QThread | None = None
         self._worker = None
         self._closing = False
+        self._scan_cancel = threading.Event()      # set when the window is closed during a category scan
         self.busy = False
         self._log: list[str] = []
         self._seen_changes: dict[str, list[str]] = {}
@@ -1325,7 +1326,7 @@ class MainWindow(QMainWindow):
     def _scan_responsively(self, p: Path) -> list[dict]:
         """Scan in a thread and keep the window alive meanwhile (a hostile PDF can take up to the worker timeout)."""
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            fut = ex.submit(runner.scan_categories, p)
+            fut = ex.submit(runner.scan_categories, p, self._scan_cancel)
             self.set_status(f"Scanning {p.name} ...")
             while not fut.done():
                 QApplication.processEvents()
@@ -1351,8 +1352,12 @@ class MainWindow(QMainWindow):
             try:
                 cats = self._scan_responsively(p)
             except (CleanError, OSError) as e:
+                if self._closing:       # the window was closed during the scan: the whole run is cancelled
+                    return False
                 self.set_status(f"{p.name}: cannot be scanned ({e}); it will be reported as failed.")
                 continue
+            if self._closing:
+                return False
             if not any(c.get("selectable", True) for c in cats):
                 opts.pdf_categories[str(p)] = []
                 continue
@@ -1443,6 +1448,8 @@ class MainWindow(QMainWindow):
         finally:
             if not started:
                 self._set_busy(False)
+                if self._closing:       # closed while preparing the run: nothing is running, so the window can go now
+                    self.close()
 
     def _progress(self, done: int, total: int) -> None:
         self._run_page.mark_progress(done, total)
@@ -1476,6 +1483,13 @@ class MainWindow(QMainWindow):
             self._worker.cancel.set()
             self._run_page.cancelBtn.setEnabled(False)
             self.set_status("Closing after the current file...")
+            event.ignore()
+            return
+        if self.busy:
+            # the run is still being prepared (a category scan keeps the window alive): cancel the scan and close once
+            # begin_run has stopped, so no worker is started in a window that is going away
+            self._closing = True
+            self._scan_cancel.set()
             event.ignore()
             return
         for p in self.pages.values():

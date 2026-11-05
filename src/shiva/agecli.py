@@ -128,7 +128,10 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
             stdout=out_f if out_f is not None else subprocess.PIPE,
             stderr=subprocess.PIPE, creationflags=_CREATE_NO_WINDOW)
         try:
-            winjob.adopt(proc)
+            if not winjob.adopt(proc):
+                # without the kill-on-close job, age could outlive Shiva and keep writing the part file
+                raise AgeError("Windows would not apply the safety limits to the encryption helper, so it was stopped "
+                               "before it processed the file", "not_contained")
             t_err = threading.Thread(target=lambda: err_buf.append(proc.stderr.read()), daemon=True)
             t_err.start()
             h_in, h_out = hashlib.sha256(), hashlib.sha256()

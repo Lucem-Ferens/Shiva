@@ -121,12 +121,15 @@ def test_folder_plan_refuses_when_streams_cannot_be_listed(tmp_path: Path, monke
 
 
 @needs_age
-def test_encrypt_keeps_the_original_untouched_when_streams_cannot_be_listed(tmp_path: Path, monkeypatch):
+def test_encrypt_with_shredding_refuses_before_any_work_when_streams_cannot_be_listed(tmp_path: Path, monkeypatch):
     f = tmp_path / "a.txt"; f.write_bytes(b"data")
     monkeypatch.setattr(shred, "_named_streams", _boom)
-    out, rep = pipeline.encrypt_verify_shred(f, "pw-pw-pw-pw", shred_original=True)
-    assert out.exists() and f.read_bytes() == b"data"
-    assert rep is not None and rep.untouched and "NOT removed" in rep.warning
+    with pytest.raises(agecli.AgeError) as ei:
+        pipeline.encrypt_verify_shred(f, "pw-pw-pw-pw", shred_original=True)
+    assert ei.value.code == "streams_unreadable" and f.read_bytes() == b"data"
+    assert [p.name for p in tmp_path.iterdir()] == ["a.txt"]          # no output was made on a promise it cannot keep
+    out, rep = pipeline.encrypt_verify_shred(f, "pw-pw-pw-pw", shred_original=False)      # without shredding nothing is lost
+    assert out.exists() and rep is None
 
 
 def test_folder_manifest_shred_keeps_what_it_cannot_list(tmp_path: Path, monkeypatch):

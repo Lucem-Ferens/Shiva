@@ -473,6 +473,10 @@ FAIL_TEXT = {
     "restore_path_too_long": "A path inside this archive is too long for this output folder. Choose an output folder with "
                              "a shorter path.",
     "streams_unreadable": "Windows would not list this item's hidden data. Check the item's permissions and run again.",
+    "hidden_streams": "This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would "
+                      "destroy it. Turn off shredding or remove the hidden data.",
+    "not_contained": "Windows would not apply the safety limits to the encryption helper, so it was stopped before it "
+                     "processed the file. Run again.",
     "changed_during_run": "The file changed during the run. Close any program that edits it and run again.",
     "verify_failed": "The trial decrypt did not match, so the encrypted copy was removed. Run again.",
     "changed_after_verify": "The output changed after it was verified. Delete it and run again.",
@@ -483,8 +487,12 @@ FAIL_TEXT = {
 
 def _add_cleanup_lines(rr: ResultRow, r: JobResult) -> None:
     """Temporary plaintext that could not be overwritten must show on the row, whatever else happened to the item."""
-    if not (r.plaintext_left or r.plaintext_deleted):
+    if not (r.plaintext_left or r.plaintext_deleted or r.unrecognized):
         return
+    if r.unrecognized:
+        rr.text += (f" Shiva left alone an item in {Path(r.unrecognized[0]).parent} that is named like a leftover but is "
+                    "not one it can recognise. Check it, and shred or delete it yourself if you do not need it.")
+        rr.details += [f"Left alone: {p}" for p in r.unrecognized]
     if r.plaintext_left:
         rr.text += f" Readable temporary data may still be in {Path(r.plaintext_left[0]).parent}. Shred or delete it yourself."
         rr.details += [f"Still there: {p}" for p in r.plaintext_left]

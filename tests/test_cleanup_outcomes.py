@@ -13,9 +13,18 @@ def _no_shred(*a, **k):
     raise OSError("locked by another program")
 
 
-def _part(tmp_path: Path, name: str = ".a.bin.shiva-part", data: bytes = b"plaintext") -> Path:
-    p = tmp_path / name
+def _name(claimed: bool = False) -> str:
+    """A leftover name of the shape Shiva makes (and only that shape is swept)."""
+    n = output.part_for(Path("x")).name
+    return n + output.CLAIM_MARK + "0a1b2c3d" if claimed else n
+
+
+def _part(tmp_path: Path, data: bytes = b"plaintext", claimed: bool = False, age: float = 3600) -> Path:
+    """A leftover file `age` seconds old (a fresh one is skipped by the sweep: a running job may own it)."""
+    p = tmp_path / _name(claimed)
     p.write_bytes(data)
+    t = time.time() - age
+    os.utime(p, (t, t))
     return p
 
 
@@ -65,10 +74,8 @@ def test_staging_discard_outcomes(tmp_path: Path, monkeypatch):
 
 
 def test_a_claimed_part_left_behind_is_swept_once_idle(tmp_path: Path):
-    old = _part(tmp_path, ".a.bin.shiva-part.claimed")
-    past = time.time() - output.CLAIMED_IDLE_S - 5
-    os.utime(old, (past, past))
-    fresh = _part(tmp_path, ".b.bin.shiva-part.claimed")          # a sweep in another window may be working on it
+    old = _part(tmp_path, claimed=True, age=output.CLAIMED_IDLE_S + 5)
+    fresh = _part(tmp_path, claimed=True, age=0)                  # a sweep in another window may be working on it
     problems: list = []
     assert output.sweep_stale_parts(tmp_path, problems) == 1
     assert not old.exists() and fresh.exists() and problems == []
@@ -83,7 +90,7 @@ def test_sweep_reports_a_leftover_it_could_not_overwrite(tmp_path: Path, monkeyp
 
 
 def test_claimed_staging_folder_is_retried_without_its_marker(tmp_path: Path):
-    d = tmp_path / ".x.shiva-part.claimed"; d.mkdir(); (d / "f").write_bytes(b"leftover")   # marker already shredded
+    d = tmp_path / ".x.shiva-part.claimed-0a1b2c3d"; d.mkdir(); (d / "f").write_bytes(b"leftover")   # marker already shredded
     past = time.time() - output.CLAIMED_IDLE_S - 5
     os.utime(d, (past, past))
     assert folder.sweep_stale_staging(tmp_path) == 1 and not d.exists()
@@ -158,18 +165,18 @@ def test_a_leftover_from_an_earlier_run_is_reported_once_per_session(tmp_path: P
     jobs._SWEEP_REPORTED.clear()
     monkeypatch.setattr(output, "shred_file", _no_shred)
     f = tmp_path / "a.bin"; f.write_bytes(b"data")
-    _part(tmp_path, ".old.bin.shiva-part")
+    _part(tmp_path)
     logs: list[str] = []
     r1 = jobs.run_jobs([f], "pw-pw-pw-pw", shred_original=False, log=logs.append)
     assert len(r1[0].plaintext_deleted) == 1 and any("WARNING" in x for x in logs)
-    _part(tmp_path, ".old2.bin.shiva-part")
+    _part(tmp_path)
     r2 = jobs.run_jobs([f], "pw-pw-pw-pw", shred_original=False)
     assert len(r2[0].plaintext_deleted) == 1                      # the second leftover is new, the first is not repeated
     jobs._SWEEP_REPORTED.clear()
 
 
 def _claimed_folder(base: Path, files: int = 150) -> Path:
-    d = base / ".restored.shiva-part.claimed"          # a crash happened between claim and shred
+    d = base / ".restored.shiva-part.claimed-0a1b2c3d"          # a crash happened between claim and shred
     sub = d / "photos"; sub.mkdir(parents=True)
     for i in range(files):
         (sub / f"img{i:03}.jpg").write_bytes(b"P" * (1 << 16))
@@ -218,7 +225,8 @@ def test_two_sweeps_at_once_never_fall_back_to_plain_delete(tmp_path: Path, roun
 def test_taking_over_renames_so_a_second_taker_finds_nothing(tmp_path: Path):
     d = _claimed_folder(tmp_path, files=2)
     first = output._claimable(d)
-    assert first is not None and first.name.startswith(d.name + "-") and not d.exists()
+    assert first is not None and output.is_claimed(first.name) and first.name != d.name and not d.exists()
+    assert first.name.rsplit(output.CLAIM_MARK, 1)[0] == d.name.rsplit(output.CLAIM_MARK, 1)[0]
     with pytest.raises(OSError):
         output._claimable(d)                                          # the other window's rename: nothing left to take
 
@@ -238,7 +246,7 @@ def test_a_run_that_only_cleans_sweeps_a_leftover_part_file(tmp_path: Path):
     from shiva import steps
     jobs._SWEEP_REPORTED.clear()
     img = _png(tmp_path / "a.png")
-    stale = _part(tmp_path, ".a.cleaned.png.shiva-part", b"cleaned plaintext")
+    stale = _part(tmp_path, b"cleaned plaintext")
     res = steps.run_steps([img], "", steps.StepOptions(clean=True, encrypt=False))
     assert res[0].ok and not stale.exists()
 
@@ -248,7 +256,7 @@ def test_a_leftover_found_by_a_clean_only_run_is_reported_when_it_cannot_be_over
     jobs._SWEEP_REPORTED.clear()
     monkeypatch.setattr(output, "shred_file", _no_shred)
     img = _png(tmp_path / "a.png")
-    _part(tmp_path, ".a.cleaned.png.shiva-part")
+    _part(tmp_path)
     res = steps.run_steps([img], "", steps.StepOptions(clean=True, encrypt=False))
     assert len(res[0].plaintext_deleted) == 1
     jobs._SWEEP_REPORTED.clear()
@@ -302,7 +310,7 @@ def test_a_cleaned_file_replaced_by_another_program_is_left_alone(tmp_path: Path
 def test_a_selected_leftover_is_not_swept_before_it_is_processed(tmp_path: Path):
     from shiva import steps
     jobs._SWEEP_REPORTED.clear()
-    left = _part(tmp_path, ".x.bin.shiva-part", b"leftover")
+    left = _part(tmp_path, b"leftover")
     res = steps.run_steps([left], "", steps.StepOptions(clean=False, encrypt=False, shred=True))
     assert res[0].ok and not left.exists()                       # shredded as the user asked, not swept first
 
@@ -313,9 +321,8 @@ def test_a_stuck_leftover_is_tried_once_per_run_and_reported_once(tmp_path: Path
     jobs._SWEEP_REPORTED.clear()
     monkeypatch.setattr(output, "shred_file", _no_shred)
     real = Path.unlink
-    old = time.time() - 3600
-    os.utime(_part(tmp_path, ".stuck.bin.shiva-part"), (old, old))
-    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: _no_shred() if ".stuck.bin.shiva-part" in self.name else real(self, *a, **k))
+    stuck = _part(tmp_path)
+    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: _no_shred() if self.name.startswith(stuck.name) else real(self, *a, **k))
     files = []
     for n in ("a.bin", "b.bin", "c.bin"):
         f = tmp_path / n; f.write_bytes(b"data"); files.append(f)
@@ -329,7 +336,6 @@ def test_a_stuck_leftover_is_tried_once_per_run_and_reported_once(tmp_path: Path
 
 
 def test_a_claimed_item_looks_busy_right_after_the_claim(tmp_path: Path):
-    p = _part(tmp_path, ".old.bin.shiva-part")
-    os.utime(p, (time.time() - 3600, time.time() - 3600))
+    p = _part(tmp_path)
     claimed = output._claimable(p)
     assert claimed is not None and output._claimable(claimed) is None      # a second taker finds it fresh and leaves it

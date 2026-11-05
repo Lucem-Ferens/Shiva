@@ -58,18 +58,26 @@ if os.name == "nt":
     _k32.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)]
 
     def in_job(proc) -> bool:
-        """True if proc belongs to some job. False also when Windows cannot say (the safe answer for a caller that
-        needs the process contained)."""
+        """True if proc belongs to Shiva's own kill-on-close job (not just to some job: a host that started Shiva inside
+        its own job proves nothing about ours). False also when Windows cannot say, the safe answer for a caller that
+        needs the process contained."""
+        try:
+            job = _get_job()
+        except OSError:
+            return False
         flag = wintypes.BOOL(0)
-        if not _k32.IsProcessInJob(wintypes.HANDLE(int(proc._handle)), None, ctypes.byref(flag)):
+        if not _k32.IsProcessInJob(wintypes.HANDLE(int(proc._handle)), job, ctypes.byref(flag)):
             return False
         return bool(flag.value)
 
     def adopt(proc) -> bool:
-        """Put a just-started subprocess.Popen into the kill-on-close job. True if proc is in a job afterwards:
+        """Put a just-started subprocess.Popen into the kill-on-close job. True only if proc is in that job afterwards:
         the assignment fails harmlessly when it already belongs to the job via adopt_self(), so the result is checked."""
-        if _k32.AssignProcessToJobObject(_get_job(), wintypes.HANDLE(int(proc._handle))):
-            return True
+        try:
+            if _k32.AssignProcessToJobObject(_get_job(), wintypes.HANDLE(int(proc._handle))):
+                return True
+        except OSError:
+            return False
         return in_job(proc)
     _adopted_self = False
     _JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x8
@@ -102,16 +110,17 @@ if os.name == "nt":
         if handle:
             _k32.CloseHandle(handle)
 
-    def adopt_self() -> None:
-        """Put this process in the job once; children (age and its plugins) inherit it."""
+    def adopt_self() -> bool:
+        """Put this process in the job once; children (age and its plugins) inherit it. Remembered only when it worked,
+        so a failure is tried again on the next call; the caller still checks every child with adopt()."""
         global _adopted_self
         if not _adopted_self:
-            _adopted_self = True
             _k32.GetCurrentProcess.restype = wintypes.HANDLE
             try:
-                _k32.AssignProcessToJobObject(_get_job(), _k32.GetCurrentProcess())
+                _adopted_self = bool(_k32.AssignProcessToJobObject(_get_job(), _k32.GetCurrentProcess()))
             except OSError:
-                pass  # best effort; adopt(proc) below is the fallback
+                _adopted_self = False
+        return _adopted_self
 else:
     def in_job(proc) -> bool:
         return True
@@ -125,5 +134,5 @@ else:
     def close_limited(handle) -> None:
         return None
 
-    def adopt_self() -> None:
-        return None
+    def adopt_self() -> bool:
+        return True

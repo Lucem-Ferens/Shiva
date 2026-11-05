@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from . import agecli, output, storage
+from . import agecli, output, pipeline, storage
 from .metadata import CleanOutcome, Unsupported, runner
 from .shred import ShredRefused, ShredReport, _check_file, shred_file
 
@@ -49,6 +49,7 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         raise FileExistsError(dst)
     if shred_original and status == "supported":
         _check_file(src)  # refuse links / hard links before doing any work
+        pipeline.refuse_unarchived_streams(src)
 
     if status == "supported":
         data, snap = runner.read_snapshot(src)

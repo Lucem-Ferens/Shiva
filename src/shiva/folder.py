@@ -14,7 +14,7 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import agecli, names, output, storage
+from . import agecli, errors, names, output, storage
 from .shred import ShredReport, ShredRefused, _named_streams, _wipe_streams, is_link, shred_file, shred_tree
 
 MARKER = ".shiva-staging-marker"
@@ -108,7 +108,7 @@ def plan_folder(root: Path, shred_original: bool) -> Plan:
     plan.hidden_streams += _real_streams(root)
     if shred_original and plan.hidden_streams:
         raise FolderRefused(f"{plan.hidden_streams} hidden NTFS data stream(s) are not archived and would be "
-                            "destroyed by overwriting; turn off 'overwrite the original' or remove them")
+                            "destroyed by overwriting; turn off 'overwrite the original' or remove them", errors.HIDDEN_STREAMS)
     return plan
 
 
@@ -236,17 +236,22 @@ def _discard_staging(staging: Path) -> output.Cleanup:
 
 
 def sweep_stale_staging(folder: Path, problems: list[output.Cleanup] | None = None, skip=None) -> int:
-    """Shred staging folders left by a crashed restore. Only folders carrying our marker are touched (a `.claimed`
-    one, left by a crash or a failed discard, is retried once idle), and each is claimed by rename first so one that
-    is in use right now is skipped. Items not cleanly overwritten are appended to `problems`."""
+    """Shred staging folders left by a crashed restore. A fresh one is touched only if it carries our marker; a claimed
+    one (left by a crash or a failed discard) only if its name is the exact shape a claim makes, and is retried once
+    idle. Each is claimed by rename first so one that is in use right now is skipped. A folder named like a claimed one
+    but not in that shape is left alone and appended to `problems` as UNRECOGNIZED; so are items not cleanly
+    overwritten (with their own outcome)."""
     n = 0
     for d in [*Path(folder).glob(".*" + output.PART_SUFFIX),
-              *Path(folder).glob(".*" + output.PART_SUFFIX + output.CLAIMED_SUFFIX + "*")]:
+              *Path(folder).glob(".*" + output.PART_SUFFIX + output.CLAIMED_STEM + "*")]:
         try:
             if not (d.is_dir() and not is_link(os.lstat(d))) or output.is_selected(d, skip):
                 continue
-            claimed_already = output.is_claimed(d.name)
-            if not claimed_already and not (d / MARKER).is_file():
+            if output.PART_SUFFIX + output.CLAIMED_STEM in d.name and not output.is_claimed(d.name):
+                if problems is not None:
+                    problems.append(output.Cleanup(output.UNRECOGNIZED, d))
+                continue
+            if not output.is_claimed(d.name) and not (d / MARKER).is_file():
                 continue
             target = output._claimable(d)       # renames a fresh one; None while a claimed one is still busy
             if target is None:

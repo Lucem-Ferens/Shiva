@@ -287,6 +287,15 @@ _many({
     "Choose an output folder with a shorter path.": "改選路徑較短的輸出資料夾。",
     "Shorten the file name or choose an output folder with a shorter path.": "縮短檔名，或改選路徑較短的輸出資料夾。",
     "Windows would not list this item's hidden data.": "Windows 無法列出這個項目的隱藏資料。",
+    "This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would destroy it.":
+        "這個項目有隱藏資料（NTFS 資料流）不會被加密，銷毀會將其一併毀掉。",
+    "Turn off shredding or remove the hidden data.": "關閉銷毀，或先移除隱藏資料。",
+    "Windows would not apply the safety limits to the encryption helper, so it was stopped before it processed the file.":
+        "Windows 未能對加密輔助程式套用安全限制，因此在它處理檔案前就已停止。",
+    "Shiva left alone an item in %1 that is named like a leftover but is not one it can recognise.":
+        "Shiva 沒有處理 %1 中一個名稱像殘留檔、但無法辨認是否為自己建立的項目。",
+    "Check it, and shred or delete it yourself if you do not need it.": "檢查它；若不需要，自行銷毀或刪除。",
+    "Left alone: %R1": "未處理：%1",
     "Check the item's permissions and run again.": "檢查這個項目的權限後再執行一次。",
     "The file changed during the run.": "檔案在執行期間被更動。",
     "Close any program that edits it and run again.": "關閉正在編輯它的程式後再執行一次。",

@@ -192,6 +192,7 @@
     <message><source>Shiva runs from this folder.</source><translation>Shiva 正從這個資料夾執行。</translation></message>
     <message><source>Shred files somewhere else.</source><translation>改為銷毀其他位置的檔案。</translation></message>
     <message><source>Not shredded: %M1 Nothing was changed.</source><translation>未銷毀：%1沒有任何變更。</translation></message>
+    <message><source>Windows would not list the hidden data streams of %R1 (error %N2).</source><translation>Windows 無法列出 %1 的隱藏資料流（錯誤 %2）。</translation></message>
     <message><source>Encrypted. Use the Decrypt switch on the Encrypt page.</source><translation>已加密。到「加密」頁面使用「解密」切換。</translation></message>
     <message><source>Online-only cloud file. Make it available offline first.</source><translation>僅存在雲端的檔案。先設為可離線使用。</translation></message>
     <message><source>Can't be read (%T1).</source><translation>無法讀取（%1）。</translation></message>
@@ -289,7 +290,24 @@
     <message><source>Windows denied access to the file or the output folder.</source><translation>Windows 拒絕存取檔案或輸出資料夾。</translation></message>
     <message><source>Check the permissions or choose another output folder.</source><translation>檢查權限，或改選其他輸出資料夾。</translation></message>
     <message><source>The output path is too long.</source><translation>輸出路徑太長。</translation></message>
+    <message><source>Readable temporary data may still be in %1.</source><translation>可讀的暫存資料可能仍在 %1。</translation></message>
+    <message><source>Shred or delete it yourself.</source><translation>自行銷毀或刪除。</translation></message>
+    <message><source>A temporary file with readable data was deleted without being overwritten.</source><translation>含可讀資料的暫存檔已刪除，但未覆寫。</translation></message>
+    <message><source>Still there: %R1</source><translation>仍存在：%1</translation></message>
+    <message><source>Deleted, not overwritten: %R1</source><translation>已刪除，未覆寫：%1</translation></message>
+    <message><source>A path inside this folder is too long to restore later.</source><translation>資料夾內有路徑太長，之後無法還原。</translation></message>
+    <message><source>Shorten the names inside the folder and run again.</source><translation>縮短資料夾內的名稱後再執行一次。</translation></message>
+    <message><source>A path inside this archive is too long for this output folder.</source><translation>封存檔內有路徑對這個輸出資料夾來說太長。</translation></message>
+    <message><source>Choose an output folder with a shorter path.</source><translation>改選路徑較短的輸出資料夾。</translation></message>
     <message><source>Shorten the file name or choose an output folder with a shorter path.</source><translation>縮短檔名，或改選路徑較短的輸出資料夾。</translation></message>
+    <message><source>Windows would not list this item's hidden data.</source><translation>Windows 無法列出這個項目的隱藏資料。</translation></message>
+    <message><source>This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would destroy it.</source><translation>這個項目有隱藏資料（NTFS 資料流）不會被加密，銷毀會將其一併毀掉。</translation></message>
+    <message><source>Turn off shredding or remove the hidden data.</source><translation>關閉銷毀，或先移除隱藏資料。</translation></message>
+    <message><source>Windows would not apply the safety limits to the encryption helper, so it was stopped before it processed the file.</source><translation>Windows 未能對加密輔助程式套用安全限制，因此在它處理檔案前就已停止。</translation></message>
+    <message><source>Shiva left alone an item in %1 that is named like a leftover but is not one it can recognise.</source><translation>Shiva 沒有處理 %1 中一個名稱像殘留檔、但無法辨認是否為自己建立的項目。</translation></message>
+    <message><source>Check it, and shred or delete it yourself if you do not need it.</source><translation>檢查它；若不需要，自行銷毀或刪除。</translation></message>
+    <message><source>Left alone: %R1</source><translation>未處理：%1</translation></message>
+    <message><source>Check the item's permissions and run again.</source><translation>檢查這個項目的權限後再執行一次。</translation></message>
     <message><source>The file changed during the run.</source><translation>檔案在執行期間被更動。</translation></message>
     <message><source>Close any program that edits it and run again.</source><translation>關閉正在編輯它的程式後再執行一次。</translation></message>
     <message><source>The trial decrypt did not match, so the encrypted copy was removed.</source><translation>試解密的結果不符，加密副本已移除。</translation></message>

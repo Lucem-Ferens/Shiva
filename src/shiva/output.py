@@ -1,8 +1,8 @@
 """Where results are written, and the one way every writer publishes them.
 
 Every function that produces a file (encrypt, decrypt, clean, folder archive) goes through this module:
-- Output is written to a hidden ".<name>.shiva-part" file and moved to its final name only when it is complete
-  and verified (`part_for`, `publish`).
+- Output is written to a hidden ".<32 random hex digits>.shiva-part" file and moved to its final name only when it is
+  complete and verified (`part_for`, `publish`). Only names of exactly that shape are ever swept.
 - `publish` never replaces an existing file: it checks, and `os.rename` itself refuses to replace one on Windows
   (never use `os.replace` here). So an existing output is never overwritten.
 - A writer removes a part file only if it created that file itself (`open(part, "xb")` succeeded); it never
@@ -13,6 +13,7 @@ Callers use these names through the module (`output.publish(...)`), so one monke
 from __future__ import annotations
 
 import os
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -105,17 +106,25 @@ def dest_dir(src: Path, out_dir: Path | None, inside: Path | None = None) -> Pat
 
 
 def part_for(final: Path) -> Path:
-    return final.with_name("." + final.name + PART_SUFFIX)
+    """A new hidden part file name next to `final`. The name is random and has a fixed shape, so it fits any path that
+    fits the output, never collides with a user's file, and is the only shape a sweep will ever delete."""
+    return final.with_name("." + secrets.token_hex(16) + PART_SUFFIX)
 
 
-CLAIMED_SUFFIX = ".claimed"
-CLAIMED_IDLE_S = 60   # a claimed item untouched this long belongs to a crashed run, not to a sweep in another window
+CLAIMED_STEM = ".claimed"
+CLAIM_MARK = CLAIMED_STEM + "-"      # a claimed item ends in ".claimed-" and 8 hex digits, a name only a claim makes
+CLAIMED_IDLE_S = 60   # an item untouched this long belongs to a crashed run, not to a job or a sweep in another window
+
+_OURS_FILE = re.compile(r"\.[0-9a-f]{32}" + re.escape(PART_SUFFIX) + r"(?:" + re.escape(CLAIM_MARK) + r"[0-9a-f]{8})?")
+_CLAIMED = re.compile(r".*" + re.escape(PART_SUFFIX + CLAIM_MARK) + r"[0-9a-f]{8}")
 
 # What happened to plaintext that had to be removed. Only OVERWRITTEN (and ABSENT: nothing was there) is a clean result.
 OVERWRITTEN = "overwritten"      # shredded: overwritten, renamed, removed (best effort, as everywhere in Shiva)
 PLAIN_DELETE = "plain_delete"    # overwriting failed; the item was deleted without being overwritten
 LEFT = "left"                    # could not be removed at all: readable data is still there
 ABSENT = "absent"
+UNRECOGNIZED = "unrecognized"    # named like a leftover but not a name Shiva makes: the sweep left it alone (not a problem
+                                 # of ours to fix, but the user may want to look at it)
 
 
 @dataclass(frozen=True)
@@ -155,25 +164,28 @@ def attach(exc: BaseException, cleanup: Cleanup) -> None:
 
 
 def is_claimed(name: str) -> bool:
-    return PART_SUFFIX + CLAIMED_SUFFIX in name
+    """True for the name a claim gives: a part name plus ".claimed-" and 8 hex digits."""
+    return _CLAIMED.fullmatch(name) is not None
+
+
+def is_ours_file(name: str) -> bool:
+    """True for a part file name made by part_for(), fresh or claimed. Nothing else is ever swept as a file."""
+    return _OURS_FILE.fullmatch(name) is not None
 
 
 def _claimable(p: Path) -> Path | None:
-    """The path to discard for a leftover `p`, or None to skip it. A fresh .shiva-part item is claimed by renaming it.
-    A claimed one (a crash between claim and discard, or a discard that failed) is retried once it has been idle, and
-    taken over by a rename to a new name: of two windows doing that, only one rename succeeds (the other raises
-    OSError), and Windows refuses it while a file inside is open. The idle time alone is not enough: a folder's own
-    time does not change while files in a subfolder are being shredded."""
+    """The path to discard for a leftover `p`, or None to skip it. A fresh item is claimed by renaming it to a new
+    claimed name. A claimed one (a crash between claim and discard, or a discard that failed) is retried once it has
+    been idle, and taken over by a rename to another new name: of two windows doing that, only one rename succeeds (the
+    other raises OSError), and Windows refuses it while a file inside is open. The idle time alone is not enough: a
+    folder's own time does not change while files in a subfolder are being shredded."""
     if is_claimed(p.name):
         if time.time() - os.lstat(p).st_mtime <= CLAIMED_IDLE_S:
             return None
-        retaken = p.with_name(p.name.split(CLAIMED_SUFFIX)[0] + CLAIMED_SUFFIX + "-" + secrets.token_hex(4))
-        os.rename(p, retaken)
-        _touch(retaken)
-        return retaken
-    claimed = p.with_name(p.name + CLAIMED_SUFFIX)
-    if claimed.exists():
-        return None
+        base = p.name.rsplit(CLAIM_MARK, 1)[0]
+    else:
+        base = p.name
+    claimed = p.with_name(base + CLAIM_MARK + secrets.token_hex(4))
     os.rename(p, claimed)
     _touch(claimed)
     return claimed
@@ -193,19 +205,28 @@ def is_selected(p: Path, skip) -> bool:
 
 
 def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None, skip=None) -> int:
-    """Shred leftover *.shiva-part files from a crashed earlier run. Returns how many were handled; those not cleanly
+    """Shred leftover part files from a crashed earlier run. Returns how many were handled; those not cleanly
     overwritten are appended to `problems`.
 
+    Only names that part_for() makes are swept (`is_ours_file`), and a fresh one only after it has been idle for
+    CLAIMED_IDLE_S, so a job that is working right now is left alone. Anything else named like a leftover (a user's own
+    file, or a leftover of an older version with a different name) is not touched; it is appended to `problems` as
+    UNRECOGNIZED so the user is told.
+
     Each file is first renamed to a claimed name: Windows refuses to rename a file another process still has
-    open, so a part file that a running job holds open is skipped. A job's part file is closed for a short time
-    between its steps (for example between encrypt and trial decrypt); a sweep in that gap would shred it, and
-    the job then fails when it publishes. That is safe: the original is shredded only after a successful
-    publish, so nothing of the user's is lost. A `.claimed` file left behind is retried by a later sweep.
+    open, so a part file that a running job holds open is skipped. A `.claimed` file left behind is retried by a later
+    sweep.
     """
     n = 0
-    for p in [*Path(folder).glob("*" + PART_SUFFIX), *Path(folder).glob("*" + PART_SUFFIX + CLAIMED_SUFFIX + "*")]:
+    for p in [*Path(folder).glob("*" + PART_SUFFIX), *Path(folder).glob("*" + PART_SUFFIX + CLAIMED_STEM + "*")]:
         try:
             if not (p.name.startswith(".") and p.is_file()) or is_selected(p, skip):
+                continue
+            if not is_ours_file(p.name):
+                if problems is not None:
+                    problems.append(Cleanup(UNRECOGNIZED, p))
+                continue
+            if not is_claimed(p.name) and time.time() - os.lstat(p).st_mtime <= CLAIMED_IDLE_S:
                 continue
             target = _claimable(p)
             if target is None:

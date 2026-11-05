@@ -257,13 +257,24 @@ def _wipe_streams(path: Path, report: ShredReport | None, names: list[str] | Non
             report.streams += 1
 
 
+def _write_all(f, data) -> None:
+    """Write every byte of `data`. A raw file may accept fewer bytes than offered (the return value says how many), and
+    one that accepts none must stop the overwrite instead of letting the caller count the chunk as written."""
+    view = memoryview(data)
+    while len(view):
+        n = f.write(view)
+        if not n or n < 0:
+            raise OSError("the disk accepted no more data, so the overwrite is incomplete")
+        view = view[n:]
+
+
 def _zero(target: str, size: int) -> None:
     with open(target, "r+b", buffering=0) as f:
         remaining = size
-        zeros = bytes(_CHUNK)
+        zeros = memoryview(bytes(_CHUNK))
         while remaining > 0:
             n = min(remaining, _CHUNK)
-            f.write(zeros[:n])
+            _write_all(f, zeros[:n])
             remaining -= n
         f.flush()
         os.fsync(f.fileno())

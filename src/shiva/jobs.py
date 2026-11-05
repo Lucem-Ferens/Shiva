@@ -35,12 +35,16 @@ class JobResult:
     conflict: Path | None = None                      # error_code "output_exists": the existing file or folder in the way
     plaintext_left: list[str] = field(default_factory=list)     # readable temporary items that could not be removed (paths)
     plaintext_deleted: list[str] = field(default_factory=list)  # temporary items deleted without being overwritten (paths)
+    unrecognized: list[str] = field(default_factory=list)       # leftover-looking items the sweep did not touch (paths)
 
 
 def note_cleanup(res: JobResult, items) -> JobResult:
     """Record plaintext cleanups that were not a clean overwrite (output.Cleanup items) on a result."""
     for c in items:
-        (res.plaintext_left if c.outcome == output.LEFT else res.plaintext_deleted).append(str(c.path))
+        if c.outcome == output.UNRECOGNIZED:
+            res.unrecognized.append(str(c.path))
+        else:
+            (res.plaintext_left if c.outcome == output.LEFT else res.plaintext_deleted).append(str(c.path))
     return res
 
 
@@ -86,7 +90,7 @@ def report_leftovers(results: list[JobResult], problems: list[output.Cleanup], l
     _SWEEP_REPORTED.update(str(c.path) for c in fresh)
     if fresh and results:
         note_cleanup(results[0], fresh)
-        log("WARNING: leftover temporary items could not be overwritten: " + ", ".join(str(c.path) for c in fresh))
+        log("WARNING: leftover items need your attention: " + ", ".join(str(c.path) for c in fresh))
 
 
 def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,

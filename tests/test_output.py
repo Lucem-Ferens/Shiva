@@ -33,11 +33,12 @@ def test_publish_keeps_a_file_that_appears_after_the_check(tmp_path, monkeypatch
     assert final.read_bytes() == b"precious"
 
 
-def test_clean_file_does_not_delete_a_part_file_it_did_not_create(tmp_path):
+def test_clean_file_does_not_delete_a_part_file_it_did_not_create(tmp_path, monkeypatch):
     src = tmp_path / "a.png"
     Image.new("RGB", (8, 8), (1, 2, 3)).save(src, "PNG")
     foreign = output.part_for(runner.clean_name(src))
     foreign.write_bytes(b"someone else's data")
+    monkeypatch.setattr(output, "part_for", lambda final: foreign)     # force the collision a random name makes unlikely
     with pytest.raises(FileExistsError):
         runner.clean_file(src)
     assert foreign.read_bytes() == b"someone else's data"

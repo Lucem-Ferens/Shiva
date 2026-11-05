@@ -5,7 +5,7 @@ Safety rules:
   reproduces the SHA-256 of the bytes that were encrypted, and the source file is
   unchanged (size and mtime) since it was read. On any failure nothing of the
   user's is deleted; only our own part file is removed.
-- Output is written to a hidden ".<name>.shiva-part" file and moved to its final
+- Output is written to a hidden ".<random>.shiva-part" file and moved to its final
   name only after verification, through `output.publish`, which never overwrites
   an existing file (see output.py).
 - No plaintext probe file is ever written (the trial decrypt is hashed in memory).
@@ -16,8 +16,21 @@ import os
 import threading
 from pathlib import Path
 
-from . import agecli, output, storage
+from . import agecli, errors, output, shred, storage
 from .shred import ShredReport, ShredRefused, _check_file, shred_file
+
+
+def refuse_unarchived_streams(src: Path) -> None:
+    """Shredding a file also destroys its NTFS named streams, and age encrypts only the main one. Refuse before any work
+    when the file has streams that nothing archives (the same rule as a folder: Zone.Identifier does not count), and when
+    Windows will not list them."""
+    try:
+        found = [n for n in shred._named_streams(Path(src)) if n.lower() != "zone.identifier"]
+    except ShredRefused as ex:
+        raise agecli.AgeError(str(ex), errors.STREAMS_UNREADABLE) from ex
+    if found:
+        raise agecli.AgeError(f"{len(found)} hidden NTFS data stream(s) of {Path(src).name} are not encrypted and would be "
+                              "destroyed by overwriting; turn off shredding or remove them", errors.HIDDEN_STREAMS)
 
 
 def decrypt_file(src: Path, passphrase: str, cancel: threading.Event | None = None,
@@ -49,6 +62,7 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
         raise FileExistsError(dst)
     if shred_original:
         _check_file(src)  # refuse links / hard links before doing any work
+        refuse_unarchived_streams(src)
     snap = os.stat(src)
     part = output.part_for(dst)
     try:
