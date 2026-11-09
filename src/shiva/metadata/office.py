@@ -33,6 +33,10 @@ W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 OFFICE_NS = "urn:oasis:names:tc:opendocument:xmlns:office:1.0"
 TEXT_NS = "urn:oasis:names:tc:opendocument:xmlns:text:1.0"
 CONFIG_NS = "urn:oasis:names:tc:opendocument:xmlns:config:1.0"
+TABLE_NS = "urn:oasis:names:tc:opendocument:xmlns:table:1.0"
+# spreadsheet change tracking: the container and its change records
+_TABLE_TRACK = frozenset(["tracked-changes", "cell-content-change", "insertion", "deletion", "movement",
+                          "dependences", "deletions", "change-deletion"])
 
 _MAIN_CT = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml": "docx",
@@ -327,6 +331,32 @@ _APP_STUB = (b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
              b'</Properties>')
 
 
+_CORE_CT = 'application/vnd.openxmlformats-package.core-properties+xml'
+_APP_CT = 'application/vnd.openxmlformats-officedocument.extended-properties+xml'
+
+
+def _property_parts(ct_data: bytes, rels_data: bytes | None) -> tuple[set, set]:
+    """Names of the core and extended property parts: the standard names plus every part that a content-type
+    override or a package relationship declares as one."""
+    core, app = {"docProps/core.xml"}, {"docProps/app.xml"}
+    for el in zc.parse_tree(ct_data).children:
+        if isinstance(el, Node) and el.local == "Override":
+            pn, ctype = zc.get_attr(el, "PartName"), zc.get_attr(el, "ContentType")
+            if pn and ctype == _CORE_CT:
+                core.add(pn[1:] if pn.startswith("/") else pn)
+            elif pn and ctype == _APP_CT:
+                app.add(pn[1:] if pn.startswith("/") else pn)
+    if rels_data:
+        for el in zc.parse_tree(rels_data).children:
+            if isinstance(el, Node) and el.local == "Relationship" and zc.get_attr(el, "TargetMode") != "External":
+                typ, target = zc.get_attr(el, "Type") or "", zc.get_attr(el, "Target")
+                if target and typ.endswith("/core-properties"):
+                    core.add(_resolve("_rels/.rels", target))
+                elif target and typ.endswith("/extended-properties"):
+                    app.add(_resolve("_rels/.rels", target))
+    return core, app
+
+
 def _refuse_signed(names) -> None:
     for n in names:
         low = n.lower()
@@ -345,6 +375,12 @@ def _decide_ooxml(name: str, keep_names: set[str], cats: frozenset):
     return ("other",)
 
 
+# revision markers other than ins/del/moveFrom/moveTo: the marker goes, the content it points at stays
+_W_TRACK_MARKERS = frozenset(
+    ["cellIns", "cellDel", "cellMerge", "numberingChange"]
+    + ["customXml%sRange%s" % (k, e) for k in ("Ins", "Del", "MoveFrom", "MoveTo") for e in ("Start", "End")])
+
+
 def _ooxml_node(node: Node, seen: set[str], cats: frozenset = ALL_KEYS):
     if "rsid" in cats:
         kept = [a for a in node.attrs if not (a[1] == W_NS and a[2].lower().startswith("rsid"))]
@@ -359,6 +395,14 @@ def _ooxml_node(node: Node, seen: set[str], cats: frozenset = ALL_KEYS):
     if loc in ("del", "moveFrom") or loc.endswith("PrChange") or loc == "tblGridChange" \
             or loc in ("moveFromRangeStart", "moveFromRangeEnd", "moveToRangeStart", "moveToRangeEnd"):
         return ("drop", C_TRACK) if "tracked" in cats else None
+    if loc in _W_TRACK_MARKERS:
+        return ("drop", C_TRACK) if "tracked" in cats else None
+    if loc in ("permStart", "permEnd"):
+        # permission ranges stay (they limit editing); only the editor identity goes
+        if "tracked" in cats and any(a[1] == W_NS and a[2] == "ed" for a in node.attrs):
+            node.attrs = [a for a in node.attrs if not (a[1] == W_NS and a[2] == "ed")]
+            seen.add(C_TRACK)
+        return None
     if loc in ("ins", "moveTo"):
         return ("unwrap", C_TRACK) if "tracked" in cats else None
     if loc in ("commentRangeStart", "commentRangeEnd", "commentReference"):
@@ -407,6 +451,9 @@ def _clean_ooxml(content: zc.ZipContent, policy: str, budget: zc.Budget, depth: 
             pn, ctype = zc.get_attr(el, "PartName"), zc.get_attr(el, "ContentType")
             if pn and ctype in _CT_KEEP:
                 keep_names.add(pn[1:])
+    rels_root = by.get("_rels/.rels")
+    core_names, app_names = _property_parts(by["[Content_Types].xml"].data, rels_root.data if rels_root else None)
+    keep_names |= core_names | app_names
     act = {m.name: _decide_ooxml(m.name, keep_names, cats) for m in files}
     # relationships of a kept part are kept (mat2 dropped e.g. footnotes.xml.rels); targets are filtered below
     # (also when the generic "relationship lists" omit rule matched: decided before _OMIT). A part copied
@@ -437,7 +484,7 @@ def _clean_ooxml(content: zc.ZipContent, policy: str, budget: zc.Budget, depth: 
             if m.name == "[Content_Types].xml" or m.name.endswith(".rels"):
                 late.append(m)
             else:
-                results[m.name] = _keep_ooxml(m, policy, budget, depth, out, cats)
+                results[m.name] = _keep_ooxml(m, policy, budget, depth, out, cats, core_names, app_names)
         else:
             results[m.name] = zc.clean_member(m.name, m.data, policy, budget, depth, out)
     removed = {n for n, d in results.items() if d is None}
@@ -458,17 +505,18 @@ def _clean_ooxml(content: zc.ZipContent, policy: str, budget: zc.Budget, depth: 
     return out
 
 
-def _keep_ooxml(m: zc.Member, policy, budget, depth, out, cats: frozenset) -> bytes:
+def _keep_ooxml(m: zc.Member, policy, budget, depth, out, cats: frozenset,
+                core_names=frozenset({"docProps/core.xml"}), app_names=frozenset({"docProps/app.xml"})) -> bytes:
     data = m.data
     if not data:
         return data
-    if m.name == "docProps/core.xml":
+    if m.name in core_names:
         if "props" not in cats:
             return data
         if data != _CORE_STUB:
             note(out.removed, C_PROPS)
         return _CORE_STUB
-    if m.name == "docProps/app.xml":
+    if m.name in app_names:
         if "app" not in cats:
             return data
         if data != _APP_STUB:
@@ -537,6 +585,8 @@ def _odf_node(node: Node, seen: set[str], cats: frozenset = ALL_KEYS):
     if node.uri == OFFICE_NS and node.local in ("annotation", "annotation-end"):
         return ("drop", C_COMMENTS) if "comments" in cats else None
     if node.uri == TEXT_NS and node.local in ("tracked-changes", "change", "change-start", "change-end"):
+        return ("drop", C_TRACK) if "tracked" in cats else None
+    if node.uri == TABLE_NS and node.local in _TABLE_TRACK:
         return ("drop", C_TRACK) if "tracked" in cats else None
     if node.uri == CONFIG_NS and node.local == "config-item" and zc.get_attr(node, "name", CONFIG_NS) in _PRINTER_ITEMS:
         return ("drop", C_PRINTER) if "printer" in cats else None
@@ -686,7 +736,7 @@ def _may_vanish_ooxml(name: str) -> bool:
 def _w_leftovers(cats: frozenset) -> set:
     tags = set()
     if "tracked" in cats:
-        tags |= {"del", "ins", "moveFrom", "moveTo"}
+        tags |= {"del", "ins", "moveFrom", "moveTo"} | _W_TRACK_MARKERS
     if "comments" in cats:
         tags |= {"commentRangeStart", "commentRangeEnd", "commentReference"}
     if "template" in cats:
@@ -705,6 +755,8 @@ def _odf_skip_for(cats: frozenset):
         if "comments" in cats and uri == OFFICE_NS and local in ("annotation", "annotation-end"):
             return True
         if "tracked" in cats and uri == TEXT_NS and local == "tracked-changes":
+            return True
+        if "tracked" in cats and uri == TABLE_NS and local in _TABLE_TRACK:
             return True
         return "printer" in cats and uri == CONFIG_NS and local == "config-item" \
             and attrs.get(CONFIG_NS + "}name") in ("PrinterName", "PrinterSetup")
@@ -760,7 +812,11 @@ def check_office_inner(original: bytes, cleaned: bytes, fmt: str, policy: str,
             return True     # (chosen ones were refused above)
         if odf:
             return _ODF_META_NAME.match(n) is not None and "props" not in cats
-        return (n == "docProps/core.xml" and "props" not in cats) or (n == "docProps/app.xml" and "app" not in cats)
+        return (n in core_names and "props" not in cats) or (n in app_names and "app" not in cats)
+
+    ct_o, rels_o = orig.get("[Content_Types].xml"), orig.get("_rels/.rels")
+    core_names, app_names = ({"docProps/core.xml"}, {"docProps/app.xml"}) if odf or ct_o is None else \
+        _property_parts(ct_o.data, rels_o.data if rels_o else None)
 
     skip = _odf_skip_for(cats) if odf else _ooxml_skip_for(cats)
     for m in new:
@@ -778,11 +834,11 @@ def check_office_inner(original: bytes, cleaned: bytes, fmt: str, policy: str,
         if is_xml and m.data:
             scan = zc.scan_xml(m.data, skip, {"Override", "Default", "Relationship", "file-entry"})
             _check_xml_leftovers(m.name, scan, odf, cats)
-        special = (not odf and m.name in ("docProps/core.xml", "docProps/app.xml")) or \
+        special = (not odf and m.name in core_names | app_names) or \
                   (odf and _ODF_META_NAME.match(m.name) is not None)
         if o.data == m.data and not special and (is_xml or not m.data or zc.sniff_blob(m.data) is None):
             continue
-        _check_changed(m, o, scan, odf, skip, present, set(onames), policy, ob, cb, depth)
+        _check_changed(m, o, scan, odf, skip, present, set(onames), policy, ob, cb, depth, core_names | app_names)
     if not odf:
         _check_references(orig, {m.name: m for m in new}, present, policy, cats)
 
@@ -858,20 +914,25 @@ def _check_xml_leftovers(name: str, scan: zc.Scan, odf: bool, cats: frozenset) -
     if odf:
         if "comments" in cats and ((OFFICE_NS, "annotation") in scan.tags or (OFFICE_NS, "annotation-end") in scan.tags):
             raise CleanError("%s still contains comments" % name)
-        if "tracked" in cats and (TEXT_NS, "tracked-changes") in scan.tags:
+        if "tracked" in cats and ((TEXT_NS, "tracked-changes") in scan.tags
+                                  or any((TABLE_NS, t) in scan.tags for t in _TABLE_TRACK)):
             raise CleanError("%s still contains tracked changes" % name)
         return
     if scan.tags & _w_leftovers(cats):
         raise CleanError("%s still contains tracked changes, comment markers or a template link" % name)
+    # who/when of a kept revision or permission range; comment parts are kept only when comments are not chosen
+    if "tracked" in cats and _ooxml_part_key(name) != "comments" \
+            and any((W_NS, a) in scan.attrs for a in ("author", "date", "ed")):
+        raise CleanError("%s still contains tracked changes (author, date or editor)" % name)
     if "rsid" in cats and any(loc.lower().startswith("rsid") for _u, loc in scan.attrs | scan.tags):
         raise CleanError("%s still contains rsid identifiers" % name)
     if "template" in cats and any(loc == "absPath" for _u, loc in scan.tags):
         raise CleanError("%s still contains a local file path" % name)
 
 
-def _check_changed(m, o, scan, odf, skip, present, onames, policy, ob, cb, depth) -> None:
+def _check_changed(m, o, scan, odf, skip, present, onames, policy, ob, cb, depth, prop_names=()) -> None:
     name = m.name
-    if name in ("docProps/core.xml", "docProps/app.xml") and not odf:
+    if name in prop_names and not odf:
         if scan is None or scan.root_children or scan.text:
             raise CleanError("%s still holds document properties" % name)
         return
