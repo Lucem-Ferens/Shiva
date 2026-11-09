@@ -50,8 +50,25 @@ def _flac_bytes(blocks, frames=None) -> bytes:
     out = b"fLaC"
     for i, (typ, payload) in enumerate(blocks):
         out += bytes([typ | (0x80 if i == len(blocks) - 1 else 0)]) + len(payload).to_bytes(3, "big") + payload
-    frames = frames if frames is not None else b"".join(b"\xff\xf8" + _body(i, 198) for i in range(6))
+    frames = frames if frames is not None else b"".join(_flac_frame(i) for i in range(6))
     return out + frames
+
+
+def _crc(data: bytes, poly: int, bits: int) -> int:
+    c = 0
+    for b in data:
+        c ^= b << (bits - 8)
+        for _ in range(8):
+            c = ((c << 1) ^ poly) & ((1 << bits) - 1) if c & (1 << (bits - 1)) else (c << 1) & ((1 << bits) - 1)
+    return c
+
+
+def _flac_frame(n: int, size: int = 200) -> bytes:
+    """A 200-byte frame with a valid header (CRC-8) and trailing CRC-16; the sample data is filler, not decodable."""
+    head = bytes([0xFF, 0xF8, 0x89, 0x08, n])
+    head += bytes([_crc(head, 0x07, 8)])
+    body = head + _body(n, size - len(head) - 2)
+    return body + _crc(body, 0x8005, 16).to_bytes(2, "big")
 
 
 def flac_tagged() -> bytes:
@@ -245,6 +262,83 @@ def test_flac_with_id3_and_ape_tail():
     out = clean_audio(raw, "flac")
     assert out.data == _flac_bytes([])
     assert {"ID3v2 tag", "ID3v1 tag"} <= set(out.removed)
+
+
+def test_flac_long_text_tail_is_refused():
+    with pytest.raises(CleanError, match="damaged or irregular"):
+        clean_audio(_flac_bytes([]) + b"secret note " * 6 + b"abc", "flac")  # 75 bytes
+
+
+def test_flac_id3v1_with_extra_bytes_is_refused():
+    id3v1 = b"TAG" + b"Title".ljust(30, b"\0") + bytes(95)
+    with pytest.raises(CleanError, match="damaged or irregular"):
+        clean_audio(_flac_bytes([]) + id3v1 + b"x" * 20, "flac")
+
+
+def test_flac_appended_id3v2_with_footer_is_refused():
+    tag = b"ID3\x04\0\x10\0\0\0\x0a" + bytes(10) + b"3DI\x04\0\x10\0\0\0\x0a"
+    with pytest.raises(CleanError, match="damaged or irregular"):
+        clean_audio(_flac_bytes([]) + tag, "flac")
+
+
+def test_flac_short_unknown_tail_is_flagged():
+    raw = _flac_bytes([])
+    out = clean_audio(raw + b"junk" * 4, "flac")
+    assert out.data == raw
+    assert "unknown data after the audio stream" in out.content_changed
+    with pytest.raises(CleanError, match="damaged or irregular"):
+        clean_audio(raw + b"junk" * 4 + b"x", "flac")
+
+
+def test_flac_zero_padding_tail_is_not_absorbed_into_the_last_frame():
+    raw = _flac_bytes([])
+    with pytest.raises(CleanError, match="damaged or irregular"):
+        clean_audio(raw + bytes(100000), "flac")
+    out = clean_audio(raw + bytes(4), "flac")
+    assert out.data == raw
+    assert "unknown data after the audio stream" in out.content_changed
+
+
+def test_flac_checker_rejects_tail_left_in_output():
+    raw = _flac_bytes([])
+    with pytest.raises(CleanError):
+        check_equivalent_audio(raw, raw + b"junk", "flac")
+
+
+def test_flac_frame_without_valid_crc_is_refused():
+    bad = bytearray(_flac_bytes([]))
+    bad[-5] ^= 0xFF
+    with pytest.raises(CleanError):
+        clean_audio(bytes(bad), "flac")
+
+
+def _with_ident(kind: str, ident: bytes) -> bytes:
+    s = ogg_stream(kind)
+    pages, _ = audio._ogg_pages(s)
+    first_end = pages[0][2]
+    return ogg_page(2, 0, 7, 0, bytes([len(ident)]), ident) + s[first_end:]
+
+
+def test_ogg_identification_header_length_is_exact():
+    good = ogg_stream("ogg")
+    clean_audio(good, "ogg")
+    ident = good[good.index(b"\x01vorbis"):][:30]
+    for bad in (ident + b"EXTRA", ident[:-1]):
+        with pytest.raises(CleanError, match="unexpected length"):
+            clean_audio(_with_ident("ogg", bad), "ogg")
+
+
+def test_opus_head_length_is_exact():
+    good = ogg_stream("opus")
+    head = good[good.index(b"OpusHead"):][:19]
+    with pytest.raises(CleanError, match="unexpected length"):
+        clean_audio(_with_ident("opus", head + b"EXTRA"), "opus")
+    mapped = bytearray(head) + b"\x00\x01"  # family 1 with a 2-channel mapping table
+    mapped[18] = 1
+    assert len(mapped) == 21
+    with pytest.raises(CleanError, match="unexpected length"):
+        clean_audio(_with_ident("opus", bytes(mapped)), "opus")  # needs 21 + 2 bytes
+    clean_audio(_with_ident("opus", bytes(mapped) + b"\x00\x01"), "opus")
 
 
 def test_ogg_renumbers_when_header_page_count_changes():

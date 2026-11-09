@@ -183,10 +183,88 @@ def _flac_layout(data: bytes, cats: list[str]):
         p += 4 + length
         if last:
             break
-    end = _strip_tail(data, p, cats)
-    if end - p < 2 or data[p] != 0xFF or data[p + 1] & 0xFE != 0xF8:
+    limit = _strip_tail(data, p, cats)
+    if limit - p < 2 or data[p] != 0xFF or data[p + 1] & 0xFE != 0xF8:
         raise CleanError("No FLAC audio frames after the metadata")
-    return blocks, p, end
+    end = _flac_last_frame_end(data, p, limit)
+    if end is None:
+        raise CleanError("No complete FLAC audio frame found at the end of the audio")
+    return blocks, p, end, limit
+
+
+def _crc_table(poly: int, bits: int) -> list[int]:
+    top, mask = 1 << (bits - 1), (1 << bits) - 1
+    table = []
+    for i in range(256):
+        r = i << (bits - 8)
+        for _ in range(8):
+            r = ((r << 1) ^ poly) & mask if r & top else (r << 1) & mask
+        table.append(r)
+    return table
+
+
+_CRC8 = _crc_table(0x07, 8)
+_CRC16 = _crc_table(0x8005, 16)
+_FLAC_WINDOW = 4 * 1024 * 1024   # a frame is far smaller; the last one is searched for only this far back
+_FLAC_TRIES = 64
+
+
+def _flac_header_len(data: bytes, i: int, limit: int) -> int | None:
+    """Length of a valid FLAC frame header at i (sync, reserved fields, UTF-8 number, CRC-8), else None."""
+    if i + 6 > limit or data[i] != 0xFF or data[i + 1] & 0xFE != 0xF8:
+        return None
+    b2, b3 = data[i + 2], data[i + 3]
+    bs, sr = b2 >> 4, b2 & 15
+    if bs == 0 or sr == 15 or b3 >> 4 > 10 or (b3 >> 1) & 7 in (3, 7) or b3 & 1:
+        return None
+    first = data[i + 4]
+    if first < 0x80:
+        n = 1
+    elif first >= 0xC0:
+        n = 8 - (first ^ 0xFF).bit_length()
+        if n > 7:
+            return None
+    else:
+        return None
+    j = i + 4 + n
+    j += 1 if bs == 6 else 2 if bs == 7 else 0
+    j += 1 if sr == 12 else 2 if sr in (13, 14) else 0
+    if j >= limit or any(b & 0xC0 != 0x80 for b in data[i + 5:i + 4 + n]):
+        return None
+    c = 0
+    for b in data[i:j]:
+        c = _CRC8[c ^ b]
+    return j + 1 - i if c == data[j] else None
+
+
+def _flac_last_frame_end(data: bytes, start: int, limit: int) -> int | None:
+    """End offset of the last complete FLAC frame (a valid header followed by a run whose CRC-16 checks out), else None.
+    Searches backwards from the end, so only the tail of the audio is read; what follows is not part of any frame."""
+    lo = max(start, limit - _FLAC_WINDOW)
+    pos = limit
+    for _ in range(_FLAC_TRIES):
+        i = max(data.rfind(b"\xff\xf8", lo, pos), data.rfind(b"\xff\xf9", lo, pos))
+        if i < 0:
+            return None
+        pos = i + 1
+        hl = _flac_header_len(data, i, limit)
+        if hl is None:
+            continue
+        c = 0
+        for k in range(i, i + hl):
+            c = ((c << 8) & 0xFFFF) ^ _CRC16[(c >> 8) ^ data[k]]
+        best = None
+        was_zero = False
+        for k in range(i + hl, limit):
+            c = ((c << 8) & 0xFFFF) ^ _CRC16[(c >> 8) ^ data[k]]
+            # A CRC-16 that starts at 0 stays 0 over zero bytes, so only the first point of a run counts;
+            # otherwise zero padding after the frame would be absorbed into it.
+            if c == 0 and not was_zero and k + 1 - i >= hl + 3:
+                best = k + 1
+            was_zero = c == 0
+        if best is not None:
+            return best
+    return None
 
 
 # ---------------------------------------------------------------- Ogg
@@ -350,6 +428,9 @@ def _ogg_layout(data: bytes, fmt: str):
     magic = b"\x01vorbis" if fmt == "ogg" else b"OpusHead"
     if not packets[0].startswith(magic):
         raise CleanError("Ogg stream is not %s" % ("Vorbis" if fmt == "ogg" else "Opus"))
+    want = 30 if fmt == "ogg" else (19 if len(packets[0]) < 19 or packets[0][18] == 0 else 21 + packets[0][9])
+    if len(packets[0]) != want:
+        raise CleanError("Ogg identification header has an unexpected length (%d bytes, expected %d)" % (len(packets[0]), want))
     if nh >= len(pages):
         raise CleanError("Ogg stream has no audio pages")
     serial = data[pages[0][0] + 14:pages[0][0] + 18]
@@ -406,7 +487,8 @@ def clean_audio(data: bytes, fmt: str, **options) -> CleanOutcome:
         out.data = data if (start == 0 and fend == len(data)) else bytes(memoryview(data)[start:fend])
         _unknown_tail(out, limit - fend, len(data))
     elif fmt == "flac":
-        blocks, astart, end = _flac_layout(data, out.removed)
+        blocks, astart, end, limit = _flac_layout(data, out.removed)
+        _unknown_tail(out, limit - end, len(data))
         kept = [b for b in blocks if b[0] in (0, 3)]
         for typ, _s, _e in blocks:
             if typ not in (0, 1, 3):
@@ -512,11 +594,13 @@ def _check_mp3(original: bytes, cleaned: bytes) -> None:
 
 def _check_flac(original: bytes, cleaned: bytes) -> None:
     left: list[str] = []
-    cblocks, castart, cend = _flac_layout(cleaned, left)
-    if left or cend != len(cleaned) or cleaned[:4] != b"fLaC" or any(b[0] not in (0, 3) for b in cblocks):
+    cblocks, castart, cend, climit = _flac_layout(cleaned, left)
+    if left or cend != len(cleaned) or climit != cend or cleaned[:4] != b"fLaC" or any(b[0] not in (0, 3) for b in cblocks):
         raise CleanError("Cleaned FLAC still has tags or non-audio blocks (%s)" % ", ".join(left))
     _raw_scan(cleaned)
-    oblocks, oastart, oend = _flac_layout(original, [])
+    oblocks, oastart, oend, olimit = _flac_layout(original, [])
+    if olimit - oend > _TAIL_SLACK:
+        raise CleanError("audio stream is damaged or irregular: %d of %d bytes would be lost" % (olimit - oend, len(original)))
     if original[oblocks[0][1]:oblocks[0][2]] != cleaned[cblocks[0][1]:cblocks[0][2]]:
         raise CleanError("Cleaned FLAC STREAMINFO differs from the original")
     if _digest(original, oastart, oend) != _digest(cleaned, castart, cend):
