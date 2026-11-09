@@ -210,6 +210,8 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
                                 cancel: threading.Event | None = None, out_dir: Path | None = None):
     """Returns (output path, ShredReport | None, notes). out_dir must not be inside the folder."""
     src = Path(src)
+    if shred_original:
+        shred.check_target(src)     # a drive, user, system or program folder is never shredded as a whole
     dst = output.dest_dir(src, out_dir, inside=src) / (src.name + ".tar.age")
     if dst.exists():
         raise FileExistsError(dst)

@@ -63,6 +63,28 @@ def test_roundtrip_with_unicode_empty_dirs_and_shred(tmp_path: Path):
     assert back == src and snapshot(back) == before
 
 
+def test_protected_folder_is_refused_before_anything_is_written(tmp_path: Path, monkeypatch):
+    from shiva import shred
+    src = tmp_path / "d"; src.mkdir(); make_tree(src)
+    before = snapshot(src)
+
+    def refuse(path, prot=None):
+        raise shred.ShredRefused("protected")
+    monkeypatch.setattr(shred, "check_target", refuse)
+    with pytest.raises(shred.ShredRefused):
+        folder.encrypt_folder_verify_shred(src, "pw", shred_original=True)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["d"] and snapshot(src) == before
+
+
+@needs_age
+def test_archive_without_shredding_does_not_consult_the_protected_folder_guard(tmp_path: Path, monkeypatch):
+    from shiva import shred
+    src = tmp_path / "d"; src.mkdir(); make_tree(src)
+    monkeypatch.setattr(shred, "check_target", lambda *a, **k: pytest.fail("guard consulted"))
+    out, _, _ = folder.encrypt_folder_verify_shred(src, "pw", shred_original=False)
+    assert out.exists() and (src / "a.txt").exists()
+
+
 @needs_age
 def test_decrypt_never_overwrites_existing_folder(tmp_path: Path):
     src = tmp_path / "d"; src.mkdir(); make_tree(src)
