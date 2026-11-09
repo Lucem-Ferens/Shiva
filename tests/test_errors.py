@@ -52,7 +52,7 @@ def test_untouched_original_is_not_called_partly_overwritten(tmp_path):
     assert "may be partly overwritten" in part.text
 
 
-def test_changed_during_run_with_shred_marks_original_untouched(tmp_path, monkeypatch):
+def test_changed_during_run_marks_original_untouched(tmp_path, monkeypatch):
     pytest.importorskip("shiva.agecli")
     if not (agecli.bin_dir() / "age.exe").exists():
         pytest.skip("age binaries absent")
@@ -65,7 +65,7 @@ def test_changed_during_run_with_shred_marks_original_untouched(tmp_path, monkey
         f.write_bytes(b"y" * 101)       # source changes after the encrypt was read
         return h
     monkeypatch.setattr(pl.agecli, "decrypt_hash_passphrase", touch_then_hash)
-    r = jobs.run_jobs([f], "pw", shred_original=True)[0]
+    r = jobs.run_jobs([f], "pw", shred_original=False)[0]      # with shredding the file is held and the edit is refused
     assert not r.ok and r.error_code == "changed_during_run" and f.read_bytes() == b"y" * 101
 
 

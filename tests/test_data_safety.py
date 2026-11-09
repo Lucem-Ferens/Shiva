@@ -10,7 +10,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from shiva import agecli, clean_pipeline, errors, folder, jobs, output, pipeline, shred, ui_model, winjob  # noqa: E402
+from shiva import agecli, clean_pipeline, errors, folder, heldfile, jobs, output, pipeline, shred, ui_model, winjob  # noqa: E402
 
 needs_age = pytest.mark.skipif(not (agecli.bin_dir() / "age.exe").is_file(), reason="age binaries absent")
 needs_nt = pytest.mark.skipif(os.name != "nt", reason="Windows-only")
@@ -168,7 +168,7 @@ def test_a_running_job_survives_a_second_sweep_and_leaves_no_part_behind(tmp_pat
 # ---------------------------------------------------------------- checked overwrite writes
 
 class _ShortWriter:
-    """Wraps the raw file `shred._zero` opens; `accept` decides how many of the offered bytes a write takes."""
+    """Wraps the raw file a HeldFile writes through; `accept` decides how many of the offered bytes a write takes."""
     def __init__(self, f, accept):
         self._f, self._accept = f, accept
         self.offered: list[int] = []
@@ -194,16 +194,17 @@ class _ShortWriter:
 
 
 def _patch_open(monkeypatch, accept) -> list:
+    """Every file object a HeldFile writes through (the main stream and each named stream) becomes a _ShortWriter."""
     made: list = []
-    real = builtins.open
 
-    def fake(path, mode="r", *a, **k):
-        f = real(path, mode, *a, **k)
-        if mode == "r+b":
-            f = _ShortWriter(f, accept)
-            made.append(f)
-        return f
-    monkeypatch.setattr(shred, "open", fake, raising=False)
+    def wrap(h):
+        h._f = _ShortWriter(h._f, accept)
+        made.append(h._f)
+        return h
+    real_open = heldfile.HeldFile.open.__func__
+    real_stream = heldfile.HeldFile.open_stream
+    monkeypatch.setattr(heldfile.HeldFile, "open", classmethod(lambda cls, p, retry_s=2.0: wrap(real_open(cls, p, retry_s))))
+    monkeypatch.setattr(heldfile.HeldFile, "open_stream", lambda self, n: wrap(real_stream(self, n)))
     return made
 
 

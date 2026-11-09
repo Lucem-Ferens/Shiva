@@ -6,6 +6,7 @@ validates and writes every entry itself with exclusive-create.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import stat
@@ -14,8 +15,8 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import agecli, errors, names, output, storage
-from .shred import ShredReport, ShredRefused, _named_streams, _wipe_streams, is_link, shred_file, shred_tree
+from . import agecli, errors, names, output, shred, storage
+from .shred import ShredReport, ShredRefused, _named_streams, _wipe_streams, is_link, shred_held, shred_tree
 
 MARKER = ".shiva-staging-marker"
 MAX_MEMBERS = 1_000_000
@@ -131,7 +132,9 @@ def _write_tar(plan: Plan, writer, cancel) -> None:
     tar.close()
 
 
-def _verify_tar(plan: Plan, reader) -> None:
+def _verify_tar(plan: Plan, reader, digests: dict[str, str] | None = None) -> None:
+    """Check the decrypted archive against the plan. `digests` receives the SHA-256 of every file as it comes out of
+    the archive: that is what was proven restorable, and what a file must still hold when it is shredded."""
     tar = tarfile.open(fileobj=reader, mode="r|")
     it = iter(plan.entries)
     for m in tar:
@@ -142,30 +145,53 @@ def _verify_tar(plan: Plan, reader) -> None:
             raise agecli.AgeError(f"verification failed: archive entry {m.name!r} does not match the folder", "verify_failed")
         if m.isreg():
             f = tar.extractfile(m)
-            while f.read(1 << 20):
-                pass
+            h = hashlib.sha256()
+            while chunk := f.read(1 << 20):
+                h.update(chunk)
+            if digests is not None:
+                digests[m.name] = h.hexdigest()
     if next(it, None) is not None:
         raise agecli.AgeError("verification failed: the archive is missing entries", "verify_failed")
 
 
-def _shred_manifest(plan: Plan, report: ShredReport) -> int:
-    """Shred only what was archived and is unchanged. Returns how many items were left in place."""
+def _held_digest(held, size: int) -> str | None:
+    """SHA-256 of a held file read to its end; None unless it is exactly `size` bytes long."""
+    f = held.file
+    f.seek(0)
+    h = hashlib.sha256()
+    total = 0
+    while chunk := f.read(1 << 20):
+        h.update(chunk)
+        total += len(chunk)
+    return h.hexdigest() if total == size else None
+
+
+def _shred_manifest(plan: Plan, report: ShredReport, digests: dict[str, str]) -> int:
+    """Shred only what was archived and is unchanged: each file is held, read again through the hold, and overwritten
+    only if it still has the content that was verified (`digests`, by relative path) and the identity that was planned.
+    Returns how many items were left in place; the relative paths of the files go to report.left."""
     left = 0
     for e in plan.entries:
         if e.kind != "file":
             continue
         p = plan.path(e)
-        try:
-            st = os.lstat(p)
-        except FileNotFoundError:
+        if not os.path.lexists(p):
             continue
-        if is_link(st) or (st.st_size, st.st_mtime_ns, st.st_ino) != (e.size, e.mtime_ns, e.ino):
-            left += 1
-            continue
+        held = None
         try:
-            shred_file(p, report)
+            held = shred.open_held(p)
+            streams = held.streams()
+            if (held.info().size != e.size or held.stat_identity()[1] != e.ino
+                    or any(n.lower() != "zone.identifier" for n in streams)
+                    or digests.get(e.rel) is None or _held_digest(held, e.size) != digests[e.rel]):
+                raise shred.ShredChanged("the file is not the one that was archived")
+            shred_held(held, report, allowed=set(streams))
         except (ShredRefused, OSError):
             left += 1
+            report.left.append(e.rel)
+            if held is not None and not held.closed:
+                held.restore_readonly()
+                held.close()
     dirs = [plan.path(e) for e in plan.entries if e.kind == "dir"]
     for d in reversed([plan.root] + dirs):  # children before parents, root last; rmdir fails on a non-empty folder
         try:
@@ -192,9 +218,10 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
     if plan.hidden_streams:
         notes.append(f"{plan.hidden_streams} hidden NTFS data stream(s) are not included in the archive")
     part = output.part_for(dst)
+    digests: dict[str, str] = {}
     try:
         want = agecli.encrypt_stream(lambda w: _write_tar(plan, w, cancel), part, passphrase, cancel)
-        got = agecli.decrypt_consume(part, passphrase, lambda r: _verify_tar(plan, r), cancel)
+        got = agecli.decrypt_consume(part, passphrase, lambda r: _verify_tar(plan, r, digests), cancel)
         if got != want:
             raise agecli.AgeError("verification failed: decrypted archive differs from what was encrypted", "verify_failed")
         again = plan_folder(src, shred_original)
@@ -212,10 +239,11 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
     if shred_original:
         report = ShredReport()
         report.caveats = storage.assess(src).warnings() + report.caveats
-        left = _shred_manifest(plan, report)
+        left = _shred_manifest(plan, report, digests)
         if left:
-            report.warning = (f"{left} item(s) were left in the folder because they changed after being "
-                              "archived or could not be removed")
+            shown = ", ".join(report.left[:5]) + (f" and {len(report.left) - 5} more" if len(report.left) > 5 else "")
+            report.warning = (f"Left in the folder ({left} item(s)){': ' + shown if shown else ''}. Each one changed after "
+                              "archiving, is open in another program or could not be deleted.")
     return dst, report, notes
 
 

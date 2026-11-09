@@ -184,7 +184,7 @@
     <message><source>Will be encrypted.</source><translation>會加密。</translation></message>
     <message><source>Also inside a listed folder.</source><translation>同時也在清單中的資料夾內。</translation></message>
     <message><source>Will be shredded.</source><translation>會銷毀。</translation></message>
-    <message><source>This is a whole drive.</source><translation>這是整個磁碟機。</translation></message>
+    <message><source>This is a whole drive.</source><translation>這是整個磁碟。</translation></message>
     <message><source>Shred files or folders inside it instead.</source><translation>改為銷毀其中的檔案或資料夾。</translation></message>
     <message><source>This is your user folder.</source><translation>這是您的使用者資料夾。</translation></message>
     <message><source>This is a system folder.</source><translation>這是系統資料夾。</translation></message>
@@ -300,8 +300,14 @@
     <message><source>A path inside this archive is too long for this output folder.</source><translation>封存檔內有路徑對這個輸出資料夾來說太長。</translation></message>
     <message><source>Choose an output folder with a shorter path.</source><translation>改選路徑較短的輸出資料夾。</translation></message>
     <message><source>Shorten the file name or choose an output folder with a shorter path.</source><translation>縮短檔名，或改選路徑較短的輸出資料夾。</translation></message>
+    <message><source>FAT or exFAT drive: Shiva checks the file less strictly before deleting it than on NTFS.</source><translation>FAT 或 exFAT 磁碟：Shiva 在刪除前對檔案的檢查比在 NTFS 上寬鬆。</translation></message>
+    <message><source>Shredding is not supported on this drive.</source><translation>此磁碟不支援銷毀。</translation></message>
+    <message><source>Turn off shredding, or use a file on a local NTFS, FAT or exFAT drive.</source><translation>關閉銷毀，或改用本機 NTFS、FAT 或 exFAT 磁碟上的檔案。</translation></message>
+    <message><source>Shiva shreds only files on local NTFS, FAT or exFAT drives.</source><translation>Shiva 只能銷毀位於本機 NTFS、FAT 或 exFAT 磁碟上的檔案。</translation></message>
+    <message><source>The item changed while Shiva was working.</source><translation>項目在 Shiva 處理期間已變更。</translation></message>
+    <message><source>Close any program that uses it and run again.</source><translation>關閉使用它的程式後再執行一次。</translation></message>
     <message><source>Windows would not list this item's hidden data.</source><translation>Windows 無法列出這個項目的隱藏資料。</translation></message>
-    <message><source>This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would destroy it.</source><translation>這個項目有隱藏資料（NTFS 資料流）不會被加密，銷毀會將其一併毀掉。</translation></message>
+    <message><source>This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would destroy it.</source><translation>這個項目有隱藏資料（NTFS 資料流）不會被加密，銷毀時會一併被覆寫。</translation></message>
     <message><source>Turn off shredding or remove the hidden data.</source><translation>關閉銷毀，或先移除隱藏資料。</translation></message>
     <message><source>Windows would not apply the safety limits to the encryption helper, so it was stopped before it processed the file.</source><translation>Windows 未能對加密輔助程式套用安全限制，因此在它處理檔案前就已停止。</translation></message>
     <message><source>Shiva left alone an item in %1 that is named like a leftover but is not one it can recognise.</source><translation>Shiva 沒有處理 %1 中一個名稱像殘留檔、但無法辨認是否為自己建立的項目。</translation></message>
@@ -593,9 +599,9 @@
     <message><source>Warning: contains a file compressed by Windows, so old data may stay on the drive.</source><translation>警告：內含已被 Windows 壓縮的檔案，舊資料可能留在磁碟上。</translation></message>
     <message><source>Warning: contains a sparse file, so old data may stay on the drive.</source><translation>警告：內含稀疏檔案，舊資料可能留在磁碟上。</translation></message>
     <message><source>Warning: contains a file encrypted by Windows (EFS), so old data may stay on the drive.</source><translation>警告：內含已被 Windows 加密（EFS）的檔案，舊資料可能留在磁碟上。</translation></message>
-    <message><source>This file is compressed by Windows: overwriting may leave the old data in other places on the disk.</source><translation>這個檔案已被 Windows 壓縮：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
-    <message><source>This file is a sparse file: overwriting may leave the old data in other places on the disk.</source><translation>這個檔案是稀疏檔案：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
-    <message><source>This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the disk.</source><translation>這個檔案已被 Windows 加密（EFS）：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
+    <message><source>This file is compressed by Windows: overwriting may leave the old data in other places on the drive.</source><translation>這個檔案已被 Windows 壓縮：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
+    <message><source>This file is a sparse file: overwriting may leave the old data in other places on the drive.</source><translation>這個檔案是稀疏檔案：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
+    <message><source>This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the drive.</source><translation>這個檔案已被 Windows 加密（EFS）：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
     <message><source>About shredding</source><translation>關於銷毀</translation></message>
     <message><source>What Shred does</source><translation>銷毀做了什麼</translation></message>
     <message><source>Shred overwrites the contents of an item, then deletes it.</source><translation>銷毀會覆寫項目的內容，然後刪除它。</translation></message>

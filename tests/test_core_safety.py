@@ -144,7 +144,30 @@ def test_stale_part_files_are_swept(tmp_path: Path):
 
 
 @needs_age
-def test_source_changed_during_run_is_not_shredded(tmp_path: Path, monkeypatch):
+@needs_nt
+def test_source_cannot_be_changed_during_a_run_with_shredding(tmp_path: Path, monkeypatch):
+    """The file is held from the first read to its removal: an edit attempt in the middle is refused, so what was
+    verified is exactly what is removed."""
+    src = tmp_path / "doc.bin"; src.write_bytes(b"data")
+    real = agecli.decrypt_hash_passphrase
+    refused = []
+
+    def tamper(*a, **k):
+        h = real(*a, **k)
+        try:
+            src.write_bytes(b"data plus edits made meanwhile")
+        except PermissionError as e:
+            refused.append(e)
+        return h
+    monkeypatch.setattr(agecli, "decrypt_hash_passphrase", tamper)
+    out, rep = pipeline.encrypt_verify_shred(src, "pw", shred_original=True)
+    assert refused and rep is not None and rep.warning is None
+    assert not src.exists() and [p.name for p in tmp_path.iterdir()] == ["doc.bin.age"]
+    assert agecli.decrypt_hash_passphrase(out, "pw") == __import__("hashlib").sha256(b"data").hexdigest()
+
+
+@needs_age
+def test_source_changed_during_run_without_shredding_still_fails_the_run(tmp_path: Path, monkeypatch):
     src = tmp_path / "doc.bin"; src.write_bytes(b"data")
     real = agecli.decrypt_hash_passphrase
 
@@ -153,8 +176,9 @@ def test_source_changed_during_run_is_not_shredded(tmp_path: Path, monkeypatch):
         src.write_bytes(b"data plus edits made meanwhile")
         return h
     monkeypatch.setattr(agecli, "decrypt_hash_passphrase", tamper)
-    with pytest.raises(agecli.AgeError):
-        pipeline.encrypt_verify_shred(src, "pw", shred_original=True)
+    with pytest.raises(agecli.AgeError) as ei:
+        pipeline.encrypt_verify_shred(src, "pw", shred_original=False)
+    assert ei.value.code == "changed_during_run"
     assert src.read_bytes() == b"data plus edits made meanwhile"
     assert [p.name for p in tmp_path.iterdir()] == ["doc.bin"]
 
@@ -207,7 +231,7 @@ def test_l1_directory_alternate_stream_is_overwritten(tmp_path: Path):
 @needs_age
 def test_m4_shred_failure_is_a_warning_not_a_failure(tmp_path: Path, monkeypatch):
     src = tmp_path / "doc.bin"; src.write_bytes(b"data")
-    monkeypatch.setattr(pipeline, "shred_file", lambda *a, **k: (_ for _ in ()).throw(PermissionError("busy")))
+    monkeypatch.setattr(pipeline.shred, "shred_held", lambda *a, **k: (_ for _ in ()).throw(PermissionError("busy")))
     res = jobs.run_jobs([src], "pw", True)
     assert res[0].ok and res[0].created.exists() and not res[0].original_removed
     assert "NOT" in res[0].message or "not" in res[0].message

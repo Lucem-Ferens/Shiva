@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from shiva import agecli, folder, pipeline, shred, steps
+from shiva import agecli, folder, heldfile, pipeline, shred, steps
 from shiva.shred import StreamListError
 
 needs_nt = pytest.mark.skipif(os.name != "nt", reason="Windows-only")
@@ -16,6 +16,14 @@ needs_age = pytest.mark.skipif(not (agecli.bin_dir() / "age.exe").is_file(), rea
 
 def _boom(path):
     raise StreamListError(f"Windows would not list the hidden data streams of {Path(path).name} (error 5).")
+
+
+def _unreadable(monkeypatch):
+    """The listing fails both by path (planning, folders) and through the held handle (shred_file)."""
+    def held_boom(self):
+        raise heldfile.HeldError(heldfile.STREAMS_UNREADABLE, "Windows would not list the hidden data streams (error 5).", 5)
+    monkeypatch.setattr(shred, "_named_streams", _boom)
+    monkeypatch.setattr(heldfile.HeldFile, "streams", held_boom)
 
 
 @needs_nt
@@ -86,7 +94,7 @@ def test_shred_file_with_unreadable_listing_changes_nothing(tmp_path: Path, monk
     f = tmp_path / "secret.txt"; f.write_bytes(b"keep me")
     os.chmod(f, stat.S_IREAD)
     mode = os.stat(f).st_mode
-    monkeypatch.setattr(shred, "_named_streams", _boom)
+    _unreadable(monkeypatch)
     with pytest.raises(StreamListError):
         shred.shred_file(f)
     assert f.read_bytes() == b"keep me" and os.stat(f).st_mode == mode     # not even the read-only flag was touched
@@ -105,7 +113,7 @@ def test_shred_tree_lists_everything_before_it_writes_anything(tmp_path: Path, m
 
 def test_shred_only_step_says_nothing_was_changed(tmp_path: Path, monkeypatch):
     f = tmp_path / "a.txt"; f.write_bytes(b"data")
-    monkeypatch.setattr(shred, "_named_streams", _boom)
+    _unreadable(monkeypatch)
     r = steps._shred_only(f)
     assert not r.ok and "Nothing was changed" in r.message and "partly" not in r.message
     assert not r.partially_shredded and f.read_bytes() == b"data"
@@ -123,7 +131,7 @@ def test_folder_plan_refuses_when_streams_cannot_be_listed(tmp_path: Path, monke
 @needs_age
 def test_encrypt_with_shredding_refuses_before_any_work_when_streams_cannot_be_listed(tmp_path: Path, monkeypatch):
     f = tmp_path / "a.txt"; f.write_bytes(b"data")
-    monkeypatch.setattr(shred, "_named_streams", _boom)
+    _unreadable(monkeypatch)
     with pytest.raises(agecli.AgeError) as ei:
         pipeline.encrypt_verify_shred(f, "pw-pw-pw-pw", shred_original=True)
     assert ei.value.code == "streams_unreadable" and f.read_bytes() == b"data"
@@ -135,18 +143,19 @@ def test_encrypt_with_shredding_refuses_before_any_work_when_streams_cannot_be_l
 def test_folder_manifest_shred_keeps_what_it_cannot_list(tmp_path: Path, monkeypatch):
     src = tmp_path / "d"; (src / "sub").mkdir(parents=True); (src / "sub" / "a.txt").write_bytes(b"data")
     plan = folder.plan_folder(src, shred_original=True)
-    monkeypatch.setattr(shred, "_named_streams", _boom)
-    left = folder._shred_manifest(plan, shred.ShredReport())
+    _unreadable(monkeypatch)
+    digests = {"sub/a.txt": __import__("hashlib").sha256(b"data").hexdigest()}
+    left = folder._shred_manifest(plan, shred.ShredReport(), digests)
     assert left == 3 and (src / "sub" / "a.txt").read_bytes() == b"data"      # the file, sub and the root all stay
 
 
 def test_unreadable_listing_has_its_own_code_on_the_shred_row_and_the_folder_row(tmp_path: Path, monkeypatch):
     from shiva import jobs, ui_model
     f = tmp_path / "a.txt"; f.write_bytes(b"data")
-    monkeypatch.setattr(shred, "_named_streams", _boom)
+    _unreadable(monkeypatch)
     row = ui_model.result_row(steps._shred_only(f), "shred")
     assert row.status == "Failed" and "hidden data" in row.text and "Not supported" not in row.text
-    assert "Original unchanged" in row.text
+    assert "Nothing was changed" in row.text and "Original unchanged" not in row.text
     src = tmp_path / "d"; src.mkdir(); (src / "a.txt").write_bytes(b"data")
     monkeypatch.setattr(folder, "_named_streams", _boom)
     with pytest.raises(folder.FolderRefused) as ei:

@@ -69,7 +69,7 @@ def test_refused_original_is_reported_as_not_removed_and_unchanged(tmp_path: Pat
     monkeypatch.setattr(shred, "check_target", refuse)
     dst, rep = encrypt_verify_shred(src, "correct horse")
     assert dst.exists() and src.read_bytes() == data
-    assert "NOT removed" in rep.warning and "not changed" in rep.warning and "partly" not in rep.warning
+    assert "NOT deleted" in rep.warning and "not changed" in rep.warning and "partly" not in rep.warning
 
 
 @needs_age

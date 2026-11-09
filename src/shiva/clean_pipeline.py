@@ -16,7 +16,7 @@ from typing import Iterable
 
 from . import agecli, output, pipeline, storage
 from .metadata import CleanOutcome, Unsupported, runner
-from .shred import ShredRefused, ShredReport, _check_file, shred_file
+from .shred import ShredReport, _check_file
 
 
 @dataclass
@@ -36,76 +36,83 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
     base = output.dest_dir(src, out_dir)
     options = options or {}
     notes: list[str] = []
-    status, fmt = runner.classify(src)
-    outcome: CleanOutcome | None = None
-    if status == "supported":
-        dst = base / f"{src.stem}.cleaned{src.suffix}.age"
-    elif allow_unclean:
-        dst = base / (src.name + ".age")
-        notes.append(f"NOT cleaned: {fmt}. Metadata, file name, size and times of this file are unchanged.")
-    else:
-        raise Unsupported(fmt)
-    if dst.exists():
-        raise FileExistsError(dst)
-    if shred_original and status == "supported":
-        _check_file(src)  # refuse links / hard links before doing any work
-        pipeline.refuse_unarchived_streams(src)
-
-    if status == "supported":
-        data, snap = runner.read_snapshot(src)
-        outcome = runner.clean_bytes(data, fmt, options, cancel)
-        plain = outcome.data
-    else:
-        st = os.stat(src)
-        snap = (st.st_size, st.st_mtime_ns)
-        plain = None
-    can_shred = shred_original and status == "supported"
-    if shred_original and status != "supported":
-        notes.append("The original was kept: files that were not cleaned are never shredded here.")
-    unconfirmed = [c for c in (outcome.content_changed if outcome is not None else []) if c not in set(confirmed_changes)]
-    if can_shred and unconfirmed:  # every actual content change must be one the user was shown and confirmed
-        can_shred = False
-        notes.append("The original was kept: cleaning changed content (" + ", ".join(unconfirmed)
-                     + ") and shredding was not confirmed for that.")
-
-    part = output.part_for(dst)
+    held = None
     try:
-        if plain is not None:
-            want = agecli.encrypt_stream(lambda w: w.write(plain), part, passphrase, cancel)
-            if want != hashlib.sha256(plain).hexdigest():
-                raise agecli.AgeError("internal check failed: encrypted bytes differ from the cleaned bytes", "verify_failed")
+        # With shredding the file is held before the first read and until its removal (see pipeline.hold): every read goes
+        # through the hold, so no size-and-time comparison is needed. Without shredding nothing is held.
+        status, fmt = runner.classify(src)       # a plain read first: a file that is never shredded must not need a hold
+        if shred_original and status == "supported":
+            held = pipeline.hold(src)
+            size = held.info().size
+            status, fmt = runner.classify_file(held.file, size)     # the held bytes decide, not the earlier read
+            if status != "supported":
+                pipeline.release(held)
+                held = None
+        outcome: CleanOutcome | None = None
+        if status == "supported":
+            dst = base / f"{src.stem}.cleaned{src.suffix}.age"
+        elif allow_unclean:
+            dst = base / (src.name + ".age")
+            notes.append(f"NOT cleaned: {fmt}. Metadata, file name, size and times of this file are unchanged.")
         else:
-            want = agecli.encrypt_passphrase(src, part, passphrase, cancel=cancel)
-        got = agecli.decrypt_hash_passphrase(part, passphrase, cancel=cancel)
-        if got != want:
-            raise agecli.AgeError("verification failed: decrypted output differs from what was encrypted", "verify_failed")
-        now = os.stat(src)
-        if (now.st_size, now.st_mtime_ns) != tuple(snap):
-            raise agecli.AgeError("source file changed while it was being processed; nothing was removed", "changed_during_run")
-        verified_size = os.stat(part).st_size
-        output.publish(part, dst)
-    except BaseException as e:
-        if not isinstance(e, agecli.OutputExists):
-            output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
-        raise
-    if os.stat(dst).st_size != verified_size:
-        raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
+            raise Unsupported(fmt)
+        if dst.exists():
+            raise FileExistsError(dst)
+        names: list[str] = []
+        if held is not None:
+            _check_file(src)  # refuse links / hard links before doing any work
+            names = pipeline.check_holdable(src, held)
 
-    report = None
-    if can_shred:
-        report = ShredReport()
-        report.caveats = storage.assess(src).warnings() + report.caveats
-        now = os.stat(src)
-        if (now.st_size, now.st_mtime_ns) != tuple(snap):
-            report.warning = "the original changed since it was read and was NOT removed"
-            report.untouched = True
+        if status == "supported":
+            if held is not None:
+                data, snap = runner.read_all(held.file, size), None
+            else:
+                data, snap = runner.read_snapshot(src)
+            outcome = runner.clean_bytes(data, fmt, options, cancel)
+            plain = outcome.data
         else:
-            try:
-                shred_file(src, report, guard=True)
-            except ShredRefused as e:    # refused before anything was overwritten
-                report.warning = f"the original was NOT removed and was not changed: {e}"
-                report.untouched = True
-            except Exception as e:
-                report.warning = (f"the original could not be fully removed ({e}); it may be partly "
-                                  "overwritten or empty, check it")
-    return CleanEncryptResult(dst, outcome, status == "supported", report, notes)
+            st = os.stat(src)
+            snap = (st.st_size, st.st_mtime_ns)
+            plain = None
+        can_shred = shred_original and status == "supported"
+        if shred_original and status != "supported":
+            notes.append("The original was kept: files that were not cleaned are never shredded here.")
+        unconfirmed = [c for c in (outcome.content_changed if outcome is not None else []) if c not in set(confirmed_changes)]
+        if can_shred and unconfirmed:  # every actual content change must be one the user was shown and confirmed
+            can_shred = False
+            notes.append("The original was kept: cleaning changed content (" + ", ".join(unconfirmed)
+                         + ") and shredding was not confirmed for that.")
+
+        part = output.part_for(dst)
+        try:
+            if plain is not None:
+                want = agecli.encrypt_stream(lambda w: w.write(plain), part, passphrase, cancel)
+                if want != hashlib.sha256(plain).hexdigest():
+                    raise agecli.AgeError("internal check failed: encrypted bytes differ from the cleaned bytes", "verify_failed")
+            else:
+                want = agecli.encrypt_passphrase(src, part, passphrase, cancel=cancel)
+            got = agecli.decrypt_hash_passphrase(part, passphrase, cancel=cancel)
+            if got != want:
+                raise agecli.AgeError("verification failed: decrypted output differs from what was encrypted", "verify_failed")
+            if snap is not None:
+                now = os.stat(src)
+                if (now.st_size, now.st_mtime_ns) != tuple(snap):
+                    raise agecli.AgeError("source file changed while it was being processed; nothing was removed",
+                                          "changed_during_run")
+            verified_size = os.stat(part).st_size
+            output.publish(part, dst)
+        except BaseException as e:
+            if not isinstance(e, agecli.OutputExists):
+                output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
+            raise
+        if os.stat(dst).st_size != verified_size:
+            raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
+
+        report = None
+        if can_shred:
+            report = ShredReport()
+            report.caveats = storage.assess(src).warnings() + report.caveats
+            pipeline.shred_held_original(held, src, report, names)
+        return CleanEncryptResult(dst, outcome, status == "supported", report, notes)
+    finally:
+        pipeline.release(held)       # any early exit, and the "kept" cases: the file is given back as it was

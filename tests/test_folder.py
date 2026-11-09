@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from shiva import agecli, folder, jobs, names
+from shiva import agecli, folder, heldfile, jobs, names
 from shiva.folder import FolderRefused
 
 needs_age = pytest.mark.skipif(not (agecli.bin_dir() / "age.exe").is_file(), reason="age binaries absent")
@@ -194,14 +194,46 @@ def test_shred_leaves_files_that_appear_after_the_final_check(tmp_path: Path, mo
     src = tmp_path / "d"; src.mkdir(); (src / "a.txt").write_bytes(b"one")
     real = folder._shred_manifest
 
-    def late(plan, report):
+    def late(plan, report, digests):
         (src / "late.txt").write_bytes(b"new")
         (src / "a.txt").write_bytes(b"edited later, longer")
-        return real(plan, report)
+        return real(plan, report, digests)
     monkeypatch.setattr(folder, "_shred_manifest", late)
     out, rep, _ = folder.encrypt_folder_verify_shred(src, "pw", shred_original=True)
     assert rep.warning and (src / "late.txt").read_bytes() == b"new"
     assert (src / "a.txt").read_bytes() == b"edited later, longer"  # changed since archived: kept
+    assert rep.left == ["a.txt"]
+
+
+@needs_age
+@needs_nt
+def test_same_size_edit_with_the_old_time_is_caught_by_the_content_check(tmp_path: Path, monkeypatch):
+    """A write through a memory mapping can change content and leave size and time as they were; only the content
+    check against the verified archive notices it."""
+    src = tmp_path / "d"; src.mkdir(); (src / "a.txt").write_bytes(b"one"); (src / "b.txt").write_bytes(b"two")
+    real = folder._shred_manifest
+
+    def late(plan, report, digests):
+        st = os.stat(src / "a.txt")
+        (src / "a.txt").write_bytes(b"ONE")
+        os.utime(src / "a.txt", ns=(st.st_atime_ns, st.st_mtime_ns))
+        return real(plan, report, digests)
+    monkeypatch.setattr(folder, "_shred_manifest", late)
+    out, rep, _ = folder.encrypt_folder_verify_shred(src, "pw", shred_original=True)
+    assert rep.warning and rep.left == ["a.txt"]
+    assert (src / "a.txt").read_bytes() == b"ONE" and not (src / "b.txt").exists()
+
+
+@needs_age
+@needs_nt
+def test_a_file_open_elsewhere_is_left_and_named(tmp_path: Path, monkeypatch):
+    src = tmp_path / "d"; src.mkdir(); (src / "a.txt").write_bytes(b"one"); (src / "b.txt").write_bytes(b"two")
+    real = heldfile.HeldFile.open.__func__
+    monkeypatch.setattr(heldfile.HeldFile, "open", classmethod(lambda cls, p, retry_s=2.0: real(cls, p, 0.2)))
+    with open(src / "a.txt", "rb"):          # a plain reader: the hold cannot be taken (after the bounded retry)
+        out, rep, _ = folder.encrypt_folder_verify_shred(src, "pw", shred_original=True)
+    assert rep.warning and rep.left == ["a.txt"] and (src / "a.txt").read_bytes() == b"one"
+    assert not (src / "b.txt").exists()
 
 
 @needs_age

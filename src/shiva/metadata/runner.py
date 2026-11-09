@@ -87,13 +87,20 @@ def _talk(proc, request: dict, data: bytes, cancel, timeout: float) -> tuple[dic
 def classify(path: Path) -> tuple[str, str | None]:
     """('supported'|'unsupported', format-or-reason). Reads only the head of the file."""
     with open(path, "rb") as f:
-        head = f.read(2048)
-    if path.stat().st_size > MAX_BYTES:
+        return classify_file(f, Path(path).stat().st_size)
+
+
+def classify_file(f, size: int) -> tuple[str, str | None]:
+    """classify() for a file that is already open (a held file cannot be opened a second time)."""
+    f.seek(0)
+    head = f.read(2048)
+    if size > MAX_BYTES:
         return ("unsupported", f"File larger than {MAX_BYTES // (1024 * 1024)} MB cannot be cleaned yet") \
             if dispatch.detect(head) or head[:2] == b"PK" else ("unsupported", "This file type cannot be cleaned yet")
     if head[:2] == b"PK":   # zip family: the type depends on member names, so the whole file is needed
         try:
-            fmt = dispatch.detect(Path(path).read_bytes())
+            f.seek(0)
+            fmt = dispatch.detect(f.read())
         except CleanError as e:
             return "unsupported", str(e)
     else:
@@ -154,6 +161,15 @@ def read_snapshot(src: Path) -> tuple[bytes, tuple[int, int]]:
     if (st.st_size, st.st_mtime_ns) != (st2.st_size, st2.st_mtime_ns) or len(data) != st.st_size:
         raise CleanError("The file changed while it was being read; nothing was done")
     return data, (st.st_size, st.st_mtime_ns)
+
+
+def read_all(f, size: int) -> bytes:
+    """The whole content of an open (held) file. Other programs cannot write to a held file, so the length is the only check."""
+    f.seek(0)
+    data = f.read()
+    if len(data) != size:
+        raise CleanError("The file could not be read completely; nothing was done")
+    return data
 
 
 def clean_file(src: Path, options: dict | None = None, cancel: threading.Event | None = None,

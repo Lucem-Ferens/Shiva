@@ -22,6 +22,9 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import heldfile
+from .heldfile import HeldError, HeldFile
+
 _CHUNK = 1 << 20
 _REPARSE = 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
 
@@ -118,10 +121,14 @@ def check_target(path: str | os.PathLike, prot: Protected | None = None) -> None
 # in administrator mode, with raw volume access); it tells the user instead. Matched by exact text in zh_TW.
 _SPARSE, _COMPRESSED, _ENCRYPTED = 0x200, 0x800, 0x4000
 SPECIAL_TEXT = {
-    "compressed": "This file is compressed by Windows: overwriting may leave the old data in other places on the disk.",
-    "sparse": "This file is a sparse file: overwriting may leave the old data in other places on the disk.",
-    "encrypted": "This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the disk.",
+    "compressed": "This file is compressed by Windows: overwriting may leave the old data in other places on the drive.",
+    "sparse": "This file is a sparse file: overwriting may leave the old data in other places on the drive.",
+    "encrypted": "This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the drive.",
 }
+
+
+# FAT and exFAT have no hidden streams and no delete lock: the file is checked by content and identity only.
+FAT_TEXT = "FAT or exFAT drive: Shiva checks the file less strictly before deleting it than on NTFS."
 
 
 def special_kind(attributes: int) -> str | None:
@@ -155,6 +162,7 @@ class ShredReport:
     special: list[str] = field(default_factory=list)   # kinds met ("compressed", "sparse", "encrypted"), once each
     warning: str | None = None  # verified output kept, but the original was not fully removed
     untouched: bool = False     # with `warning`: the original was NOT removed and not modified (vs. possibly partly overwritten)
+    left: list[str] = field(default_factory=list)   # folder flow: relative paths of the files that were left in place
     caveats: list[str] = field(default_factory=lambda: [
         "Overwrite is best-effort: SSD wear levelling, NTFS journal, shadow copies "
         "and cloud sync may keep copies. Full-disk encryption is the reliable protection."
@@ -282,32 +290,154 @@ def _zero(target: str, size: int) -> None:
         os.fsync(f.fileno())
 
 
+class ShredInUse(ShredRefused):
+    """Another program has the file open, so Shiva cannot hold it. Raised before anything is written."""
+    code = "in_use"
+
+
+class ShredVolumeRefused(ShredRefused):
+    """The file is on a network drive, ReFS or another volume where holding a file is not supported."""
+    code = "volume_unsupported"
+
+
+class ShredChanged(ShredRefused):
+    """The file is not the one that was planned or read (replaced, new stream or hard link). Nothing was written."""
+    code = "changed_since_read"
+
+
+def _refusal_from(e: HeldError) -> Exception:
+    """Translate a failure to take the hold into the refusal the callers already handle."""
+    if e.code == heldfile.IN_USE:
+        return ShredInUse("another program has this file open")
+    if e.code == heldfile.VOLUME:
+        return ShredVolumeRefused(str(e))
+    if e.code == heldfile.NOT_FILE:
+        return ShredRefused("refusing to follow link or reparse point, or a folder")
+    if e.code == heldfile.GONE:
+        return FileNotFoundError(str(e))
+    return e
+
+
+def open_held(path: Path) -> HeldFile:
+    """Take the hold on a regular file for a destructive step. Raises ShredRefused subclasses, FileNotFoundError or
+    HeldError; nothing has been changed when it raises (a cleared read-only attribute is put back)."""
+    try:
+        return HeldFile.open(path)
+    except HeldError as e:
+        raise _refusal_from(e) from e
+
+
+def _unfreeze(held: HeldFile, original: str, frozen: bool) -> None:
+    """Take a pending delete back and restore the original name, so the file is visible again. Best effort: if the name
+    cannot be restored the error names where the file is now."""
+    try:
+        if frozen:
+            held.set_delete(False)
+        if held.path != original:
+            held.rename(original)
+    except (HeldError, OSError) as e:
+        raise OSError(f"the file could not be put back under its name; it is now {held.path}") from e
+
+
+def shred_held(held: HeldFile, report: ShredReport | None = None, allowed: set[str] | None = None,
+               expect: tuple[int, int] | None = None) -> None:
+    """Overwrite and remove a file that is already held, then close it (also on failure).
+
+    NTFS order (every refusal comes before the first write): open the streams, rename to a random name, mark the
+    delete pending (no new open, stream or hard link is possible after that), re-read link count, streams and
+    identity, overwrite, close. A refusal unmarks the delete and restores the name: the file is untouched.
+    `allowed`: names of streams the caller archived; a stream outside it, appearing later, refuses the step.
+    `expect`: (st_dev, st_ino) from the plan; a different file refuses the step."""
+    original = held.path
+    streams: list[tuple[str, HeldFile]] = []
+    frozen = False
+    try:
+        info = held.info()
+        if info.nlink > 1:
+            raise ShredRefused(f"file has {info.nlink} hard links; shredding would destroy the other names: {original}")
+        if expect is not None and held.stat_identity() != expect:
+            raise ShredChanged("the file is not the one that was planned")
+        try:
+            names = held.streams()
+        except HeldError as e:
+            raise StreamListError(f"Windows would not list the hidden data streams of {Path(original).name}.") from e
+        kind = special_kind(info.attributes)
+        if kind and report is not None and kind not in report.special:
+            report.special.append(kind)
+            report.caveats.insert(0, SPECIAL_TEXT[kind])
+        if held.kind == "fat" and report is not None and FAT_TEXT not in report.caveats:
+            report.caveats.insert(0, FAT_TEXT)
+        if held.kind == "ntfs":
+            try:
+                streams =[(n, held.open_stream(n)) for n in names]       # before the freeze: later opens are refused
+            except HeldError as e:
+                raise (_refusal_from(e) if e.code != heldfile.FAILED else ShredChanged(str(e))) from e
+            tmp = Path(original).with_name(_random_name(len(Path(original).name)))
+            while tmp.exists():
+                tmp = Path(original).with_name(_random_name(len(Path(original).name)))
+            try:
+                held.rename(tmp)
+                held.set_delete(True)
+                frozen = True
+            except HeldError as e:
+                _unfreeze(held, original, False)
+                raise ShredRefused("the file could not be locked for removal; it was not changed") from e
+            now = held.info()
+            seen = set(held.streams())
+            # a pending POSIX delete has already taken our own name out of the count: 0 left means no other name
+            if (now.nlink > 0 or now.identity != info.identity or not seen <= set(names)
+                    or (allowed is not None and not seen <= allowed)):
+                raise ShredChanged("the file changed while it was held; it was not deleted")
+        try:
+            for n, s in streams:
+                s.zero()
+                if report is not None:
+                    report.streams += 1
+            held.zero(held.info().size)
+            if held.kind == "fat":
+                tmp = Path(original).with_name(_random_name(len(Path(original).name)))
+                while tmp.exists():
+                    tmp = Path(original).with_name(_random_name(len(Path(original).name)))
+                held.rename(tmp)
+                held.set_delete(True)
+                frozen = True
+        except BaseException:
+            _unfreeze(held, original, frozen)            # the zeroed file stays visible under its own name
+            frozen = False
+            raise
+        for _n, s in streams:
+            s.close()
+        streams = []
+        gone = held.path
+        held.close()
+        if os.path.lexists(gone):
+            raise OSError(f"the file was overwritten but could not be removed; it is now {gone}")
+        if report is not None:
+            report.files += 1
+    except BaseException:
+        if not held.closed:              # never touch a handle number after it was closed: it may belong to something else
+            if held.path != original or frozen:
+                _unfreeze(held, original, frozen)    # if this fails the delete may still be pending: say so, never "unchanged"
+            held.restore_readonly()
+        raise
+    finally:
+        for _n, s in streams:
+            s.close()
+        held.close()
+
+
 def shred_file(path: Path, report: ShredReport | None = None, guard: bool = False,
-               streams: list[str] | None = None) -> None:
-    """guard=True also applies the protected-location list (used for the user's own originals). `streams` is the
-    result of an earlier _named_streams(path) (shred_tree lists everything before it writes anything)."""
+               expect: tuple[int, int] | None = None) -> None:
+    """guard=True also applies the protected-location list (used for the user's own originals). `expect` is the
+    (st_dev, st_ino) a directory scan saw (shred_tree passes it so a swapped file or folder is refused)."""
     path = Path(path)
     if guard:
         check_target(path)
-    st = _check_file(path)
-    streams = _named_streams(path) if streams is None else streams   # may raise StreamListError: nothing is changed yet
-    kind = special_kind(getattr(st, "st_file_attributes", 0))
-    if kind and report is not None and kind not in report.special:
-        report.special.append(kind)
-        report.caveats.insert(0, SPECIAL_TEXT[kind])
-    os.chmod(path, 0o600)
-    _wipe_streams(path, report, streams)
-    _zero(str(path), st.st_size)
-    renamed = path.with_name(_random_name(len(path.name)))
-    while renamed.exists():
-        renamed = path.with_name(_random_name(len(path.name)))
-    path.rename(renamed)
-    renamed.unlink()
-    if report is not None:
-        report.files += 1
+    shred_held(open_held(path), report, expect=expect)
 
 
-def _plan(path: Path, files: list[Path], dirs: list[Path], links: list[Path]) -> None:
+def _plan(path: Path, files: list[Path], dirs: list[Path], links: list[Path],
+          ids: dict[Path, tuple[int, int]] | None = None) -> None:
     """Depth-first scan without following links. Raises ShredRefused before anything is touched."""
     with os.scandir(path) as it:
         entries = list(it)
@@ -317,11 +447,13 @@ def _plan(path: Path, files: list[Path], dirs: list[Path], links: list[Path]) ->
         if is_link(st):
             links.append(p)
         elif stat.S_ISDIR(st.st_mode):
-            _plan(p, files, dirs, links)
+            _plan(p, files, dirs, links, ids)
             dirs.append(p)
         else:
-            _check_file(p)
+            full = _check_file(p)          # os.lstat: DirEntry.stat() leaves st_dev and st_ino at zero on Windows
             files.append(p)
+            if ids is not None:
+                ids[p] = (full.st_dev, full.st_ino)
 
 
 def shred_tree(path: Path) -> ShredReport:
@@ -336,11 +468,18 @@ def shred_tree(path: Path) -> ShredReport:
         files: list[Path] = []
         dirs: list[Path] = []
         links: list[Path] = []
-        _plan(path, files, dirs, links)  # all-or-nothing validation
+        ids: dict[Path, tuple[int, int]] = {}
+        _plan(path, files, dirs, links, ids)  # all-or-nothing validation
         # every stream list is read before the first write: one that cannot be read refuses the whole tree untouched
         streams = {p: _named_streams(p) for p in [*files, *dirs, path]}
         for f in files:
-            shred_file(f, report, streams=streams[f])
+            try:
+                shred_file(f, report, expect=ids[f])
+            except ShredRefused as e:
+                if not report.files:
+                    raise                # nothing was written yet: the refusal stands
+                # earlier files are already gone, so this is no longer "nothing was changed"
+                raise OSError(f"{e}; {report.files} earlier file(s) were already overwritten and deleted") from e
         for lk in links:  # remove the link itself, never its target
             if stat.S_ISDIR(os.lstat(lk).st_mode) or lk.is_dir():
                 os.rmdir(lk)

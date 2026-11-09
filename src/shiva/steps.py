@@ -16,7 +16,8 @@ from typing import Callable
 from . import agecli, jobs, storage
 from .jobs import JobResult
 from .metadata import CleanCancelled, CleanError, Unsupported, runner
-from .shred import ShredRefused, StreamListError, check_target, shred_tree
+from .shred import (ShredChanged, ShredInUse, ShredRefused, ShredVolumeRefused, StreamListError, check_target,
+                    shred_tree)
 
 
 @dataclass
@@ -172,13 +173,13 @@ def _shred_only(p: Path) -> JobResult:
     where = storage.assess(p).warnings()
     try:
         rep = shred_tree(p)  # handles a single file and a folder, refuses links
-    except StreamListError as e:    # raised before the first write
-        return JobResult(p, False, f"Not shredded: {e} Nothing was changed.", error_kind="unsupported",
+    except (StreamListError, ShredInUse, ShredVolumeRefused, ShredChanged) as e:    # raised before anything was written
+        return JobResult(p, False, f"Not shredded: {str(e).rstrip('.')}. Nothing was changed.", error_kind="unsupported",
                          error_code=e.code)
     except Exception as e:
         if p.exists():
             # a midway failure may already have destroyed some content: never claim the original is intact
-            return JobResult(p, False, f"Not fully shredded: {e}. Some files may already be emptied or removed; "
+            return JobResult(p, False, f"Not fully shredded: {e}. Some files may already be overwritten or deleted; "
                                        "check what is left.", shred_attempted=True, partially_shredded=True,
                              error_kind="partial_shred", warnings=where)
         raise

@@ -118,7 +118,11 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
     except FileExistsError as e:
         raise OutputExists(str(e)) from e
     err_buf: list[bytes] = []
-    in_f = open(src, "rb") if src is not None else None
+    # `src` may be an already-open binary file (a held file: a second open of it is refused). Then it is read from its
+    # current position and left open for the caller.
+    own_in = src is not None and not hasattr(src, "read")
+    in_f = open(src, "rb") if own_in else src
+    in_name = src.name if own_in else "the file"
     try:
         # With a consumer the child reads the file directly, so we never write and read the pipes
         # from the same thread (that would deadlock).
@@ -176,7 +180,7 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
                             try:
                                 chunk = in_f.read(_CHUNK)
                             except OSError as e:  # a real read error must not be mistaken for "age quit"
-                                raise AgeError(f"cannot read {src.name}: {e}") from e
+                                raise AgeError(f"cannot read {in_name}: {e}") from e
                             if not chunk:
                                 break
                             h_in.update(chunk)
@@ -222,7 +226,7 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
             return h_out.hexdigest()
         return None
     finally:
-        if in_f is not None:
+        if own_in:
             in_f.close()
         if out_f is not None:
             out_f.close()

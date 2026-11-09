@@ -475,13 +475,23 @@ FAIL_TEXT = {
     "streams_unreadable": "Windows would not list this item's hidden data. Check the item's permissions and run again.",
     "hidden_streams": "This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would "
                       "destroy it. Turn off shredding or remove the hidden data.",
+    "volume_unsupported": "Shredding is not supported on this drive. Turn off shredding, or use a file on a "
+                          "local NTFS, FAT or exFAT drive.",
+    "changed_since_read": "The item changed while Shiva was working. Close any program that uses it and run again.",
     "not_contained": "Windows would not apply the safety limits to the encryption helper, so it was stopped before it "
                      "processed the file. Run again.",
-    "changed_during_run": "The file changed during the run. Close any program that edits it and run again.",
+    "changed_during_run": "The item changed while Shiva was working. Close any program that uses it and run again.",
     "verify_failed": "The trial decrypt did not match, so the encrypted copy was removed. Run again.",
     "changed_after_verify": "The output changed after it was verified. Delete it and run again.",
     "restore_incomplete": "The folder was decrypted but could not be renamed. The data is in the hidden folder named in "
                           "the details. Rename or move it.",
+}
+
+
+# Where the Shred page cannot offer the usual next step ("turn off shredding"): information only.
+FAIL_TEXT_SHRED = {
+    "volume_unsupported": "Shredding is not supported on this drive. Shiva shreds only files on local NTFS, FAT or "
+                          "exFAT drives.",
 }
 
 
@@ -564,7 +574,9 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
                 return ResultRow("Failed", "Failed. Contains a part that cannot be cleaned. Original unchanged. "
                                  "Learn more", size_text, d + [ARCHIVE_PART_TIP], tip=ARCHIVE_PART_TIP)
             if r.error_code in FAIL_TEXT:
-                return ResultRow("Failed", f"Failed. {FAIL_TEXT[r.error_code]} Original unchanged.", size_text, d)
+                what = FAIL_TEXT_SHRED.get(r.error_code, FAIL_TEXT[r.error_code]) if tab == "shred" else FAIL_TEXT[r.error_code]
+                tail = "Nothing was changed." if tab == "shred" else "Original unchanged."
+                return ResultRow("Failed", f"Failed. {what} {tail}", size_text, d)
             return ResultRow("Failed", "Failed. Not supported. Original unchanged.", size_text, d)
         if r.error_code == OUTPUT_EXISTS and r.conflict is not None:
             # the engine never overwrites: say what is in the way and what to do (the Reason line repeats it in full)

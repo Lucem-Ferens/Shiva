@@ -165,7 +165,7 @@ _many({
     "Will be decrypted.": "會解密。", "Will be encrypted.": "會加密。",
     "Also inside a listed folder.": "同時也在清單中的資料夾內。",
     "Will be shredded.": "會銷毀。",
-    "This is a whole drive.": "這是整個磁碟機。", "Shred files or folders inside it instead.": "改為銷毀其中的檔案或資料夾。",
+    "This is a whole drive.": "這是整個磁碟。", "Shred files or folders inside it instead.": "改為銷毀其中的檔案或資料夾。",
     "This is your user folder.": "這是您的使用者資料夾。",
     "This is a system folder.": "這是系統資料夾。", "Shred your own files instead.": "改為銷毀您自己的檔案。",
     "Shiva runs from this folder.": "Shiva 正從這個資料夾執行。", "Shred files somewhere else.": "改為銷毀其他位置的檔案。",
@@ -286,9 +286,16 @@ _many({
     "A path inside this archive is too long for this output folder.": "封存檔內有路徑對這個輸出資料夾來說太長。",
     "Choose an output folder with a shorter path.": "改選路徑較短的輸出資料夾。",
     "Shorten the file name or choose an output folder with a shorter path.": "縮短檔名，或改選路徑較短的輸出資料夾。",
-    "Windows would not list this item's hidden data.": "Windows 無法列出這個項目的隱藏資料。",
+    "FAT or exFAT drive: Shiva checks the file less strictly before deleting it than on NTFS.":
+        "FAT 或 exFAT 磁碟：Shiva 在刪除前對檔案的檢查比在 NTFS 上寬鬆。",
+    "Shredding is not supported on this drive.": "此磁碟不支援銷毀。",
+    "Turn off shredding, or use a file on a local NTFS, FAT or exFAT drive.": "關閉銷毀，或改用本機 NTFS、FAT 或 exFAT 磁碟上的檔案。",
+    "Shiva shreds only files on local NTFS, FAT or exFAT drives.": "Shiva 只能銷毀位於本機 NTFS、FAT 或 exFAT 磁碟上的檔案。",
+    "The item changed while Shiva was working.": "項目在 Shiva 處理期間已變更。",
+    "Close any program that uses it and run again.": "關閉使用它的程式後再執行一次。",
+    "Windows would not list this item's hidden data.":"Windows 無法列出這個項目的隱藏資料。",
     "This item has hidden data (NTFS data streams) that would not be encrypted, and shredding would destroy it.":
-        "這個項目有隱藏資料（NTFS 資料流）不會被加密，銷毀會將其一併毀掉。",
+        "這個項目有隱藏資料（NTFS 資料流）不會被加密，銷毀時會一併被覆寫。",
     "Turn off shredding or remove the hidden data.": "關閉銷毀，或先移除隱藏資料。",
     "Windows would not apply the safety limits to the encryption helper, so it was stopped before it processed the file.":
         "Windows 未能對加密輔助程式套用安全限制，因此在它處理檔案前就已停止。",
@@ -588,11 +595,11 @@ _many({
     "Warning: contains a sparse file, so old data may stay on the drive.": "警告：內含稀疏檔案，舊資料可能留在磁碟上。",
     "Warning: contains a file encrypted by Windows (EFS), so old data may stay on the drive.":
         "警告：內含已被 Windows 加密（EFS）的檔案，舊資料可能留在磁碟上。",
-    "This file is compressed by Windows: overwriting may leave the old data in other places on the disk.":
+    "This file is compressed by Windows: overwriting may leave the old data in other places on the drive.":
         "這個檔案已被 Windows 壓縮：覆寫後，舊資料可能留在磁碟的其他位置。",
-    "This file is a sparse file: overwriting may leave the old data in other places on the disk.":
+    "This file is a sparse file: overwriting may leave the old data in other places on the drive.":
         "這個檔案是稀疏檔案：覆寫後，舊資料可能留在磁碟的其他位置。",
-    "This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the disk.":
+    "This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the drive.":
         "這個檔案已被 Windows 加密（EFS）：覆寫後，舊資料可能留在磁碟的其他位置。",
     # About shredding
     "About shredding": "關於銷毀",
