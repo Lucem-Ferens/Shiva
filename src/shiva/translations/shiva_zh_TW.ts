@@ -380,7 +380,7 @@
     <message><source>This file is in a cloud-synced folder (%1): copies and old versions may remain online and in the provider's recycle bin.</source><translation>這個檔案位於雲端同步資料夾（%1）：副本與舊版本可能留在線上及服務商的資源回收筒。</translation></message>
     <message><source>The file system keeps a journal, and Windows shadow copies may hold earlier versions.</source><translation>檔案系統會保留日誌，Windows 陰影複本也可能保存較早的版本。</translation></message>
     <message><source>The file system keeps a journal and may write copy-on-write, and Windows shadow copies may hold earlier versions.</source><translation>檔案系統會保留日誌並可能採用寫入時複製，Windows 陰影複本也可能保存較早的版本。</translation></message>
-    <message><source>Overwrite is best-effort: SSD wear levelling, NTFS journal, shadow copies and cloud sync may keep copies.</source><translation>覆寫只能盡力而為：SSD 損耗平均、NTFS 日誌、陰影複本與雲端同步都可能保留副本。</translation></message>
+    <message><source>Overwrite is best-effort: wear levelling on flash storage (SSDs, USB sticks), file system journals, shadow copies and cloud sync may keep copies.</source><translation>覆寫只能盡力而為：快閃儲存（SSD、USB 隨身碟）的損耗平均、檔案系統日誌、陰影複本與雲端同步都可能保留副本。</translation></message>
     <message><source>NOT cleaned: %T1.</source><translation>未清理：%1。</translation></message>
     <message><source>Metadata, file name, size and times of this file are unchanged.</source><translation>這個檔案的中繼資料、檔名、大小與時間都沒有改變。</translation></message>
     <message><source>The original was kept: files that were not cleaned are never shredded here.</source><translation>已保留原始檔：沒有清理過的檔案在這裡絕不會被銷毀。</translation></message>

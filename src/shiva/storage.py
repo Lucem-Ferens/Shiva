@@ -82,6 +82,34 @@ def _has_seek_penalty(drive_letter: str) -> bool | None:
         k32.CloseHandle(h)
 
 
+_BUS_USB = 7    # STORAGE_BUS_TYPE BusTypeUsb
+
+
+def _bus_type(drive_letter: str) -> int | None:
+    """STORAGE_BUS_TYPE of the device under a volume (7 = USB), or None when it could not be determined."""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    k32.DeviceIoControl.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
+                                    wintypes.LPVOID, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD),
+                                    wintypes.LPVOID]
+    h = k32.CreateFileW(f"\\\\.\\{drive_letter}:", 0, 3, None, 3, 0, None)  # access 0: no admin needed
+    if h in (None, wintypes.HANDLE(-1).value):
+        return None
+    try:
+        query = (ctypes.c_uint32 * 3)(0, 0, 0)    # StorageDeviceProperty, PropertyStandardQuery
+        out = ctypes.create_string_buffer(1024)    # STORAGE_DEVICE_DESCRIPTOR: BusType is the DWORD at offset 28
+        n = wintypes.DWORD()
+        if not k32.DeviceIoControl(h, 0x2D1400, query, 12, out, 1024, ctypes.byref(n), None) or n.value < 32:
+            return None
+        return int.from_bytes(out.raw[28:32], "little")
+    finally:
+        k32.CloseHandle(h)
+
+
 def _sync_roots() -> list[tuple[str, Path]]:
     """(provider label, folder) pairs from the Windows sync-root registry and OneDrive variables."""
     roots: list[tuple[str, Path]] = []
@@ -157,6 +185,11 @@ def assess(path: Path) -> StorageInfo:
             info.drive_kind = "removable"
         elif dtype == 6:
             info.drive_kind = "ramdisk"
+        elif dtype == 3 and _bus_type(drive[0]) == _BUS_USB:
+            # Many sticks and external drives are reported as fixed drives, and their bridge chips cannot answer the
+            # seek-penalty query: treat anything on the USB bus as removable.
+            info.drive_kind = "removable"
+            info.notes.append("USB bus")
         elif dtype == 3:
             penalty = _has_seek_penalty(drive[0])
             if penalty is None:

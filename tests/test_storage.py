@@ -48,6 +48,26 @@ def test_junction_into_cloud_folder_is_followed_to_real_location(tmp_path: Path,
     assert assess(link / "f.txt").cloud_provider is not None
 
 
+@needs_nt
+def test_fixed_drive_on_the_usb_bus_counts_as_removable(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(storage, "_drive_info", lambda r: (3, "FAT32"))
+    monkeypatch.setattr(storage, "_bus_type", lambda d: storage._BUS_USB)
+    monkeypatch.setattr(storage, "_has_seek_penalty", lambda d: (_ for _ in ()).throw(AssertionError("not asked")))
+    info = assess(tmp_path / "f.txt")
+    assert info.drive_kind == "removable" and any("removable" in w for w in info.warnings())
+
+
+@needs_nt
+def test_fixed_drive_on_another_bus_still_asks_the_seek_penalty(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(storage, "_drive_info", lambda r: (3, "NTFS"))
+    monkeypatch.setattr(storage, "_bus_type", lambda d: 17)         # NVMe
+    monkeypatch.setattr(storage, "_has_seek_penalty", lambda d: False)
+    assert assess(tmp_path / "f.txt").drive_kind == "ssd"
+    monkeypatch.setattr(storage, "_bus_type", lambda d: None)       # not answered: unchanged behaviour
+    monkeypatch.setattr(storage, "_has_seek_penalty", lambda d: None)
+    assert assess(tmp_path / "f.txt").drive_kind == "unknown"
+
+
 def test_detection_failure_never_blocks(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(storage, "_drive_info", lambda r: (_ for _ in ()).throw(OSError("boom")))
     info = assess(tmp_path / "f")

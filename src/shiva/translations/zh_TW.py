@@ -377,9 +377,9 @@ _add("The file system keeps a journal, and Windows shadow copies may hold earlie
      "檔案系統會保留日誌，Windows 陰影複本也可能保存較早的版本。")
 _add("The file system keeps a journal and may write copy-on-write, and Windows shadow copies may hold earlier versions.",
      "檔案系統會保留日誌並可能採用寫入時複製，Windows 陰影複本也可能保存較早的版本。")
-_s("Overwrite is best-effort: SSD wear levelling, NTFS journal, shadow copies and cloud sync may keep copies. "
-   "Full-disk encryption is the reliable protection.",
-   "覆寫只能盡力而為：SSD 損耗平均、NTFS 日誌、陰影複本與雲端同步都可能保留副本。",
+_s("Overwrite is best-effort: wear levelling on flash storage (SSDs, USB sticks), file system journals, "
+   "shadow copies and cloud sync may keep copies. Full-disk encryption is the reliable protection.",
+   "覆寫只能盡力而為：快閃儲存（SSD、USB 隨身碟）的損耗平均、檔案系統日誌、陰影複本與雲端同步都可能保留副本。",
    "全磁碟加密才是可靠的保護。")
 _many({
     "NOT cleaned: %T1.": "未清理：%1。",

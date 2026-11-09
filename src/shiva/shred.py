@@ -164,8 +164,8 @@ class ShredReport:
     untouched: bool = False     # with `warning`: the original was NOT removed and not modified (vs. possibly partly overwritten)
     left: list[str] = field(default_factory=list)   # folder flow: relative paths of the files that were left in place
     caveats: list[str] = field(default_factory=lambda: [
-        "Overwrite is best-effort: SSD wear levelling, NTFS journal, shadow copies "
-        "and cloud sync may keep copies. Full-disk encryption is the reliable protection."
+        "Overwrite is best-effort: wear levelling on flash storage (SSDs, USB sticks), file system journals, "
+        "shadow copies and cloud sync may keep copies. Full-disk encryption is the reliable protection."
     ])
 
 
