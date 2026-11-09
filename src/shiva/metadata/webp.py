@@ -71,6 +71,38 @@ def _chunk(cc: bytes, payload: bytes) -> bytes:
     return cc + struct.pack("<I", len(payload)) + payload + (b"\x00" if len(payload) & 1 else b"")
 
 
+def _image_kinds(kinds: list[bytes]) -> bool:
+    return kinds in ([b"VP8 "], [b"VP8L"], [b"ALPH", b"VP8 "])
+
+
+def _validate(data: bytes, chunks: list[tuple[bytes, int, int]]) -> None:
+    """Require the exact chunk sequence of the WebP specification for the (already filtered) chunks."""
+    kinds = [c[0] for c in chunks]
+    if kinds and kinds[0] != b"VP8X":
+        if kinds not in ([b"VP8 "], [b"VP8L"]):
+            raise CleanError("Malformed WebP (chunk sequence)")
+        return
+    if not kinds or chunks[0][2] - chunks[0][1] != 10:
+        raise CleanError("Malformed WebP (VP8X)")
+    flags = data[chunks[0][1]]
+    rest = chunks[1:]
+    if rest and rest[0][0] == b"ICCP":
+        rest = rest[1:]
+    if flags & _ANIM_BIT:
+        if not rest or rest[0][0] != b"ANIM" or rest[0][2] - rest[0][1] != 6:
+            raise CleanError("Malformed WebP (ANIM)")
+        rest = rest[1:]
+        if not rest or any(c[0] != b"ANMF" for c in rest):
+            raise CleanError("Malformed WebP (animation frames)")
+        for _cc, ps, pe in rest:
+            if pe - ps < 16:
+                raise CleanError("Malformed WebP (ANMF)")
+            if not _image_kinds([c[0] for c in _chunks(data, ps + 16, pe, "ANMF")]):
+                raise CleanError("Malformed WebP (frame chunk sequence)")
+    elif not _image_kinds([c[0] for c in rest]):
+        raise CleanError("Malformed WebP (chunk sequence)")
+
+
 def clean_webp(data: bytes, keep_icc: bool = False) -> CleanOutcome:
     data = bytes(data)
     chunks, end = _walk(data)
@@ -135,6 +167,8 @@ def clean_webp(data: bytes, keep_icc: bool = False) -> CleanOutcome:
         body.insert(0, vp8x)
     payload = b"WEBP" + b"".join(body)
     out.data = b"RIFF" + struct.pack("<I", len(payload)) + payload
+    kept, _ = _walk(out.data)
+    _validate(out.data, kept)
     if end < len(data):
         _note(out.removed, "data after the RIFF end")
         _note(out.content_changed, "extra data after the WebP end")
@@ -187,6 +221,7 @@ def check_equivalent_webp(original: bytes, cleaned: bytes) -> None:
             raise CleanError("Cleaned WebP still flags Exif/XMP")
     if icc and not (chunks[0][0] == b"VP8X" and cleaned[chunks[0][1]] & _ICC_BIT):
         raise CleanError("Cleaned WebP has an ICCP chunk without the VP8X flag")
+    _validate(cleaned, chunks)
     a, loop_a = _decode_frames(bytes(original))
     b, loop_b = _decode_frames(cleaned)
     if len(a) != len(b):

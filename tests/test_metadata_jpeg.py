@@ -132,13 +132,54 @@ def test_cmyk_adobe_keeps_app14():
     check_equivalent_jpeg(src, out.data)
 
 
+def _icc_payload(extra: int = 0) -> bytes:
+    profile = bytearray(200)
+    profile[0:4] = (200 + extra).to_bytes(4, "big")
+    return b"ICC_PROFILE\x00\x01\x01" + bytes(profile) + b"x" * extra
+
+
 def test_icc_only_when_requested():
-    icc = b"ICC_PROFILE\x00\x01\x01" + b"x" * 40
-    src = _inject(_save(_noise()), _seg(0xE2, icc))
+    src = _inject(_save(_noise()), _seg(0xE2, _icc_payload()))
     assert 0xE2 not in _markers(clean_jpeg(src).data)
     assert "ICC profile" in clean_jpeg(src).removed
     kept = clean_jpeg(src, keep_icc=True)
     assert 0xE2 in _markers(kept.data) and "ICC profile" in kept.kept
+
+
+def test_icc_with_wrong_declared_size_is_dropped_even_when_kept():
+    src = _inject(_save(_noise()), _seg(0xE2, _icc_payload()[:-1] + b"xxxx"))
+    out = clean_jpeg(src, keep_icc=True)
+    assert 0xE2 not in _markers(out.data) and "ICC profile" in out.removed
+
+
+def test_adobe_app14_is_rewritten_to_14_bytes():
+    src = _save(_noise("CMYK"))
+    adobe = b"Adobe" + b"\x00\x64\x00\x00\x00\x00\x00"
+    padded = src[:2] + _seg(0xEE, adobe + b"SECRET-MARKER" * 154) + src[src.index(b"\xff\xdb"):]
+    out = clean_jpeg(padded)
+    assert b"SECRET-MARKER" not in out.data
+    segs, _ = jpeg._walk(out.data)
+    s, e = next((s, e) for m, s, e in segs if m == 0xEE)
+    assert e - s == 16
+    assert "extra data in Adobe marker (APP14)" in out.removed
+    check_equivalent_jpeg(padded, out.data)
+    with pytest.raises(CleanError):
+        check_equivalent_jpeg(padded, padded)
+
+
+def test_dnl_and_unknown_markers_are_refused():
+    base = _save(_noise())
+    for marker in (0xDC, 0xDE, 0xF0, 0xFD, 0x02):
+        with pytest.raises(CleanError):
+            clean_jpeg(_inject(base, _seg(marker, b"SECRET-MARKER")))
+    with pytest.raises(CleanError):
+        check_equivalent_jpeg(base, _inject(base, _seg(0xDC, b"\x00\x10")))
+
+
+def test_oversized_dri_is_refused():
+    base = _save(_noise(size=(128, 96)), restart_marker_blocks=4)
+    with pytest.raises(CleanError):
+        clean_jpeg(_inject(base, _seg(0xDD, b"\x00\x04SECRET-MARKER")))
 
 
 def test_jfif_thumbnail_rewritten():

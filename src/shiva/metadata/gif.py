@@ -7,6 +7,7 @@ Dropped: comment, other application extensions (XMP, ICC unless keep_icc ...), p
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import warnings
 
@@ -42,6 +43,82 @@ def _sub_blocks(data: bytes, pos: int) -> int:
             return pos
         if pos > n:
             raise CleanError("Truncated GIF (sub-block)")
+
+
+def _lzw_check(data: bytes, pos: int, mcs: int, expected: int) -> None:
+    """Decode the LZW code stream of one image (sub-blocks starting at pos) only far enough to count pixels.
+    The end code must be the last code of the data, and the image must not hold more pixels than its size."""
+    if not 1 <= mcs <= 8:
+        raise CleanError("Malformed GIF (LZW minimum code size)")
+    buf = bytearray()
+    while data[pos]:
+        size = data[pos]
+        buf += data[pos + 1:pos + 1 + size]
+        pos += 1 + size
+    key = (hashlib.sha256(buf).digest(), mcs, expected)
+    if key in _LZW_OK:  # the cleaner and the checker walk the same image data several times
+        return
+    _lzw_decode(buf, mcs, expected)
+    if len(_LZW_OK) >= 4096:
+        _LZW_OK.clear()
+    _LZW_OK.add(key)
+
+
+_LZW_OK: set = set()
+
+
+def _lzw_decode(buf: bytearray, mcs: int, expected: int) -> None:
+    clear = 1 << mcs
+    eoi = clear + 1
+    n_bytes = len(buf)
+    size = mcs + 1
+    nxt = eoi + 1
+    lens = [1] * clear + [0, 0]
+    prev = -1
+    pixels = 0
+    acc = 0  # bit accumulator: the cost per code does not depend on the stream length
+    nbits = 0
+    idx = 0
+    while True:
+        while nbits < size and idx < n_bytes:
+            acc |= buf[idx] << nbits
+            idx += 1
+            nbits += 8
+        if nbits < size:
+            break
+        code = acc & ((1 << size) - 1)
+        acc >>= size
+        nbits -= size
+        if code == clear:
+            size, nxt, prev = mcs + 1, eoi + 1, -1
+            del lens[eoi + 1:]
+            continue
+        if code == eoi:
+            # Some encoders pad with zero bytes after the end code; anything else would be hidden data.
+            if any(buf[(idx * 8 - nbits + 7) // 8:]):
+                raise CleanError("GIF has data after the end of its image stream")
+            return
+        if prev < 0:
+            if code >= clear:
+                raise CleanError("Malformed GIF (LZW code)")
+            n = 1
+        else:
+            if code < len(lens) and code != eoi and code != clear:
+                n = lens[code]
+            elif code == len(lens):
+                n = lens[prev] + 1
+            else:
+                raise CleanError("Malformed GIF (LZW code)")
+            if len(lens) < 4096:
+                lens.append(lens[prev] + 1)
+                if len(lens) == (1 << size) and size < 12:
+                    size += 1
+        prev = code
+        pixels += n
+        if pixels > expected:
+            raise CleanError("GIF image stream holds more pixels than the image")
+    if pixels != expected:
+        raise CleanError("GIF image stream has no end code")
 
 
 def _walk(data: bytes) -> tuple[int, list[_Block], int]:
@@ -87,7 +164,9 @@ def _walk(data: bytes) -> tuple[int, list[_Block], int]:
             pos += 1  # LZW minimum code size
             if pos >= n:
                 raise CleanError("Truncated GIF (image data)")
+            first = pos
             pos = _sub_blocks(data, pos)
+            _lzw_check(data, first, data[first - 1], fw * fh)
             images += 1
             if images > _MAX_FRAMES:
                 raise CleanError("GIF has too many frames")

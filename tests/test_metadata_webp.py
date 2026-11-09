@@ -191,3 +191,66 @@ def test_checker_catches_other_problems():
     meta = _save(_noise("RGBA"), lossless=True, exif=b"Exif\x00\x00x")
     with pytest.raises(CleanError):
         check_equivalent_webp(meta, meta)  # EXIF chunk / flag still present
+
+
+def _riff(chunks: list[bytes]) -> bytes:
+    body = b"WEBP" + b"".join(chunks)
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
+def _vp8x(flags: int, w: int = 24, h: int = 20) -> bytes:
+    return _chunk(b"VP8X", bytes([flags, 0, 0, 0]) + (w - 1).to_bytes(3, "little") + (h - 1).to_bytes(3, "little"))
+
+
+def _vp8l() -> bytes:
+    src = _save(lossless=True)
+    assert src[12:16] == b"VP8L"
+    return src[12:20 + struct.unpack("<I", src[16:20])[0] + (struct.unpack("<I", src[16:20])[0] & 1)]
+
+
+BIGW = b"SECRET-MARKER" * 300
+
+
+def test_valid_extended_layouts_still_clean():
+    vp = _vp8l()
+    for src in (_riff([_vp8x(0), vp]), _riff([_vp8x(0x08), vp, _chunk(b"EXIF", b"x")]),
+                _save(_noise("RGBA"), quality=60), _animated()):
+        out = clean_webp(src)
+        check_equivalent_webp(src, out.data)
+
+
+@pytest.mark.parametrize("make", [
+    lambda vp: [_vp8x(0), _chunk(b"ANIM", BIGW), vp],
+    lambda vp: [_vp8x(0), vp, _chunk(b"ANIM", BIGW)],
+    lambda vp: [_vp8x(0), vp, vp],
+    lambda vp: [_vp8x(0), vp, _chunk(b"VP8L", vp[8:] + BIGW)],
+    lambda vp: [_vp8x(0), _chunk(b"ALPH", BIGW), vp],
+    lambda vp: [_vp8x(0), vp, _chunk(b"ALPH", BIGW)],
+    lambda vp: [_vp8x(0), vp, _chunk(b"ANMF", b"\x00" * 16 + vp)],
+])
+def test_misplaced_or_duplicate_chunks_are_refused(make):
+    with pytest.raises(CleanError):
+        clean_webp(_riff(make(_vp8l())))
+
+
+def test_anim_chunk_must_be_six_bytes_and_unique():
+    src = _animated()
+    types = webp._walk(src)[0]
+    s, e = next((s, e) for cc, s, e in types if cc == b"ANIM")
+    assert e - s == 6
+    fat = _chunk(b"ANIM", src[s:e] + BIGW)
+    body = src[12:s - 8] + fat + src[e + (e & 1):8 + struct.unpack("<I", src[4:8])[0]]
+    with pytest.raises(CleanError):
+        clean_webp(_riff([body]))
+    dup = src[12:s - 8] + _chunk(b"ANIM", src[s:e]) * 2 + src[e + (e & 1):]
+    with pytest.raises(CleanError):
+        clean_webp(_riff([dup]))
+
+
+def test_checker_rejects_bad_sequences():
+    vp = _vp8l()
+    good = _riff([_vp8x(0), vp])
+    with pytest.raises(CleanError):
+        check_equivalent_webp(good, _riff([_vp8x(0), vp, vp]))
+    with pytest.raises(CleanError):
+        check_equivalent_webp(good, _riff([_vp8x(0), vp, _chunk(b"ALPH", BIGW)]))

@@ -21,6 +21,12 @@ _XMP_IDS = (b"http://ns.adobe.com/xap/1.0/\x00", b"http://ns.adobe.com/xmp/exten
 _ICC_ID = b"ICC_PROFILE\x00"
 _ADOBE_ID = b"Adobe"
 
+# Markers that may stay: SOF0-SOF15 (without JPG 0xC8; DHT 0xC4 and DAC 0xCC are table definitions), DQT, DRI,
+# SOS and the standalone TEM. Every other marker (DNL, DHP, EXP, JPGn, reserved codes) is refused.
+_DECODE_MARKERS = (frozenset(range(0xC0, 0xD0)) - {0xC8}) | {0xDB, 0xDD, _SOS, 0x01}
+_ADOBE_LEN = 12  # payload after the length field: "Adobe" + version + two flag words + transform
+_DRI_SEG_LEN = 6  # marker + length + restart interval
+
 # (marker, start, end) of each segment in file order, start at the 0xFF byte. For SOS, end includes the scan data.
 _Seg = tuple[int, int, int]
 
@@ -143,6 +149,16 @@ def _classify(m: int, payload: bytes) -> str:
     return "other APPn"
 
 
+def _icc_ok(payload: bytes) -> bool:
+    """A single-chunk ICC payload must be exactly the profile whose header declares its size."""
+    body = payload[len(_ICC_ID):]
+    if len(body) < 2 + 128:
+        return False
+    if body[1] != 1:  # multi-chunk profiles: the declared size spans several segments, not checked
+        return True
+    return int.from_bytes(body[2:6], "big") == len(body) - 2
+
+
 def _add(lst: list[str], item: str) -> None:
     if item not in lst:
         lst.append(item)
@@ -160,6 +176,10 @@ def clean_jpeg(data: bytes, *, keep_orientation: bool = False, keep_icc: bool = 
     for m, s, e in segs:
         is_app = 0xE0 <= m <= 0xEF or m == 0xFE
         if not is_app:
+            if m not in _DECODE_MARKERS:
+                raise CleanError("JPEG has an unsupported marker (FF%02X)" % m)
+            if m == 0xDD and e - s != _DRI_SEG_LEN:
+                raise CleanError("Malformed JPEG (restart interval segment)")
             parts.append(data[s:e])
             continue
         payload = data[s + 4:e]
@@ -174,10 +194,15 @@ def clean_jpeg(data: bytes, *, keep_orientation: bool = False, keep_icc: bool = 
             if len(parts) == 2:
                 jfif_first = True
         elif kind == "adobe":
-            parts.append(data[s:e])
+            if len(payload) < _ADOBE_LEN:
+                _add(out.removed, "other APPn")
+                continue
+            if len(payload) != _ADOBE_LEN:
+                _add(out.removed, "extra data in Adobe marker (APP14)")
+            parts.append(b"\xff\xee\x00\x0e" + payload[:_ADOBE_LEN])
             _add(out.kept, "Adobe colour marker (APP14)")
         elif kind == "icc":
-            if keep_icc:
+            if keep_icc and _icc_ok(payload):
                 parts.append(data[s:e])
                 _add(out.kept, "ICC profile")
             else:
@@ -243,14 +268,22 @@ def _verify_clean(cleaned: bytes) -> None:
         raise CleanError("Cleaned JPEG still has data after EOI")
     for m, s, e in segs:
         if not (0xE0 <= m <= 0xEF or m == 0xFE):
+            if m not in _DECODE_MARKERS:
+                raise CleanError("Cleaned JPEG still has an unsupported marker (FF%02X)" % m)
+            if m == 0xDD and e - s != _DRI_SEG_LEN:
+                raise CleanError("Cleaned JPEG has a malformed restart interval segment")
             continue
         payload = cleaned[s + 4:e]
         kind = _classify(m, payload)
         if kind == "jfif":
             if len(payload) != 14 or payload[12] or payload[13]:
                 raise CleanError("Cleaned JPEG still has a JFIF thumbnail")
-        elif kind in ("adobe", "icc"):
-            pass
+        elif kind == "adobe":
+            if len(payload) != _ADOBE_LEN:
+                raise CleanError("Cleaned JPEG has an Adobe marker with extra data")
+        elif kind == "icc":
+            if not _icc_ok(payload):
+                raise CleanError("Cleaned JPEG has a malformed ICC profile segment")
         elif kind == "exif":
             tags, _ = _exif_tags(payload[len(_EXIF_ID):])
             if tags != {0x0112} or len(payload) != 32:

@@ -47,7 +47,7 @@ A file is read into memory whole, so a file larger than 256 MB is reported "not 
 helper process with a memory limit; it is not a security sandbox (see the README, Honest limits).
 | Format | Status | Method |
 |---|---|---|
-| JPEG | done | lossless segment strip, pixel-equality check |
+| JPEG | done | lossless segment strip, pixel-equality check; only decode markers are kept; bytes hidden inside the entropy-coded scan after the last block are not detected |
 | PNG (incl. 16-bit, APNG) | done | chunk whitelist, pixel-equality check |
 | PDF | done | pikepdf, user picks categories, content-stream and resource check; optional "flatten pages to images" (pypdfium2, 150 DPI JPEG pages, max 200 pages) removes covered text but makes text unsearchable and drops links, bookmarks and forms; checked by structure plus a rendering comparison |
 | GIF, WEBP | done | block/chunk whitelist, all-frames pixel check; text extensions and trailing data count as content changes |

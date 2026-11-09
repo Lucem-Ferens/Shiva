@@ -150,3 +150,95 @@ def test_verifier_catches_problems():
     other = _save(_noise(seed=9))
     with pytest.raises(CleanError):
         check_equivalent_png(src, other)
+
+
+def _split(data: bytes) -> list[tuple[bytes, bytes]]:
+    chunks, _ = png._walk(data)
+    return [(t, data[s + 8:e - 4]) for t, s, e in chunks]
+
+
+def _join(chunks) -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + b"".join(_chunk(t, p) for t, p in chunks)
+
+
+def _with(src: bytes, edit) -> bytes:
+    return _join(edit(_split(src)))
+
+
+def _insert(chunks, index, ctype, payload):
+    return chunks[:index] + [(ctype, payload)] + chunks[index:]
+
+
+BIG = b"SECRET-MARKER" * 300
+
+
+@pytest.mark.parametrize("ctype", [b"sBIT", b"gAMA", b"sRGB", b"cHRM", b"bKGD", b"acTL", b"fcTL"])
+def test_oversized_kept_chunk_is_refused(ctype):
+    src = _save(_noise())
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(c, 1, ctype, BIG)))
+
+
+def test_chunk_lengths_follow_the_colour_type():
+    src = _save(_noise())  # RGB
+    assert clean_png(_with(src, lambda c: _insert(c, 1, b"sBIT", b"\x08\x08\x08"))).data
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(c, 1, b"sBIT", b"\x08")))
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(c, 1, b"bKGD", b"\x00")))
+    assert clean_png(_with(src, lambda c: _insert(c, 1, b"gAMA", struct.pack(">I", 45455)))).data
+
+
+def test_duplicate_and_misplaced_chunks_are_refused():
+    src = _save(_noise())
+    gama = struct.pack(">I", 45455)
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(_insert(c, 1, b"gAMA", gama), 1, b"gAMA", gama)))
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(c, len(c) - 1, b"gAMA", gama)))  # after IDAT
+    with pytest.raises(CleanError):
+        check_equivalent_png(src, _with(src, lambda c: _insert(c, 1, b"sBIT", BIG)))
+
+
+def test_palette_png_checks():
+    im = _noise().convert("P", palette=Image.ADAPTIVE, colors=16)
+    src = _save(im)
+    assert clean_png(src).data
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: [(t, p + b"\x00" if t == b"PLTE" else p) for t, p in c]))
+
+
+def test_extra_idat_after_complete_image_is_refused():
+    src = _save(_noise())
+    last = max(i for i, c in enumerate(_split(src)) if c[0] == b"IDAT")
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(c, last + 1, b"IDAT", BIG)))
+    with pytest.raises(CleanError):
+        clean_png(_with(src, lambda c: _insert(_insert(c, last + 1, b"tEXt", b"k\x00v"), last + 2, b"IDAT", BIG)))
+
+
+def test_zlib_tail_in_last_idat_is_refused():
+    src = _save(_noise())
+
+    def edit(chunks):
+        i = max(i for i, c in enumerate(chunks) if c[0] == b"IDAT")
+        chunks[i] = (b"IDAT", chunks[i][1] + BIG)
+        return chunks
+    with pytest.raises(CleanError):
+        clean_png(_with(src, edit))
+    with pytest.raises(CleanError):
+        check_equivalent_png(src, _with(src, edit))
+
+
+def test_apng_with_extra_stream_data_is_refused():
+    frames = [_noise(seed=s) for s in (1, 2)]
+    buf = io.BytesIO()
+    frames[0].save(buf, "PNG", save_all=True, append_images=frames[1:], duration=50, loop=0)
+    src = buf.getvalue()
+
+    def edit(chunks):
+        i = max(i for i, c in enumerate(chunks) if c[0] == b"fdAT")
+        chunks[i] = (b"fdAT", chunks[i][1] + BIG)
+        return chunks
+    with pytest.raises(CleanError):
+        clean_png(_with(src, edit))

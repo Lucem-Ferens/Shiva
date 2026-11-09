@@ -206,3 +206,71 @@ def _noise_gif(seed):
     buf = io.BytesIO()
     _noise(seed=seed).save(buf, "GIF")
     return buf.getvalue()
+
+
+def _lzw_end(data: bytes) -> int:
+    """Offset of the 0 terminator that ends the first image's sub-block chain."""
+    pos = data.index(b"\x2c") + 10
+    flags = data[pos - 1]
+    if flags & 0x80:
+        pos += 3 * (2 << (flags & 7))
+    pos += 1
+    while data[pos]:
+        pos += 1 + data[pos]
+    return pos
+
+
+@pytest.mark.parametrize("colors,size", [(2, (50, 40)), (16, (24, 20)), (256, (180, 150))])
+def test_large_and_small_lzw_streams_pass_the_strict_check(colors, size):
+    buf = io.BytesIO()
+    _noise(size=size).convert("RGB").quantize(colors).save(buf, "GIF")
+    out = clean_gif(buf.getvalue())
+    check_equivalent_gif(buf.getvalue(), out.data)
+
+
+def _pad_last_sub_block(data: bytes, byte: bytes) -> bytes:
+    """Append one byte to the last sub-block of the first image, after the LZW end code."""
+    pos = data.index(b"\x2c") + 10
+    flags = data[pos - 1]
+    if flags & 0x80:
+        pos += 3 * (2 << (flags & 7))
+    pos += 1
+    last = pos
+    while data[pos]:
+        last = pos
+        pos += 1 + data[pos]
+    assert data[last] < 255
+    return data[:last] + bytes([data[last] + 1]) + data[last + 1:pos] + byte + data[pos:]
+
+
+def test_zero_padding_after_the_end_code_is_accepted():
+    src = _static()
+    padded = _pad_last_sub_block(src, b"\x00")
+    out = clean_gif(padded)
+    check_equivalent_gif(padded, out.data)
+
+
+def test_non_zero_byte_after_the_end_code_is_refused():
+    with pytest.raises(CleanError):
+        clean_gif(_pad_last_sub_block(_static(), b"\x01"))
+
+
+def test_large_gif_is_checked_in_linear_time():
+    import time
+    buf = io.BytesIO()
+    _noise(size=(500, 500)).convert("RGB").quantize(256).save(buf, "GIF")
+    started = time.monotonic()
+    out = clean_gif(buf.getvalue())
+    check_equivalent_gif(buf.getvalue(), out.data)
+    assert time.monotonic() - started < 10
+
+
+def test_extra_sub_blocks_after_the_end_code_are_refused():
+    src = _static()
+    end = _lzw_end(src)
+    extra = b"".join(b"\xff" + (b"SECRET-MARKER" * 20)[:255] for _ in range(3))
+    padded = src[:end] + extra + src[end:]
+    with pytest.raises(CleanError):
+        clean_gif(padded)
+    with pytest.raises(CleanError):
+        check_equivalent_gif(src, padded)
