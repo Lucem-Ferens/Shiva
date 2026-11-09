@@ -186,23 +186,34 @@ def _walk(pdf: pikepdf.Pdf) -> list:
     return out
 
 
-def _is_js_action(a, depth: int = 0, seen: set | None = None) -> bool:
-    if a is None or depth > 8 or not _is_dictlike(a):
-        return False
-    if seen is None:
-        seen = set()
-    if a.is_indirect:  # a /Next chain that loops back (or fans out into itself) is visited once
-        if a.objgen in seen:
+_MAX_ACTIONS = 1_000_000  # runaway bound for /Next chains; loops through indirect objects are cut by `seen`
+
+
+def _is_js_action(a) -> bool:
+    seen: set = set()
+    stack = [a]
+    steps = 0
+    while stack:
+        a = stack.pop()
+        steps += 1
+        if steps > _MAX_ACTIONS:
             return False
-        seen.add(a.objgen)
-    if a.get("/S") == "/JavaScript":
-        return True
-    nxt = a.get("/Next")
-    if nxt is None:
-        return False
-    if _tc(nxt) == ObjectType.array:
-        return any(_is_js_action(n, depth + 1, seen) for n in nxt)
-    return _is_js_action(nxt, depth + 1, seen)
+        if a is None or not _is_dictlike(a):
+            continue
+        if a.is_indirect:  # a /Next chain that loops back (or fans out into itself) is visited once
+            if a.objgen in seen:
+                continue
+            seen.add(a.objgen)
+        if a.get("/S") == "/JavaScript":
+            return True
+        nxt = a.get("/Next")
+        if nxt is None:
+            continue
+        if _tc(nxt) == ObjectType.array:
+            stack.extend(nxt)
+        else:
+            stack.append(nxt)
+    return False
 
 
 def _js_slots(nodes: list, root) -> list:
@@ -248,6 +259,13 @@ def _personal_annots(pdf: pikepdf.Pdf) -> list:
             if any(k in a for k in _ANNOT_PERSONAL_KEYS):
                 out.append(a)
     return out
+
+
+_FIELD_VALUE_KEYS = ("/V", "/DV", "/RV", "/I")  # value, default, rich-text value, selected indices
+
+
+def _is_field_node(d) -> bool:
+    return "/FT" in d or (d.get("/Subtype") == "/Widget" and "/Parent" in d)
 
 
 def _fields(pdf: pikepdf.Pdf) -> list:
@@ -709,7 +727,7 @@ def _annot_rule(categories: set, off: set):
 
     def rule(a) -> bool:
         st = str(a.get("/Subtype", ""))
-        if (ms and st in _MARKUP) or (ln and st == "/Link") or (fa and st == "/FileAttachment"):
+        if (ms and st in _MARKUP) or (ln and st == "/Link") or (fa and st in ("/FileAttachment", "/RichMedia")):
             return True
         return hl and "/OC" in a and _hidden_obj(a["/OC"], off)
 
@@ -910,6 +928,8 @@ def _scan(pdf: pikepdf.Pdf, nodes: list, cache: _Cache, content: tuple | None = 
         found["xmp"] = (n_xmp, f"{n_xmp} object(s) with /Metadata")
 
     n_emb = len(_file_attachment_annots(pdf)) + (1 if "/AF" in root else 0)
+    n_emb += sum(1 for d in nodes if "/EF" in d or "/RF" in d)  # embedded streams behind any file specification
+    n_emb += sum(1 for _p, a in _page_annots(pdf) if a.get("/Subtype") == "/RichMedia")
     names = root.get("/Names")
     if names is not None and "/EmbeddedFiles" in names:
         n_emb += 1
@@ -936,7 +956,7 @@ def _scan(pdf: pikepdf.Pdf, nodes: list, cache: _Cache, content: tuple | None = 
     if n_auth:
         found["annotation_authors"] = (n_auth, f"{n_auth} annotation(s) with author/date fields")
 
-    n_val = sum(1 for f, _ in _fields(pdf) if "/V" in f or "/DV" in f)
+    n_val = sum(1 for f, _ in _fields(pdf) if any(k in f for k in _FIELD_VALUE_KEYS))
     if n_val:
         found["form_values"] = (n_val, f"{n_val} field(s) with values")
 
@@ -1128,8 +1148,14 @@ def clean_pdf(data: bytes, categories: set[str]) -> CleanOutcome:
                     del d["/Metadata"]
 
         if "embedded_files" in categories:
-            for annots, i in reversed(_file_attachment_annots(pdf)):
-                del annots[i]
+            # FileAttachment and RichMedia annotations are emptied and dropped by the annotation rule below, so
+            # popups and structure elements that still point at them no longer lead to the file
+            for d in nodes:
+                for k in ("/EF", "/RF"):
+                    if k in d:
+                        del d[k]
+                        if "/FS" in d:
+                            del d["/FS"]
             names = root.get("/Names")
             if names is not None and "/EmbeddedFiles" in names:
                 del names["/EmbeddedFiles"]
@@ -1143,6 +1169,11 @@ def clean_pdf(data: bytes, categories: set[str]) -> CleanOutcome:
             for container, key in _js_slots(nodes, root):
                 if key in container:
                     del container[key]
+            for d in nodes:  # script text or a JavaScript action reached some other way
+                if d.get("/S") == "/JavaScript" or "/JS" in d:
+                    for k in ("/S", "/JS"):
+                        if k in d:
+                            del d[k]
             for d in nodes:
                 aa = d.get("/AA")
                 if aa is not None and _is_dictlike(aa) and len(aa.keys()) == 0:
@@ -1257,7 +1288,7 @@ def clean_pdf(data: bytes, categories: set[str]) -> CleanOutcome:
         if "form_values" in categories:
             touched = False
             for f, ft in _fields(pdf):
-                for k in ("/V", "/DV"):
+                for k in _FIELD_VALUE_KEYS:
                     if k in f:
                         del f[k]
                         touched = True
@@ -1266,6 +1297,11 @@ def clean_pdf(data: bytes, categories: set[str]) -> CleanOutcome:
                         f["/AS"] = pikepdf.Name.Off
                 elif "/AP" in f:
                     del f["/AP"]  # appearance would still show the old value
+            for d in nodes:  # field nodes outside /AcroForm /Fields
+                if _is_field_node(d):
+                    for k in _FIELD_VALUE_KEYS:
+                        if k in d:
+                            del d[k]
             if touched and "/AcroForm" in root:
                 root["/AcroForm"]["/NeedAppearances"] = True
 
@@ -1439,6 +1475,13 @@ def _check_residue(pc: pikepdf.Pdf, categories: set, removed_layer_names: set) -
         if not _is_dictlike(obj):
             continue
         st, ty = str(obj.get("/Subtype", "")), str(obj.get("/Type", ""))
+        if "embedded_files" in categories and (
+                "/EF" in obj or "/RF" in obj or ty == "/EmbeddedFile" or st in ("/FileAttachment", "/RichMedia")):
+            raise CleanError("An embedded file is still present in the cleaned PDF.")
+        if "javascript" in categories and (obj.get("/S") == "/JavaScript" or "/JS" in obj):
+            raise CleanError("JavaScript is still present in the cleaned PDF.")
+        if "form_values" in categories and _is_field_node(obj) and any(k in obj for k in _FIELD_VALUE_KEYS):
+            raise CleanError("A form field value is still present in the cleaned PDF.")
         if "annotations" in categories and st in _MARKUP and "/Rect" in obj:
             raise CleanError("A comment or markup annotation is still present in the cleaned PDF.")
         if "links" in categories and st == "/Link" and "/Rect" in obj:
