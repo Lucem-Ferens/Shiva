@@ -402,6 +402,24 @@ def test_shred_declined_leaves_files_and_passphrase(w, tmp_path, monkeypatch):
     assert w.statusLine.text() == "Cancelled. Nothing was changed."
 
 
+def test_shred_confirmation_names_jpeg_quality_loss(w, tmp_path, monkeypatch):
+    Image = pytest.importorskip("PIL.Image")
+    f = tmp_path / "a.jpg"; Image.new("RGB", (8, 8), "red").save(f, "JPEG")
+    g = tmp_path / "b.png"; Image.new("RGB", (8, 8), "red").save(g)
+    seen = {}
+    monkeypatch.setattr(w, "confirm_shred", lambda items, notes, changes, opts, tips=None: seen.update(notes=notes, o=opts) or False)
+    c = w.pages["clean"]; w.set_tab("clean")
+    c.encryptCleanedCheck.setChecked(True); c.shredAfterCheck.setChecked(True)
+    w.add_paths([f, g]); w.wait_for_probes()
+    c.pwEdit.setText("pw-long-enough"); c.pwConfirmEdit.setText("pw-long-enough")
+    w.start()
+    assert m.NOTE_JPEG in seen["notes"] and seen["o"].jpeg_mode == "reencode"
+    assert seen["o"].confirmed_changes == {} and f.exists()     # nothing is confirmed until the window is accepted
+    monkeypatch.setattr(w, "confirm_shred", lambda *a, **k: True)
+    run_and_wait(w)             # accepted: the re-encoded JPEG's original is shredded like any other
+    assert not f.exists() and (tmp_path / "a.cleaned.jpg.age").exists()
+
+
 def test_pdf_use_for_others_only_when_categories_were_all_shown(w, tmp_path, monkeypatch):
     def cat(k, cc=False):
         return {"key": k, "label": k.upper(), "detail": "d", "content_changing": cc}

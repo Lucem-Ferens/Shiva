@@ -264,10 +264,12 @@ _many({
     "If any check fails, the original is kept.": "只要有任何檢查失敗，就會保留原始檔。",
     "After each cleaned copy is saved and checked against the original, the original is overwritten and deleted.":
         "每個清理後的副本存檔並與原始檔核對之後，會先覆寫再刪除原始檔。",
-    "If cleaning changes content in another way (for example a re-encoded JPEG), that original is kept and the result says so.":
-        "如果清理以其他方式改變了內容（例如重新編碼的 JPEG），該原始檔會被保留，結果中也會說明。",
+    "If cleaning changes content in another way, that original is kept and the result says so.":
+        "如果清理以其他方式改變了內容，該原始檔會被保留，結果中也會說明。",
+    "JPEG images, including those inside documents and archives, are saved again with a small loss of quality. Shiva keeps no copy of the original images.":
+        "JPEG 圖片（包含文件與壓縮檔內的）會重新存檔，畫質會略有損失。Shiva 不會保留原始圖片的副本。",
     "Archives with parts left out lose those parts.": "有排除部分內容的壓縮檔會失去那些部分。",
-    "Their originals are kept unless you confirm that change here.": "除非您在這裡確認這項變更，否則會保留它們的原始檔。",
+    "Their originals are kept.": "會保留它們的原始檔。",
 })
 
 # ------------------------------------------------------------------ results

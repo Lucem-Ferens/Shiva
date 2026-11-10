@@ -74,6 +74,40 @@ def test_reencoded_jpeg_blocks_shred_unless_confirmed(tmp_path):
 
 
 @needs_age
+def test_member_jpeg_change_is_covered_by_the_jpeg_confirmation(tmp_path):
+    import io
+    import zipfile
+    src = tmp_path / "a.zip"
+    buf = io.BytesIO()
+    jpg = tmp_path / "i.jpg"
+    _jpeg(jpg)
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("pics/i.jpg", jpg.read_bytes())
+    src.write_bytes(buf.getvalue())
+    res = clean_encrypt_verify_shred(src, PW, shred_original=True)
+    assert src.exists() and res.shred_report is None
+    res.output.unlink()
+    res2 = clean_encrypt_verify_shred(src, PW, shred_original=True,
+                                      confirmed_changes=["JPEG re-encoded (lossy)", "image rotated to match its Exif orientation"])
+    assert not src.exists() and res2.shred_report is not None
+
+
+@needs_age
+def test_jpeg_confirmation_does_not_cover_an_omitted_member_named_like_it(tmp_path):
+    import io
+    import zipfile
+    src = tmp_path / "a.zip"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("note: JPEG re-encoded (lossy)", b"secret text that would be lost")
+    src.write_bytes(buf.getvalue())
+    with pytest.raises(Exception, match="Windows cannot use"):    # the colon that would spoof a change line is refused
+        clean_encrypt_verify_shred(src, PW, {"unknown_members": "omit"}, shred_original=True,
+                                   confirmed_changes=["JPEG re-encoded (lossy)"])
+    assert src.exists()
+
+
+@needs_age
 def test_unsupported_refused_then_allowed_but_never_shredded(tmp_path):
     src = tmp_path / "n.txt"
     src.write_text("hello")

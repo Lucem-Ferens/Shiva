@@ -24,6 +24,8 @@ from xml.parsers import expat
 from . import ARCHIVE_MEMBER, CleanError, CleanOutcome, Unsupported
 from ..names import CaseGuard, UnsafeName, split_rel
 
+OMITTED = "omitted member with an unsupported format"   # the text ends with a member name chosen by the sender
+
 # Limits (module level so tests can lower them).
 TOO_BIG = "file too large or too complex to process safely"
 MAX_MEMBERS = 10_000
@@ -453,7 +455,7 @@ def apply_unknown(name: str, policy: str, out: CleanOutcome) -> bool:
     if policy == "abort":
         raise Unsupported("member %r has a format that cannot be cleaned" % name, code=ARCHIVE_MEMBER)
     if policy == "omit":
-        msg = "omitted member with an unsupported format: %s" % name
+        msg = "%s: %s" % (OMITTED, name)
         note(out.removed, msg)
         note(out.content_changed, msg)
         return False

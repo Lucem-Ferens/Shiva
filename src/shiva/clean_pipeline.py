@@ -16,6 +16,8 @@ from typing import Iterable
 
 from . import agecli, output, pipeline, storage
 from .metadata import CleanOutcome, Unsupported, runner
+from .metadata.jpeg import REENCODE_CHANGES as JPEG_CHANGES
+from .metadata.zipclean import OMITTED
 from .shred import ShredReport, _check_file
 
 
@@ -77,7 +79,10 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         can_shred = shred_original and status == "supported"
         if shred_original and status != "supported":
             notes.append("The original was kept: files that were not cleaned are never shredded here.")
-        unconfirmed = [c for c in (outcome.content_changed if outcome is not None else []) if c not in set(confirmed_changes)]
+        ok = set(confirmed_changes)
+        # a JPEG inside a document or archive is reported as "<member>: <change>"; the confirmation names the change itself
+        unconfirmed = [c for c in (outcome.content_changed if outcome is not None else [])
+                       if c not in ok and (OMITTED in c or c.rpartition(": ")[2] not in JPEG_CHANGES.intersection(ok))]
         if can_shred and unconfirmed:  # every actual content change must be one the user was shown and confirmed
             can_shred = False
             notes.append("The original was kept. Cleaning changed its content: " + ", ".join(unconfirmed) + ".")

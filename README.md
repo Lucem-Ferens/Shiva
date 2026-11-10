@@ -69,9 +69,9 @@ read in its source, November 2026):
 | PDF | Draws every page as a picture by default. | You choose what to remove and the text stays searchable; "flatten pages to images" is an option. |
 | Video, TIFF, HEIC, SVG, WAV | Supported. | Not supported yet. |
 
-As the JPEG row says, neither JPEG mode reliably destroys data hidden inside the picture itself (steganography). JPEG
-originals are always kept when their copy was re-encoded, even if you ask to shred the originals after encryption; the
-same applies to documents and archives that contain a JPEG, unless you tick "keep the image data as it is".
+As the JPEG row says, neither JPEG mode reliably destroys data hidden inside the picture itself (steganography). When you
+ask to shred the originals after encryption, the confirmation window says that JPEG images are saved again with a small
+loss of quality and that no copy of the original images is kept; the originals are shredded only after you confirm.
 
 ### Encrypt and decrypt
 

@@ -269,6 +269,9 @@ def _decode(data: bytes):
 # Re-encode mode: decode, rotate the pixels by the orientation tag, save a fresh JPEG. Nothing of the original entropy
 # data, tables, padding blocks or markers survives. The result is not pixel-identical to the input.
 REENCODE_QUALITY = 90
+REENCODED = "JPEG re-encoded (lossy)"
+ROTATED = "image rotated to match its Exif orientation"
+REENCODE_CHANGES = frozenset({REENCODED, ROTATED})   # what re-encoding reports; a confirmation for a file names both
 _MIN_PSNR_DB = 20.0   # separates a correct re-encode (>= 21.7 dB measured) from a broken one (inverted colours: <= 20.0 dB)
 _ORIENT_OPS = {2: "FLIP_LEFT_RIGHT", 3: "ROTATE_180", 4: "FLIP_TOP_BOTTOM", 5: "TRANSPOSE", 6: "ROTATE_270",
                7: "TRANSVERSE", 8: "ROTATE_90"}
@@ -335,9 +338,9 @@ def reencode_jpeg(data: bytes, *, keep_icc: bool = False, subsampling: str = "so
     out.data = buf.getvalue()
     out.kept = [k for k in out.kept if k != "Exif orientation"]
     _add(out.removed, "padding, compression tables and hidden bytes in the image data")
-    _add(out.content_changed, "JPEG re-encoded (lossy)")
+    _add(out.content_changed, REENCODED)
     if orientation != 1:
-        _add(out.content_changed, "image rotated to match its Exif orientation")
+        _add(out.content_changed, ROTATED)
     return out
 
 

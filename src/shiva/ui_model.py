@@ -33,10 +33,12 @@ SHRED_BODY = ("They will be overwritten and deleted as far as the drive allows. 
               "undo this.")
 PIPE_BODY = ("After each encrypted copy passes a trial decrypt, its original is overwritten and deleted as far as "
              "the drive allows. If a check fails, the original is kept.")
-NOTE_CONTENT = ("If cleaning changes content in another way (for example a re-encoded JPEG), that original is kept and "
-                "the result says so.")
-NOTE_ARCHIVE = ("Archives with parts left out lose those parts. Their originals are kept unless you confirm that "
-                "change here.")
+NOTE_CONTENT = ("If cleaning changes content in another way, that original is kept and the result says so.")
+# Formats that can hold a JPEG which cleaning saves again (a document or archive may hold several).
+JPEG_HOLDERS = ("jpeg", "docx", "xlsx", "pptx", "odt", "ods", "odp", "zip")
+NOTE_JPEG = ("JPEG images, including those inside documents and archives, are saved again with a small loss of quality. "
+             "Shiva keeps no copy of the original images.")
+NOTE_ARCHIVE = "Archives with parts left out lose those parts. Their originals are kept."
 # Per-item risks: only locations worse than the NTFS baseline (SSD, removable, network, cloud, unknown drive).
 # The universal journal / shadow-copy fact lives on the "About shredding" page, not on every item.
 RISK_SSD = "Warning: on an SSD, so old data may stay on the drive."

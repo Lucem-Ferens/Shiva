@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QDial
 
 from . import output, settings, shred, steps, storage, tokens
 from .metadata import CleanError, runner
+from .metadata.jpeg import REENCODE_CHANGES as JPEG_CHANGES
 from . import ui_model as m
 from .i18n import dyn, tr, trf
 
@@ -1455,11 +1456,17 @@ class MainWindow(QMainWindow):
                     tips += [""] * len(lines)
                 changes = dict(self._seen_changes) if opts.clean else {}
                 notes = list(out_notes)
+                holders = [r for r in shred_rows if opts.clean and opts.jpeg_mode == "reencode"
+                           and r.facts.fmt_status == "supported" and r.facts.fmt in m.JPEG_HOLDERS]
+                if holders:
+                    notes.append(m.NOTE_JPEG)       # one line names the loss, so the changes need no per-file line
                 if unclean:
                     notes.append("Files that can't be cleaned are encrypted but their originals are never shredded.")
                 if not self.confirm_shred(items, notes, changes, opts, tips):
                     return self.set_status("Cancelled. Nothing was changed.")
                 opts.confirmed_changes = {p: list(cs) for p, cs in changes.items()}  # exactly what was shown
+                for r in holders:
+                    opts.confirmed_changes.setdefault(str(r.path), []).extend(sorted(JPEG_CHANGES))
             paths = [r.path for r in run_rows]
             pw = page.take_passphrase()
             if not steps.needs_passphrase(paths, opts):
