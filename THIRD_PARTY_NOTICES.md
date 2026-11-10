@@ -6,6 +6,7 @@ folder). The portable folder also contains the components below. Each keeps its 
 | Component | Version | Licence | Where it is in the folder | Source |
 |---|---|---|---|---|
 | age, age-keygen, age-inspect and plugins (batchpass, pq, tag, tagpq) | see `BUILD-INFO.txt` | BSD-3-Clause (`age/LICENSE`) | `age/*.exe`, unmodified official release binaries | https://github.com/FiloSottile/age |
+| libjpeg-turbo `jpegtran.exe` and `jpeg62.dll` (lossless rebuild of JPEG image data) | see `BUILD-INFO.txt` | IJG License, Modified BSD-3-Clause and zlib License (`jpegtran/LICENSE.md`, `jpegtran/README.ijg`) | `jpegtran/`, unmodified official release binaries | https://libjpeg-turbo.org/ and https://github.com/libjpeg-turbo/libjpeg-turbo |
 | Qt 6 and Qt for Python (PySide6, Shiboken) | see `BUILD-INFO.txt` | LGPL-3.0 (text in `licenses/LGPL-3.0.txt`); Qt for Python is dual-licensed LGPL-3.0 / GPL-3.0 / commercial and Shiva uses it under the LGPL/GPL terms | `Qt6*.dll`, `PySide6/` and `shiboken6/` files next to `Shiva.exe` | https://code.qt.io/ and https://pypi.org/project/PySide6/ |
 | CPython runtime, with the libraries it ships: OpenSSL (`libcrypto-3.dll`, `libssl-3.dll`), libffi, bzip2 and the Microsoft C runtime DLLs | see `BUILD-INFO.txt` | Python Software Foundation License; OpenSSL under the Apache License 2.0; the Microsoft DLLs under the terms in CPython's licence file; all texts are in `licenses/python/LICENSE.txt` | the Python runtime library (`python3*.dll`), the compiled standard library, `libcrypto-3.dll`, `libssl-3.dll`, `libffi-8.dll`, `msvcp140*.dll` | https://www.python.org/ |
 | pypdfium2 (Python bindings, used only for the optional "Flatten pages to images" PDF cleaning) | see `BUILD-INFO.txt` | BSD-3-Clause or Apache-2.0, at the recipient's choice | `pypdfium2/`, `pypdfium2_raw/` | https://github.com/pypdfium2-team/pypdfium2 |
@@ -14,6 +15,8 @@ folder). The portable folder also contains the components below. Each keeps its 
 | pikepdf (PDF cleaning) and the libraries its wheel bundles, including qpdf | see `BUILD-INFO.txt` | MPL-2.0 for pikepdf itself (package metadata `License-Expression`); the wheel vendors compiled third-party libraries, and the attribution file and licence texts are copied to `licenses/pikepdf/` | `pikepdf/`, `pikepdf.libs/` | https://github.com/pikepdf/pikepdf and https://github.com/qpdf/qpdf |
 | lxml (pulled in by pikepdf) and the libraries its wheel bundles (libxml2, libxslt) | see `BUILD-INFO.txt` | BSD-3-Clause; the bundled libraries are under permissive licences listed in the files copied to `licenses/lxml/` | `lxml/` | https://lxml.de/ |
 | Nuitka (build tool; its C runtime is linked into the executable) | see `BUILD-INFO.txt` | AGPL-3.0-or-later with the Nuitka Runtime Library Exception, which allows the runtime to be linked into a program under another licence; both texts are in `licenses/nuitka/` | `Shiva.exe` | https://github.com/Nuitka/Nuitka |
+
+This software is based in part on the work of the Independent JPEG Group.
 
 ## Your rights under the GPL and LGPL
 

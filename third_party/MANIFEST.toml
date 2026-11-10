@@ -17,6 +17,22 @@ security_critical = true
 update_mechanism = "tools/check_upstream.py report, then tools/fetch_third_party.py after review"
 last_reviewed = "2026-11-02"
 
+[libjpeg-turbo]
+kind = "bundled"
+repo = "libjpeg-turbo/libjpeg-turbo"
+version = "3.2.1"
+tag = "3.2.1"
+asset = "libjpeg-turbo-3.2.1-vc-x64.exe"
+sha256 = "1f05bc3ed1585e6b12a8b0c24c8c5f07b1f6d90d01b4b709b331bedc9d6e5838"
+extract = "7z"              # NSIS installer: unpacked with 7-Zip, never run
+dest = "jpegtran"
+files = { "bin/jpegtran.exe" = "4bd1321b6e2ef555af4ec12cf13f753cbc68c8fb55e6e4c684a05243d9cb2365", "bin/jpeg62.dll" = "6326d1a0844734168f424a9f3b6c725e76bc3c62cc4d30d83b263ad77901449d", "doc/LICENSE.md" = "cff8701dc999e39b5044ece8f22ed65b3a10d6a8dbddca8ffb802d24580181db", "doc/README.ijg" = "db16a04128171879c60708d171b88d97345a2dd20f9bfc173680a4497c73f704" }
+license = "IJG AND BSD-3-Clause AND Zlib"
+verification = "installer sha256 equals the GitHub release digest; installer Authenticode-signed by the maintainer; the four extracted files pinned by sha256 (the exe and dll are unsigned); jpegtran.exe imports VCRUNTIME140.dll, which the build copies next to it"
+security_critical = true
+update_mechanism = "tools/check_upstream.py report, then tools/fetch_third_party.py after release-note review"
+last_reviewed = "2026-11-10"
+
 [mat2]
 kind = "ported"
 repo = "jvoisin/mat2"
