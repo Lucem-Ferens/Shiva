@@ -1,8 +1,10 @@
 """Office cleaning: spreadsheet change tracking, property parts under other names, less common revision elements."""
+import re
+
 import pytest
 
 from shiva.metadata import CleanError, Unsupported, office
-from test_metadata_office import DOC_BODY, HDR, W, build, docx_parts, members
+from test_metadata_office import DOC_BODY, HDR, R, W, build, docx_parts, members
 
 MARK = "Zed Marker"
 A = 'w:id="1" w:author="%s" w:date="2021-01-02T03:04:05Z"' % MARK
@@ -107,9 +109,29 @@ def test_core_properties_declared_by_relationship_only_are_blanked():
     office.check_equivalent_office(src, out.data, "docx")
 
 
-def test_relationship_naming_the_document_body_as_properties_is_refused():
+@pytest.mark.parametrize("override_name", ["/word/document.xml", "/WORD/Document.XML"])
+def test_relationship_naming_the_document_body_as_properties_is_refused(override_name):
     p = docx_parts(comments=False)
     p["_rels/.rels"] = p["_rels/.rels"].replace('Target="docProps/app.xml"', 'Target="word/document.xml"')
+    p["[Content_Types].xml"] = p["[Content_Types].xml"].replace('PartName="/word/document.xml"',
+                                                                'PartName="%s"' % override_name)
+    with pytest.raises(Unsupported):
+        office.clean_office(build(p), "docx")
+
+
+def test_body_named_as_properties_is_refused_even_without_its_own_override():
+    p = docx_parts(comments=False)
+    p["_rels/.rels"] = p["_rels/.rels"].replace('Target="docProps/app.xml"', 'Target="word/document.xml"')
+    p["[Content_Types].xml"] = re.sub(r'<Override PartName="/word/document.xml"[^>]*/>', "", p["[Content_Types].xml"])
+    assert "/word/document.xml" not in p["[Content_Types].xml"]
+    with pytest.raises(CleanError):   # without its Override the package is not a valid document at all
+        office.clean_office(build(p), "docx")
+
+
+def test_part_related_both_as_properties_and_as_something_else_is_refused():
+    p = docx_parts(comments=False)
+    other = '<Relationship Id="rId9" Type="%s/customXml" Target="docProps/app.xml"/>' % R
+    p["_rels/.rels"] = p["_rels/.rels"].replace("</Relationships>", other + "</Relationships>")
     with pytest.raises(Unsupported):
         office.clean_office(build(p), "docx")
 

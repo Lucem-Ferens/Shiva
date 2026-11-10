@@ -345,22 +345,26 @@ def _property_parts(ct_data: bytes, rels_data: bytes | None) -> tuple[set, set]:
             pn, ctype = zc.get_attr(el, "PartName"), zc.get_attr(el, "ContentType")
             if pn and ctype:
                 name = pn[1:] if pn.startswith("/") else pn
-                declared[name] = ctype
+                declared[name.lower()] = ctype   # package part names are case-insensitive
                 if ctype == _CORE_CT:
                     core.add(name)
                 elif ctype == _APP_CT:
                     app.add(name)
     if rels_data:
-        for el in zc.parse_tree(rels_data).children:
-            if isinstance(el, Node) and el.local == "Relationship" and zc.get_attr(el, "TargetMode") != "External":
-                typ, target = zc.get_attr(el, "Type") or "", zc.get_attr(el, "Target")
-                if target and typ.endswith(("/core-properties", "/extended-properties")):
-                    name = _resolve("_rels/.rels", target)
-                    if declared.get(name) not in (None, _CORE_CT, _APP_CT):
-                        # blanking it would wipe a part that the package declares as something else
-                        raise Unsupported("A relationship names a part with another content type as the document "
-                                          "properties, so the file is refused")
-                    (core if typ.endswith("/core-properties") else app).add(name)
+        rels = [el for el in zc.parse_tree(rels_data).children
+                if isinstance(el, Node) and el.local == "Relationship" and zc.get_attr(el, "TargetMode") != "External"]
+        other_targets = {_resolve("_rels/.rels", zc.get_attr(el, "Target")).lower() for el in rels
+                         if zc.get_attr(el, "Target")
+                         and not (zc.get_attr(el, "Type") or "").endswith(("/core-properties", "/extended-properties"))}
+        for el in rels:
+            typ, target = zc.get_attr(el, "Type") or "", zc.get_attr(el, "Target")
+            if target and typ.endswith(("/core-properties", "/extended-properties")):
+                name = _resolve("_rels/.rels", target)
+                if declared.get(name.lower()) not in (None, _CORE_CT, _APP_CT) or name.lower() in other_targets:
+                    # blanking it would wipe a part that the package declares, or relates, as something else
+                    raise Unsupported("A relationship names a part with another content type as the document "
+                                      "properties, so the file is refused")
+                (core if typ.endswith("/core-properties") else app).add(name)
     return core, app
 
 
