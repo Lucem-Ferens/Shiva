@@ -55,6 +55,22 @@ refused or reported, never copied through silently.
 
 Details and methods: [`docs/formats.md`](docs/formats.md).
 
+#### How this differs from MAT2
+
+The Office, OpenDocument and ZIP cleaners are ported from [MAT2](https://github.com/jvoisin/mat2); the other formats are
+Shiva's own code. MAT2 does not run on Windows (it needs GTK and Poppler). Where the result differs (MAT2 behaviour as
+read in its source, November 2026):
+
+| Format | MAT2 | Shiva |
+|---|---|---|
+| JPEG | Decodes and saves the image again at the encoder's default quality and applies the Exif rotation to the pixels. Its lightweight mode only removes tags with ExifTool. | The default is the same idea: decode, apply the rotation, save again at quality 90, so unseen edge blocks, compression tables and hidden bytes in the image data are gone. Colour detail follows the original unless you tick "smaller files". The option "keep the image data as it is" leaves the pixels untouched but keeps those unseen parts. |
+| PNG, GIF | PNG is decoded and written again; GIF is cleaned with ExifTool only. | Metadata chunks and blocks are removed and the image data is copied unchanged. |
+| WEBP | Decoded and saved again. | Metadata chunks are removed and the image data is copied unchanged, so bytes hidden inside the image chunk are not detected. |
+| PDF | Draws every page as a picture by default. | You choose what to remove and the text stays searchable; "flatten pages to images" is an option. |
+| Video, TIFF, HEIC, SVG, WAV | Supported. | Not supported yet. |
+
+Neither JPEG mode reliably destroys data hidden inside the compressed image itself (steganography).
+
 ### Encrypt and decrypt
 
 - Passphrase mode (age, scrypt); any file type, any size (streamed).

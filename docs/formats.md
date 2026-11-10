@@ -47,12 +47,12 @@ A file is read into memory whole, so a file larger than 256 MB is reported "not 
 helper process with a memory limit; it is not a security sandbox (see the README, Honest limits).
 | Format | Status | Method |
 |---|---|---|
-| JPEG | done | lossless segment strip, pixel-equality check; only decode markers are kept; bytes hidden inside the entropy-coded scan after the last block are not detected |
+| JPEG | done | default: decoded and saved again (quality 90, Exif rotation applied to the pixels, full colour detail kept when the original had it); this removes the unseen edge blocks, the compression tables and any bytes hidden in the image data; the check compares size, colour mode and similarity, so the pixels are not identical to the original. Option "keep the image data as it is": lossless segment strip with a pixel-equality check, which also keeps those unseen parts (bytes after the last block, before restart markers, unused tables). In both modes data hidden inside the image coefficients (steganography) is not reliably destroyed |
 | PNG (incl. 16-bit, APNG) | done | chunk whitelist, pixel-equality check |
 | PDF | done | pikepdf, user picks categories, content-stream and resource check; optional "flatten pages to images" (pypdfium2, 150 DPI JPEG pages, max 200 pages) removes covered text but makes text unsearchable and drops links, bookmarks and forms; checked by structure plus a rendering comparison |
-| GIF, WEBP | done | block/chunk whitelist, all-frames pixel check; text extensions and trailing data count as content changes |
+| GIF, WEBP | done | block/chunk whitelist, all-frames pixel check; text extensions and trailing data count as content changes; the image data is copied unchanged, so bytes hidden inside a WEBP image chunk are not detected |
 | MP3, FLAC, OGG, Opus | done | byte-level tag removal (ID3v1/v2, APEv2, Lyrics3, FLAC blocks, Vorbis comments), audio-payload hash check; M4A/MP4 not supported |
-| DOCX, XLSX, PPTX, ODT/ODS/ODP | done | port of mat2 office logic, in memory; per-category selection dialog (unticked = copied unchanged); comments, tracked changes and glossary count as content changes and are unticked by default; theme and numbering always kept; signed or encrypted files refused; embedded images cleaned |
+| DOCX, XLSX, PPTX, ODT/ODS/ODP | done | port of mat2 office logic, in memory; per-category selection dialog (unticked = copied unchanged); comments, tracked changes and glossary count as content changes and are unticked by default; theme and numbering always kept; signed or encrypted files refused; embedded images cleaned (JPEGs follow the same mode as standalone files) |
 | ZIP | done | images, audio, nested zips and office files inside are cleaned (office files inside ignore the category choice and are cleaned with every category); other members: refuse (default), omit or keep via options (GUI checkboxes pending) |
 | M4A/MP4/MOV/AVI/WAV/AIFF | later | needs bundled ffmpeg/ExifTool and a licence check of that binary |
 | TIFF, BMP, HEIC, AVIF, JXL, RAW | later | needs bundled ExifTool |
