@@ -31,8 +31,8 @@ TRAILER = "Full-disk encryption is the reliable protection."
 SHRED_TITLE = "Shred %1?"
 SHRED_BODY = ("They will be overwritten and deleted as far as the drive allows. No copy is kept and you can't "
               "undo this.")
-PIPE_BODY = ("After each encrypted copy passes a trial decrypt, its original is overwritten and deleted as far as "
-             "the drive allows. If a check fails, the original is kept.")
+PIPE_BODY = ("Each original is overwritten and deleted as far as the drive allows, once its copy passes a trial "
+             "decrypt. A failed check keeps it. You can't undo this.")
 NOTE_CONTENT = ("If cleaning changes content in another way, that original is kept and the result says so.")
 # Formats that can hold a JPEG which cleaning saves again (a document or archive may hold several).
 JPEG_HOLDERS = ("jpeg", "webp", "docx", "xlsx", "pptx", "odt", "ods", "odp", "zip")

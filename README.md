@@ -37,7 +37,7 @@ on first run; the hash check above is how you confirm the file is the one publis
 | **Encrypt** (with an Encrypt / Decrypt switch) | Passphrase encryption of files and folders with [age](https://github.com/FiloSottile/age). |
 | **Shred** | Overwrites and removes files and folders, with warnings about where that cannot be trusted. |
 
-Every optional behaviour is a checkbox and is **off by default**. Only irreversible actions (shredding, or deleting
+Every optional behaviour is a checkbox and is **off by default**. Only irreversible actions (shredding, or shredding
 originals after a verified encryption) ask for confirmation, in a window that names exactly what will happen.
 
 ### Clean metadata
@@ -77,7 +77,7 @@ loss of quality and that no copy of the original images is kept; the originals a
 
 - Passphrase mode (age, scrypt); any file type, any size (streamed).
 - Folders become `NAME.tar.age` and are restored into a new folder.
-- Optional: delete the originals, but only after a trial decrypt matches the original's hash. If verification fails,
+- Optional: shred the originals (best effort), but only after a trial decrypt matches the original's hash. If verification fails,
   everything is kept.
 - Existing output files are never overwritten.
 

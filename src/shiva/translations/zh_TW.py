@@ -57,7 +57,8 @@ _many({
     "Add folder": "加入資料夾", "Clear list": "清除清單", "Remove selected": "移除所選", "Show technical details": "顯示技術細節", "Old data may stay on the drive.": "舊資料可能留在磁碟上。", "More": "更多", "Language": "語言", "System default": "系統預設", "Not available yet.": "尚未提供。", "Reset saved choices": "重設已儲存的選擇", "About Shiva": "關於 Shiva", "Saved choices were reset.": "已重設儲存的選擇。", "Saved choices could not be reset.": "無法重設儲存的選擇。", "Clean file metadata, encrypt and decrypt with age, and shred files.": "清理檔案中繼資料、用 age 加密與解密，以及銷毀檔案。", "Free software, licence GPL-3.0-or-later.": "自由軟體，授權為 GPL-3.0-or-later。", "Warning:": "警告：", "Failed:": "失敗：", "Some items may leave traces.": "部分項目可能留下痕跡。", "Result of the run": "執行結果", "Release to add the files": "放開即可加入檔案",
     "Folders can't be cleaned yet.": "目前還不能清理資料夾。",
     "Add files to clean": "加入要清理的檔案",
-    "Drop files here, or use Add files.": "把檔案拖放到這裡，或按「加入檔案」。",
+    "Drop files here.": "把檔案拖放到這裡。",
+    "Language, help and about": "語言、說明與關於",
     "Images, PDF, Office/ODF documents, audio and ZIP are supported.": "支援圖片、PDF、Office/ODF 文件、音訊與 ZIP。",
     "Cleaned copies are saved next to the originals.": "清理後的副本會存放在原始檔旁邊。",
     "Add files or folders to encrypt": "加入要加密的檔案或資料夾",
@@ -65,7 +66,7 @@ _many({
     "Add files or folders to shred": "加入要銷毀的檔案或資料夾",
     "Items are overwritten and deleted. This can't be undone.": "項目會先覆寫再刪除，無法復原。",
     "Add .age files to decrypt": "加入要解密的 .age 檔案",
-    "Drop files ending in .age here, or use Add files.": "把副檔名為 .age 的檔案拖放到這裡，或按「加入檔案」。",
+    "Drop files ending in .age here.": "把副檔名為 .age 的檔案拖放到這裡。",
     "You need the passphrase they were encrypted with.": "需要加密時使用的密碼。",
     "Status": "狀態", "Name": "名稱", "Type": "類型", "Size": "大小", "Note": "備註", "Result": "結果",
     "Files in this list: status, name, type, size, note": "清單中的檔案：狀態、名稱、類型、大小、備註",
@@ -94,7 +95,7 @@ _many({
     "By default, full colour detail is kept if the original had it. This option "
     "saves less colour detail instead; files get smaller and thin coloured lines "
     "may blur.":
-        "預設會在原檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。",
+        "預設會在原始檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。",
     "Archives: leave out parts that can't be cleaned (they are missing from the copy)": "壓縮檔：排除無法清理的部分（副本中不會有這些部分）",
     "Archives: keep parts that cannot be cleaned (may leak metadata)": "壓縮檔：保留無法清理的部分（可能洩漏中繼資料）",
     "Encrypt files that can't be cleaned (their metadata stays)": "加密無法清理的檔案（其中繼資料會保留）",
@@ -344,7 +345,7 @@ _many({
     "The output file %1 already exists in %2.": "%2 中已有輸出檔案 %1。",
     "Rename or move it, or choose another output folder.": "重新命名或移走它，或改選其他輸出資料夾。",
     "Failed. Contains a part that cannot be cleaned. Original unchanged. Learn more":
-        "失敗。內含無法清理的部分。原檔未更動。了解更多",
+        "失敗。內含無法清理的部分。原始檔未更動。了解更多",
     ("The archive holds a part whose format cannot be cleaned (named under Reason), so nothing was written. "
      "Under \"Show more options\" you can leave such parts out (they are missing from the copy) or keep them "
      "(they may leak metadata)."):
@@ -600,6 +601,9 @@ _many({
     "After each encrypted copy passes a trial decrypt, its original is overwritten and deleted as far as the drive allows.":
         "每個加密副本通過試解密後，其原始檔會在磁碟允許的範圍內被覆寫並刪除。",
     "If a check fails, the original is kept.": "如果檢查失敗，就會保留原始檔。",
+    "Each original is overwritten and deleted as far as the drive allows, once its copy passes a trial decrypt. A failed check keeps it. You can't undo this.":
+        "每個原始檔會在磁碟允許的範圍內被覆寫並刪除，但只在其副本通過試解密之後。檢查失敗就會保留。這無法復原。",
+    "Add files...": "加入檔案...",
     "Available in a moment.": "稍後即可使用。", "Close": "關閉",
     # per-item warnings
     "Warning: on an SSD, so old data may stay on the drive.": "警告：位於 SSD，舊資料可能留在磁碟上。",

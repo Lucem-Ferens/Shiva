@@ -693,10 +693,12 @@ def test_running_state_busy_bar_and_elapsed_seconds(w, tmp_path):
     p.finish_run_ui()
 
 
-def test_empty_state_has_no_second_add_files_button(w):
-    p = w.pages["shred"]
-    assert p.view.currentIndex() == 0 and not hasattr(p, "emptyAddBtn")
-    assert p.addFilesBtn.text().replace("&", "") == "Add files..."       # the toolbar button is the only one
+def test_empty_state_has_a_primary_add_files_button(w):
+    for tab in ("clean", "encrypt", "shred"):
+        p = w.pages[tab]
+        assert p.view.currentIndex() == 0 and p.emptyAddBtn.property("primary") is True
+        assert p.emptyAddBtn.text().replace("&", "") == "Add files..." and p.emptyAddBtn.accessibleName() == "Add files"
+        assert not p.addFilesBtn.property("primary")
 
 
 def test_clear_list_after_a_failed_run_resets_the_status_line(w, tmp_path):

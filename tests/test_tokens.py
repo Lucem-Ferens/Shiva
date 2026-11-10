@@ -69,3 +69,22 @@ def _literal_count() -> int:
 
 def test_gui_literals_do_not_grow():
     assert _literal_count() <= GUI_LITERAL_LIMIT, _literal_count()
+
+
+def test_layout_roles_have_readable_text_and_visible_controls():
+    for theme, c in t.COLORS.items():
+        for role in ("text", "text-secondary", "accent"):
+            for ground in ("side", "surface-strong", "selected"):
+                assert t.contrast(c[role], c[ground]) >= 4.5, (theme, role, ground)
+        for role in ("text", "warning"):
+            assert t.contrast(c[role], c["warning-bg"]) >= 4.5, (theme, role)
+        for ground in ("bg", "surface", "selected", "side", "warning-bg"):
+            assert t.contrast(c["border"], c[ground]) >= 3.0, (theme, "border", ground)
+
+
+def test_focus_ring_differs_from_the_fill_of_filled_buttons():
+    for theme, c in t.COLORS.items():
+        qss = t.stylesheet(theme)
+        assert 'QPushButton[primary="true"]:focus { border: 2px solid ' + c["on-accent"] in qss
+        assert 'QPushButton[danger="true"]:focus { border: 2px solid ' + c["on-error"] in qss
+        assert t.contrast(c["on-accent"], c["accent"]) >= 3.0 and t.contrast(c["on-error"], c["error"]) >= 3.0, theme

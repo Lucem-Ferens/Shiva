@@ -109,7 +109,7 @@ def plan_folder(root: Path, shred_original: bool) -> Plan:
     plan.hidden_streams += _real_streams(root)
     if shred_original and plan.hidden_streams:
         raise FolderRefused(f"{plan.hidden_streams} hidden NTFS data stream(s) are not archived and would be "
-                            "destroyed by overwriting; turn off 'overwrite the original' or remove them", errors.HIDDEN_STREAMS)
+                            "destroyed by overwriting; turn off shredding or remove them", errors.HIDDEN_STREAMS)
     return plan
 
 

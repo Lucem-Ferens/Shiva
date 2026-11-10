@@ -46,7 +46,8 @@
     <message><source>Release to add the files</source><translation>放開即可加入檔案</translation></message>
     <message><source>Folders can't be cleaned yet.</source><translation>目前還不能清理資料夾。</translation></message>
     <message><source>Add files to clean</source><translation>加入要清理的檔案</translation></message>
-    <message><source>Drop files here, or use Add files.</source><translation>把檔案拖放到這裡，或按「加入檔案」。</translation></message>
+    <message><source>Drop files here.</source><translation>把檔案拖放到這裡。</translation></message>
+    <message><source>Language, help and about</source><translation>語言、說明與關於</translation></message>
     <message><source>Images, PDF, Office/ODF documents, audio and ZIP are supported.</source><translation>支援圖片、PDF、Office/ODF 文件、音訊與 ZIP。</translation></message>
     <message><source>Cleaned copies are saved next to the originals.</source><translation>清理後的副本會存放在原始檔旁邊。</translation></message>
     <message><source>Add files or folders to encrypt</source><translation>加入要加密的檔案或資料夾</translation></message>
@@ -54,7 +55,7 @@
     <message><source>Add files or folders to shred</source><translation>加入要銷毀的檔案或資料夾</translation></message>
     <message><source>Items are overwritten and deleted. This can't be undone.</source><translation>項目會先覆寫再刪除，無法復原。</translation></message>
     <message><source>Add .age files to decrypt</source><translation>加入要解密的 .age 檔案</translation></message>
-    <message><source>Drop files ending in .age here, or use Add files.</source><translation>把副檔名為 .age 的檔案拖放到這裡，或按「加入檔案」。</translation></message>
+    <message><source>Drop files ending in .age here.</source><translation>把副檔名為 .age 的檔案拖放到這裡。</translation></message>
     <message><source>You need the passphrase they were encrypted with.</source><translation>需要加密時使用的密碼。</translation></message>
     <message><source>Status</source><translation>狀態</translation></message>
     <message><source>Name</source><translation>名稱</translation></message>
@@ -83,7 +84,7 @@
     <message><source>Warning: hidden bytes and compression tables in the image data stay.</source><translation>警告：影像資料中隱藏的位元組與壓縮表會保留。</translation></message>
     <message><source>Learn more</source><translation>了解更多</translation></message>
     <message><source>The picture itself is not touched, but the image data is copied as it is. It can still hold leftover pixels beyond the image edge (for example from cropping), compression tables that can identify the camera or program, and extra bytes inside the image data. Data hidden in the pixels themselves stays too.</source><translation>圖片本身不會被更動，但影像資料會原樣複製，因此可能仍留有超出圖片邊緣的殘餘像素（例如裁切後留下的）、可辨識相機或程式的壓縮表，以及影像資料內多餘的位元組。藏在像素本身的資料也會保留。</translation></message>
-    <message><source>By default, full colour detail is kept if the original had it. This option saves less colour detail instead; files get smaller and thin coloured lines may blur.</source><translation>預設會在原檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。</translation></message>
+    <message><source>By default, full colour detail is kept if the original had it. This option saves less colour detail instead; files get smaller and thin coloured lines may blur.</source><translation>預設會在原始檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。</translation></message>
     <message><source>Archives: leave out parts that can't be cleaned (they are missing from the copy)</source><translation>壓縮檔：排除無法清理的部分（副本中不會有這些部分）</translation></message>
     <message><source>Archives: keep parts that cannot be cleaned (may leak metadata)</source><translation>壓縮檔：保留無法清理的部分（可能洩漏中繼資料）</translation></message>
     <message><source>Encrypt files that can't be cleaned (their metadata stays)</source><translation>加密無法清理的檔案（其中繼資料會保留）</translation></message>
@@ -344,7 +345,7 @@
     <message><source>The output folder %1 already exists in %2.</source><translation>%2 中已有輸出資料夾 %1。</translation></message>
     <message><source>The output file %1 already exists in %2.</source><translation>%2 中已有輸出檔案 %1。</translation></message>
     <message><source>Rename or move it, or choose another output folder.</source><translation>重新命名或移走它，或改選其他輸出資料夾。</translation></message>
-    <message><source>Failed. Contains a part that cannot be cleaned. Original unchanged. Learn more</source><translation>失敗。內含無法清理的部分。原檔未更動。了解更多</translation></message>
+    <message><source>Failed. Contains a part that cannot be cleaned. Original unchanged. Learn more</source><translation>失敗。內含無法清理的部分。原始檔未更動。了解更多</translation></message>
     <message><source>The archive holds a part whose format cannot be cleaned (named under Reason), so nothing was written. Under "Show more options" you can leave such parts out (they are missing from the copy) or keep them (they may leak metadata).</source><translation>壓縮檔內有格式無法清理的部分（名稱見「原因」），因此沒有寫出任何檔案。在「顯示更多選項」中，可以選擇排除這些部分（複本中會缺少它們），或保留它們（可能洩漏中繼資料）。</translation></message>
     <message><source>Shredded (best effort).</source><translation>已銷毀（盡力而為）。</translation></message>
     <message><source>See details for limits at this location.</source><translation>此位置的限制請見詳細資料。</translation></message>
@@ -599,6 +600,8 @@
     <message><source>No copy is kept and you can't undo this.</source><translation>不會留下副本，也無法復原。</translation></message>
     <message><source>After each encrypted copy passes a trial decrypt, its original is overwritten and deleted as far as the drive allows.</source><translation>每個加密副本通過試解密後，其原始檔會在磁碟允許的範圍內被覆寫並刪除。</translation></message>
     <message><source>If a check fails, the original is kept.</source><translation>如果檢查失敗，就會保留原始檔。</translation></message>
+    <message><source>Each original is overwritten and deleted as far as the drive allows, once its copy passes a trial decrypt. A failed check keeps it. You can't undo this.</source><translation>每個原始檔會在磁碟允許的範圍內被覆寫並刪除，但只在其副本通過試解密之後。檢查失敗就會保留。這無法復原。</translation></message>
+    <message><source>Add files...</source><translation>加入檔案...</translation></message>
     <message><source>Available in a moment.</source><translation>稍後即可使用。</translation></message>
     <message><source>Close</source><translation>關閉</translation></message>
     <message><source>Warning: on an SSD, so old data may stay on the drive.</source><translation>警告：位於 SSD，舊資料可能留在磁碟上。</translation></message>

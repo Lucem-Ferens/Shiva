@@ -13,10 +13,11 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QKeySequence, QPalette, QShortcut
+from PySide6.QtCore import QPointF, QRectF
+from PySide6.QtGui import QColor, QDesktopServices, QKeySequence, QPainter, QPalette, QPen, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QDialog, QFileDialog, QHBoxLayout,
                                QHeaderView, QLabel, QLineEdit, QListWidget, QMainWindow, QPlainTextEdit,
-                               QMenu, QMessageBox, QProgressBar, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QTableWidget,
+                               QMenu, QMessageBox, QProgressBar, QProxyStyle, QStyle, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QTableWidget,
                                QTableWidgetItem, QTextBrowser, QToolButton, QVBoxLayout, QWidget)
 
 from . import output, settings, shred, steps, storage, tokens
@@ -28,18 +29,12 @@ from .i18n import dyn, tr, trf
 _OFFICE_FMTS = ("docx", "xlsx", "pptx", "odt", "ods", "odp")   # formats with an Office category dialog
 
 _EMPTY = {
-    "clean": ("Add files to clean", "Drop files here, or use Add files.\n"
+    "clean": ("Add files to clean", "Drop files here.\n"
                                     "Images, PDF, Office/ODF documents, audio and ZIP are supported.\n"
                                     "Cleaned copies are saved next to the originals."),
     "encrypt": ("Add files or folders to encrypt", "Drop anything here. To open .age files, choose Decrypt above."),
     "shred": ("Add files or folders to shred", "Items are overwritten and deleted. This can't be undone."),
 }
-_NAV_CSS = ("QToolButton#nav { border: 1px solid palette(mid); border-radius: 4px; padding: 4px 10px; }"
-            "QToolButton#nav:checked { border: 2px solid palette(highlight); background: palette(highlight); }"
-            "QToolButton#nav:checked QLabel { color: palette(highlighted-text); font-weight: bold; }"
-            "QToolButton#nav:focus { border: 2px dashed palette(text); }")  # selected = filled, focus = dashed ring
-
-
 def _announce(widget: QWidget, text: str) -> None:
     """Tell screen readers about a status change (best effort)."""
     widget.setAccessibleDescription(text)
@@ -96,12 +91,12 @@ class ConfirmDialog(QDialog):
         box.addWidget(self.trailerLabel)
         self.learnLink = QPushButton(dyn(learn_link)); self.learnLink.setFlat(True); self.learnLink.setCursor(Qt.PointingHandCursor)
         self.learnLink.setAutoDefault(False); self.learnLink.setAccessibleName(dyn(learn_link))
-        self.learnLink.setStyleSheet("QPushButton { text-decoration: underline; border: none; text-align: left; }")
+        self.learnLink.setStyleSheet("QPushButton { text-decoration: underline; border: none; text-align: left; background: transparent; padding: 0; }")
         self.learnLink.setVisible(bool(learn_link))
         self.learnLink.clicked.connect(self.learnRequested)
         box.addWidget(self.learnLink)
         row = QHBoxLayout(); row.addStretch(1)
-        self.doBtn = QPushButton(do_label); self.doBtn.setAutoDefault(False)
+        self.doBtn = QPushButton(do_label); self.doBtn.setAutoDefault(False); self.doBtn.setProperty("danger", True)
         self.cancelBtn = QPushButton(tr("Cancel")); self.cancelBtn.setDefault(True)
         self.cancelBtn.setProperty("primary", True)
         row.addWidget(self.doBtn); row.addWidget(self.cancelBtn)
@@ -251,8 +246,37 @@ class PdfDialog(QDialog):
 
 
 # ------------------------------------------------------------------ small widgets
+class _NavIcon(QWidget):
+    """A 16 px line icon drawn with the text colour (no image files)."""
+
+    def __init__(self, tab: str):
+        super().__init__()
+        self.tab = tab
+        self.setFixedSize(16, 16)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+    def paintEvent(self, _e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        col = self.palette().color(QPalette.Text)
+        p.setPen(QPen(col, 1.6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        pt = QPointF
+        if self.tab == "clean":
+            for y, x2 in ((3, 14), (8, 10), (13, 14)):
+                p.drawLine(pt(2, y), pt(x2, y))
+        elif self.tab == "encrypt":
+            p.drawRoundedRect(3, 7, 10, 7, 1, 1)
+            p.drawArc(5, 1, 6, 8, 0, 180 * 16)
+        elif self.tab == "shred":
+            p.drawLine(pt(3, 4), pt(13, 4)); p.drawLine(pt(6, 4), pt(6, 2)); p.drawLine(pt(6, 2), pt(10, 2))
+            p.drawLine(pt(10, 2), pt(10, 4)); p.drawLine(pt(4.5, 4), pt(5.2, 14)); p.drawLine(pt(5.2, 14), pt(10.8, 14))
+            p.drawLine(pt(10.8, 14), pt(11.5, 4))
+        p.end()
+
+
 class NavButton(QToolButton):
-    """Checkable top-navigation button with a title and a small codename line; accepts file drops."""
+    """Checkable sidebar item: a drawn icon and the title; the scope line is the tooltip and part of the accessible
+    name. Accepts file drops."""
     dropped = Signal(list)
 
     def __init__(self, tab: str):
@@ -260,18 +284,18 @@ class NavButton(QToolButton):
         title, sub = m.TITLES[tab]
         self.tab = tab
         self.setObjectName("nav"); self.setCheckable(True); self.setAutoExclusive(True)
-        self.setFocusPolicy(Qt.TabFocus)   # dashed focus ring only for keyboard users, not after a mouse click
+        self.setFocusPolicy(Qt.TabFocus)   # focus ring only for keyboard users, not after a mouse click
         self.setAccessibleName(f"{dyn(title)}, {dyn(sub)}")
-        self.setMinimumSize(150, 52)
+        self.setToolTip(dyn(sub))
+        self.setFixedHeight(tokens.TARGET["nav_h"])
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setAcceptDrops(True)
-        lay = QVBoxLayout(self); lay.setContentsMargins(6, 2, 6, 2); lay.setSpacing(0)
-        a = QLabel(dyn(title)); a.setAlignment(Qt.AlignCenter)
-        b = QLabel(dyn(sub)); b.setAlignment(Qt.AlignCenter)
-        f = b.font(); f.setPointSizeF(max(6.0, f.pointSizeF() * 0.8)); b.setFont(f)
-        for lab in (a, b):
-            lab.setAttribute(Qt.WA_TransparentForMouseEvents)
-            lay.addWidget(lab)
+        lay = QHBoxLayout(self); lay.setContentsMargins(tokens.SPACE[3], 0, tokens.SPACE[3], 0); lay.setSpacing(tokens.SPACE[3])
+        icon = _NavIcon(tab)
+        a = QLabel(dyn(title))
+        for w in (icon, a):
+            w.setAttribute(Qt.WA_TransparentForMouseEvents)
+        lay.addWidget(icon); lay.addWidget(a, 1)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -386,6 +410,9 @@ class TabPage(QWidget):
         self.dropActive = False
         self.emptyView = QWidget(); ev = QVBoxLayout(self.emptyView)
         ev.addWidget(self.emptyState, 1)
+        self.emptyAddBtn = QPushButton(tr("Add files...")); self.emptyAddBtn.setAccessibleName(tr("Add files"))
+        self.emptyAddBtn.setProperty("primary", True)
+        ev.addWidget(self.emptyAddBtn, 0, Qt.AlignHCenter)
         self.fileTable = _Table(0, 5)
         self.fileTable.setHorizontalHeaderLabels([tr(x) for x in ("Status", "Name", "Type", "Size", "Note")])
         self.fileTable.setAccessibleName(tr("Files in this list: status, name, type, size, note"))
@@ -417,7 +444,7 @@ class TabPage(QWidget):
         self.noteLabel.setWordWrap(True); bl.addWidget(self.noteLabel)
         self.aboutShredLink = QPushButton(dyn(m.ABOUT_LINK)); self.aboutShredLink.setFlat(True)
         self.aboutShredLink.setCursor(Qt.PointingHandCursor); self.aboutShredLink.setAutoDefault(False)
-        self.aboutShredLink.setStyleSheet("QPushButton { text-decoration: underline; border: none; text-align: left; }")
+        self.aboutShredLink.setStyleSheet("QPushButton { text-decoration: underline; border: none; text-align: left; background: transparent; padding: 0; }")
         self.aboutShredLink.setAccessibleName(dyn(m.ABOUT_LINK))
         self.aboutShredLink.setVisible(tab == "shred")
         self.aboutShredLink.clicked.connect(lambda: self.win.show_about_shredding())
@@ -459,12 +486,12 @@ class TabPage(QWidget):
                                             "originals are not deleted."))
         self.keepPartsHint.setObjectName("keepPartsHint"); self.uncleanHint.setObjectName("uncleanHint")
         for hint in (self.keepPartsHint, self.uncleanHint, self.keepQualityHint):
-            hint.setWordWrap(True); hint.setIndent(24)
+            hint.setWordWrap(True)
         self.chroma420Check.setToolTip(tr("By default, full colour detail is kept if the original had it. This option "
                                           "saves less colour detail instead; files get smaller and thin coloured lines "
                                           "may blur."))
         self.keepQualityMore.setStyleSheet(
-            "QPushButton { text-decoration: underline; border: none; text-align: left; padding-left: 24px; }")
+            "QPushButton { text-decoration: underline; border: none; text-align: left; background: transparent; padding: 0 0 0 24px; }")
         for w in (self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore,
                   self.keepOrientCheck,
                   self.chroma420Check, self.keepIccCheck, self.omitPartsCheck,
@@ -499,8 +526,7 @@ class TabPage(QWidget):
         pl.addLayout(prow)
         self.strengthLabel = QLabel("")
         self.pwWarnLabel = QLabel(""); self.pwWarnLabel.setAccessibleName(tr("Passphrase warning"))
-        dark = self.palette().window().color().lightness() < 128
-        self.pwWarnLabel.setStyleSheet(f"QLabel {{ color: {'#ff8a80' if dark else '#b00020'}; font-weight: bold; }}")
+        self.pwWarnLabel.setObjectName("statusError")
         self.strengthLabel.setAccessibleName(tr("Passphrase length"))
         pl.addWidget(self.strengthLabel); pl.addWidget(self.pwWarnLabel)
         self.confirmBox = QWidget(); cl = QVBoxLayout(self.confirmBox); cl.setContentsMargins(0, 0, 0, 0)
@@ -525,14 +551,14 @@ class TabPage(QWidget):
         self.progressLabel = QLabel(""); self.progressBar = QProgressBar()
         self.progressLabel.setVisible(False); self.progressBar.setVisible(False)
         self.primaryBtn = QPushButton(""); self.primaryBtn.setMinimumHeight(32)
-        f = self.primaryBtn.font(); f.setBold(True); self.primaryBtn.setFont(f)
+        self.primaryBtn.setProperty("primary", True)
         self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setVisible(False)
         self.cancelBtn.setAccessibleName(tr("Cancel the run"))
         outer.addWidget(self.reasonLabel); outer.addWidget(self.progressLabel); outer.addWidget(self.progressBar)
         brow = QHBoxLayout(); brow.addStretch(1); brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
         outer.addLayout(brow)
 
-        order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.modeEncBtn, self.modeDecBtn,
+        order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.detailPane, self.showFolderBtn, self.copyBtn,
                  self.aboutShredLink, self.encryptCleanedCheck,
                  self.shredAfterCheck, self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityMore,
@@ -543,6 +569,7 @@ class TabPage(QWidget):
             QWidget.setTabOrder(a, b)
 
         self.addFilesBtn.clicked.connect(self.win.pick_files)
+        self.emptyAddBtn.clicked.connect(self.win.pick_files)
         self.addFolderBtn.clicked.connect(self.win.pick_folder)
         self.clearBtn.clicked.connect(self.clear_list)
         self.removeSelectedBtn.clicked.connect(self.remove_selected)
@@ -581,7 +608,9 @@ class TabPage(QWidget):
         t.setEditTriggers(QAbstractItemView.NoEditTriggers)
         t.setSelectionBehavior(QAbstractItemView.SelectRows)
         t.verticalHeader().setVisible(False)
-        t.verticalHeader().setDefaultSectionSize(28)
+        t.verticalHeader().setDefaultSectionSize(36)
+        t.setShowGrid(False)
+        t.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         t.horizontalHeader().setStretchLastSection(True)
         t.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         t.setColumnWidth(0, 130); t.setColumnWidth(1, 200)
@@ -640,7 +669,7 @@ class TabPage(QWidget):
         return added, dups
 
     _EMPTY_CSS = "QLabel { border: 1px dashed palette(mid); padding: 24px; }"
-    _EMPTY_DROP_CSS = "QLabel { border: 2px solid palette(highlight); padding: 24px; }"
+    _EMPTY_DROP_CSS = "QLabel { border: 2px solid palette(link); padding: 24px; }"
 
     def set_drop_active(self, on: bool) -> None:
         """Drag-over feedback on the empty state: a solid accent border and a release hint."""
@@ -652,7 +681,7 @@ class TabPage(QWidget):
         if on:
             head, sub = tr("Release to add the files"), ""
         elif self.tab == "encrypt" and self.cryptMode == "decrypt":
-            head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here, or use Add files.\nYou need the passphrase they were encrypted with.")
+            head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the passphrase they were encrypted with.")
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
 
     def _selection_changed(self) -> None:
@@ -772,7 +801,7 @@ class TabPage(QWidget):
     def set_crypt_mode(self, mode: str) -> None:
         self.cryptMode = mode
         self.modeEncBtn.setChecked(mode == "encrypt"); self.modeDecBtn.setChecked(mode == "decrypt")
-        head, sub = (("Add .age files to decrypt", "Drop files ending in .age here, or use Add files.\n"
+        head, sub = (("Add .age files to decrypt", "Drop files ending in .age here.\n"
                       "You need the passphrase they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
         head, sub = tr(head), tr(sub)
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
@@ -1090,7 +1119,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.clock = time.monotonic   # injectable in tests (elapsed seconds while running)
         self.setWindowTitle("Shiva")
-        self.resize(760, 640); self.setMinimumSize(640, 440)
+        self.resize(960, 640); self.setMinimumSize(720, 440)
         self.setAcceptDrops(True)
         self._thread: QThread | None = None
         self._worker = None
@@ -1105,20 +1134,23 @@ class MainWindow(QMainWindow):
         self._bridge.done.connect(self._probe_done)
 
         # --- top navigation: the three functions
-        self.tabBar = QWidget(); self.tabBar.setStyleSheet(_NAV_CSS)
-        nl = QHBoxLayout(self.tabBar); nl.setContentsMargins(8, 8, 8, 4)
+        self.tabBar = QWidget(); self.tabBar.setObjectName("side"); self.tabBar.setFixedWidth(tokens.SIDEBAR_W)
+        nl = QVBoxLayout(self.tabBar); nl.setContentsMargins(tokens.SPACE[2], tokens.SPACE[4], tokens.SPACE[2], tokens.SPACE[2])
+        nl.setSpacing(tokens.SPACE[1])
+        brand = QLabel("Shiva"); brand.setObjectName("brand"); nl.addWidget(brand)
         self.nav: dict[str, NavButton] = {}
         for t in m.TABS:
             b = NavButton(t); self.nav[t] = b
             nl.addWidget(b)
             b.toggled.connect(lambda on, tab=t: on and self._select(tab))
             b.dropped.connect(lambda paths, tab=t: self.nav_drop(tab, paths))
+        nl.addStretch(1)
         self._build_menu(nl)
         self.stack = QStackedWidget()
         self.pages: dict[str, TabPage] = {}
         for t in m.TABS:
             self.pages[t] = TabPage(t, self); self.stack.addWidget(self.pages[t])
-        root = QWidget(); rl = QVBoxLayout(root); rl.setContentsMargins(0, 0, 0, 0)
+        root = QWidget(); rl = QHBoxLayout(root); rl.setContentsMargins(0, 0, 0, 0); rl.setSpacing(0)
         rl.addWidget(self.tabBar); rl.addWidget(self.stack, 1)
         self.setCentralWidget(root)
         self.statusLine = QLabel(tr("Ready")); self.statusLine.setAccessibleName(tr("Status"))
@@ -1140,10 +1172,11 @@ class MainWindow(QMainWindow):
     LANGUAGES = (("system", "System default"), ("en", "English"), ("zh_TW", "繁體中文"))
 
     def _build_menu(self, layout) -> None:
-        self.menuBtn = QToolButton(); self.menuBtn.setText("…")
-        self.menuBtn.setAccessibleName(tr("More")); self.menuBtn.setToolTip(tr("More"))
+        self.menuBtn = QToolButton(); self.menuBtn.setObjectName("menu"); self.menuBtn.setText(tr("More"))
+        self.menuBtn.setAccessibleName(tr("More")); self.menuBtn.setToolTip(tr("Language, help and about"))
         self.menuBtn.setPopupMode(QToolButton.InstantPopup)
-        self.menuBtn.setMinimumSize(tokens.TARGET["menu_btn"], tokens.TARGET["menu_btn"])
+        self.menuBtn.setFixedHeight(tokens.TARGET["nav_h"])
+        self.menuBtn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.menuBtn.setFocusPolicy(Qt.TabFocus)
         self.appMenu = QMenu(self.menuBtn)
         lang = self.appMenu.addMenu(tr("Language"))
@@ -1542,8 +1575,81 @@ class MainWindow(QMainWindow):
 _KEEP: list = []     # windows made by a language switch stay referenced until the program ends
 
 
+class _TokenStyle(QProxyStyle):
+    """Fusion with check boxes and radio buttons drawn in the token colours (border, accent fill, check mark)."""
+
+    def __init__(self, theme: str):
+        super().__init__("Fusion")
+        self._c = tokens.COLORS[theme]
+
+    def drawPrimitive(self, element, option, painter, widget=None):
+        if element not in (QStyle.PE_IndicatorCheckBox, QStyle.PE_IndicatorRadioButton):
+            return super().drawPrimitive(element, option, painter, widget)
+        c = self._c
+        on = bool(option.state & QStyle.State_On)
+        enabled = bool(option.state & QStyle.State_Enabled)
+        radio = element == QStyle.PE_IndicatorRadioButton
+        r = QRectF(option.rect).adjusted(1.5, 1.5, -1.5, -1.5)
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        border = QColor(c["accent"] if on and enabled else c["border"] if enabled else c["line"])
+        painter.setPen(QPen(border, 1.5))
+        painter.setBrush(QColor(c["accent"] if on and enabled else c["surface"] if enabled else c["surface-strong"]))
+        if radio:
+            painter.drawEllipse(r)
+        else:
+            painter.drawRoundedRect(r, 2.5, 2.5)
+        if on:
+            mark = QColor(c["on-accent"] if enabled else c["disabled-text"])
+            if radio:
+                painter.setPen(Qt.NoPen); painter.setBrush(mark)
+                painter.drawEllipse(r.center(), r.width() / 6, r.width() / 6)
+            else:
+                painter.setPen(QPen(mark, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                x, y, w, h = r.x(), r.y(), r.width(), r.height()
+                painter.drawLine(QPointF(x + w * .25, y + h * .52), QPointF(x + w * .43, y + h * .70))
+                painter.drawLine(QPointF(x + w * .43, y + h * .70), QPointF(x + w * .76, y + h * .30))
+        painter.restore()
+
+
+def high_contrast_active() -> bool:
+    """True when Windows High Contrast is on (the user's own colours must then be left alone)."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        class HIGHCONTRASTW(ctypes.Structure):
+            _fields_ = [("cbSize", ctypes.c_uint), ("dwFlags", ctypes.c_uint), ("lpszDefaultScheme", ctypes.c_void_p)]
+        hc = HIGHCONTRASTW(ctypes.sizeof(HIGHCONTRASTW), 0, None)
+        ok = ctypes.windll.user32.SystemParametersInfoW(0x0042, hc.cbSize, ctypes.byref(hc), 0)   # SPI_GETHIGHCONTRAST
+        return bool(ok and hc.dwFlags & 1)                                                       # HCF_HIGHCONTRASTON
+    except Exception:
+        return False
+
+
+def apply_theme(app: QApplication) -> str:
+    """Fusion style, token palette and token style sheet for the system's light or dark theme. Returns the theme,
+    or "contrast" (nothing applied: the system colours stay) when Windows High Contrast is on."""
+    if high_contrast_active():
+        return "contrast"
+    theme = tokens.theme_from_palette(app.palette())
+    app.setStyle(_TokenStyle(theme))
+    pal = QPalette(app.palette())
+    for role, hex_color in tokens.palette_roles(theme).items():
+        pal.setColor(getattr(QPalette.ColorRole, role), QColor(hex_color))
+    off = QColor(tokens.COLORS[theme]["disabled-text"])
+    for role in (QPalette.Text, QPalette.ButtonText, QPalette.WindowText):
+        pal.setColor(QPalette.Disabled, role, off)
+    app.setPalette(pal)
+    app.setStyleSheet(tokens.stylesheet(theme))
+    font = app.font(); font.setFamilies(["Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI"]); app.setFont(font)
+    return theme
+
+
 def main() -> int:
     app = QApplication(sys.argv)
+    apply_theme(app)
     from . import i18n
     saved = settings.load().get("language", "system")
     # SHIVA_LANG=en|zh_TW overrides the saved choice, which overrides the OS language; English when no catalog is found
