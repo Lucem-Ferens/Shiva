@@ -16,9 +16,12 @@ from typing import Iterable
 
 from . import agecli, output, pipeline, storage
 from .metadata import CleanOutcome, Unsupported, runner
-from .metadata.jpeg import REENCODE_CHANGES as JPEG_CHANGES
+from .metadata.jpeg import REENCODE_CHANGES
+from .metadata.webp import REENCODED as WEBP_REENCODED
 from .metadata.zipclean import OMITTED
 from .shred import ShredReport, _check_file
+
+JPEG_CHANGES = REENCODE_CHANGES | {WEBP_REENCODED}     # what re-encoding reports; a confirmation for a file names them all
 
 
 @dataclass

@@ -478,7 +478,7 @@ def _clean_blob(kind: str, name: str, data: bytes, policy: str, budget: Budget, 
             return gif.clean_gif(data)
         if kind == "webp":
             from . import webp
-            return webp.clean_webp(data)
+            return webp.clean_webp(data) if JPEG_SETTINGS.get()[0] == "lossless" else webp.reencode_webp(data)
         if kind in AUDIO_KINDS:
             from . import audio
             return audio.clean_audio(data, kind)
@@ -537,7 +537,10 @@ def check_blob(name: str, original: bytes, cleaned: bytes, policy: str, ob: Budg
             gif.check_equivalent_gif(original, cleaned)
         elif kind == "webp":
             from . import webp
-            webp.check_equivalent_webp(original, cleaned)
+            if JPEG_SETTINGS.get()[0] == "lossless":
+                webp.check_equivalent_webp(original, cleaned)
+            else:
+                webp.check_reencoded_webp(original, cleaned)
         elif kind in AUDIO_KINDS:
             from . import audio
             audio.check_equivalent_audio(original, cleaned, kind)

@@ -57,8 +57,13 @@ def _clean_and_check(fmt: str, data: bytes, options: dict) -> CleanOutcome:
         gif.check_equivalent_gif(data, out.data)
     elif fmt == "webp":
         from . import webp
-        out = webp.clean_webp(data, keep_icc=bool(options.get("keep_icc")))
-        webp.check_equivalent_webp(data, out.data)
+        keep_icc = bool(options.get("keep_icc"))
+        if options.get("jpeg_mode", "reencode") == "lossless":
+            out = webp.clean_webp(data, keep_icc=keep_icc)
+            webp.check_equivalent_webp(data, out.data)
+        else:
+            out = webp.reencode_webp(data, keep_icc=keep_icc)
+            webp.check_reencoded_webp(data, out.data, keep_icc=keep_icc)
     elif fmt in ("mp3", "flac", "ogg", "opus"):
         from . import audio
         out = audio.clean_audio(data, fmt)

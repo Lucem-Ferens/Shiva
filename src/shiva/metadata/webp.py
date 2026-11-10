@@ -233,3 +233,164 @@ def check_equivalent_webp(original: bytes, cleaned: bytes) -> None:
             raise CleanError("Cleaned WebP pixels differ from the original")
         if fa[3] != fb[3]:
             raise CleanError("Cleaned WebP frame duration differs from the original")
+
+
+# Re-encode mode: decode and save a fresh WebP so that nothing of the original bitstream, including bytes hidden inside
+# an image chunk, survives. Lossless sources are rebuilt exactly; lossy sources are saved again at a fixed quality.
+REENCODE_QUALITY = 90
+REENCODED = "WebP re-encoded (lossy)"
+_MIN_PSNR_DB = 22.0            # random noise, the hardest input, re-encodes at >= 27 dB; an inverted or channel-swapped result is far lower
+_MAX_REENCODE_PIXELS = 40_000_000     # encoding is slow (about 50 s for 48 Mpx lossy) and holds the frames twice; larger images use the other mode
+_MAX_SIDE = 16383               # the WebP format limit
+_HIDDEN = "hidden bytes in the image data"
+
+
+def _clear_hidden_colour(img):
+    """Colour under fully transparent pixels is invisible but kept by the encoder (exact mode); set it to black."""
+    from PIL import Image
+    if img.mode != "RGBA":
+        return img
+    r, g, b, a = img.split()
+    transparent = a.point(lambda v: 255 if v == 0 else 0)
+    black = Image.new("L", img.size, 0)
+    return Image.merge("RGBA", [Image.composite(black, c, transparent) for c in (r, g, b)] + [a])
+
+
+def _worst_tile_psnr(a, b, tile: int = 64) -> float:
+    """Lowest worst-channel PSNR over tiles, so local damage is not averaged away. Edge strips under half a tile are skipped."""
+    from .jpeg import _psnr_worst_channel
+    worst = 99.0
+    for y in range(0, a.size[1], tile):
+        for x in range(0, a.size[0], tile):
+            box = (x, y, min(x + tile, a.size[0]), min(y + tile, a.size[1]))
+            if (box[2] - x) * (box[3] - y) < tile * tile // 2 and (a.size[0] >= tile and a.size[1] >= tile):
+                continue
+            worst = min(worst, _psnr_worst_channel(a.crop(box), b.crop(box)))
+    return worst
+
+
+def _frame_kinds(data: bytes) -> list[str]:
+    """'lossy' or 'lossless' for every frame (one entry for a still image). The chunk sequence has been validated."""
+    chunks, _ = _walk(data)
+    kinds = [c[0] for c in chunks]
+    if kinds and kinds[0] != b"VP8X":
+        return ["lossless" if kinds == [b"VP8L"] else "lossy"]
+    anim = [c for c in chunks if c[0] == b"ANMF"]
+    if not anim:
+        return ["lossless" if any(k == b"VP8L" for k in kinds) else "lossy"]
+    return ["lossless" if any(c[0] == b"VP8L" for c in _chunks(data, ps + 16, pe, "ANMF")) else "lossy"
+            for _cc, ps, pe in anim]
+
+
+def reencode_webp(data: bytes, *, keep_icc: bool = False) -> CleanOutcome:
+    from PIL import Image
+    data = bytes(data)
+    out = clean_webp(data, keep_icc=keep_icc)       # structure checks and the list of removed metadata
+    kinds = _frame_kinds(out.data)      # of the cleaned bytes, as the check reads them
+    if len(set(kinds)) != 1:
+        raise CleanError("WebP animation mixes lossy and lossless frames; it cannot be re-encoded")
+    lossless = kinds[0] == "lossless"
+    frames, loop, durations, _background, icc = _decode_images(data, keep_icc)
+    size = frames[0].size
+    if size[0] > _MAX_SIDE or size[1] > _MAX_SIDE or size[0] * size[1] * len(frames) > _MAX_REENCODE_PIXELS:
+        raise CleanError("WebP is too large to re-encode")
+    frames = [_clear_hidden_colour(f) for f in frames]
+    kw: dict = {"exact": True}
+    if lossless:
+        kw.update(lossless=True, method=4)
+    else:
+        kw.update(lossless=False, quality=REENCODE_QUALITY)
+    if icc:
+        kw["icc_profile"] = icc
+    buf = io.BytesIO()
+    try:
+        if len(frames) > 1:
+            kw.update(save_all=True, append_images=frames[1:], duration=durations, loop=loop or 0)
+        frames[0].save(buf, "WEBP", **kw)
+    except Exception as exc:
+        raise CleanError("WebP could not be re-encoded: %s" % exc) from exc
+    out.data = buf.getvalue()
+    _note(out.removed, _HIDDEN)
+    if not lossless:
+        _note(out.content_changed, REENCODED)
+    return out
+
+
+def _decode_images(data: bytes, keep_icc: bool = False):
+    """Fresh full-canvas copies of every frame (no source info is carried), loop, durations, background, ICC."""
+    from PIL import Image
+    old = Image.MAX_IMAGE_PIXELS
+    Image.MAX_IMAGE_PIXELS = _MAX_PIXELS
+    frames, durations = [], []
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(data)) as im:
+                count = getattr(im, "n_frames", 1)
+                if count > _MAX_FRAMES:
+                    raise CleanError("WebP has too many frames")
+                if im.size[0] * im.size[1] * count > _MAX_REENCODE_PIXELS:
+                    raise CleanError("WebP is too large to re-encode")
+                loop, background = im.info.get("loop"), im.info.get("background")
+                icc = im.info.get("icc_profile") if keep_icc else None
+                for i in range(count):
+                    im.seek(i)
+                    im.load()
+                    frames.append(Image.frombytes(im.mode, im.size, im.tobytes()))
+                    durations.append(im.info.get("duration") or 0)
+    except CleanError:
+        raise
+    except Exception as exc:
+        raise CleanError("WebP could not be decoded: %s" % exc) from exc
+    finally:
+        Image.MAX_IMAGE_PIXELS = old
+    return frames, loop, durations, background, icc
+
+
+def check_reencoded_webp(original: bytes, cleaned: bytes, *, keep_icc: bool = False) -> None:
+    """Re-encode mode: no metadata chunks, same frames, durations and loop; lossless sources identical pixel for pixel,
+    lossy sources similar (worst colour channel at least 22 dB, alpha identical)."""
+    original, cleaned = bytes(original), bytes(cleaned)
+    chunks, end = _walk(cleaned)
+    if end != len(cleaned):
+        raise CleanError("Re-encoded WebP still has data after the RIFF end")
+    for cc, ps, pe in chunks:
+        if cc == b"ICCP" and not keep_icc:
+            raise CleanError("Re-encoded WebP still has a colour profile")
+        if cc not in _KEEP_TOP and cc != b"ICCP":
+            raise CleanError("Re-encoded WebP still has a non-whitelisted chunk (%r)" % cc)
+        if cc == b"ANMF":
+            for icc2, _a, _b in _chunks(cleaned, ps + 16, pe, "ANMF"):
+                if icc2 not in _KEEP_INNER:
+                    raise CleanError("Re-encoded WebP has a non-whitelisted chunk inside a frame")
+        if cc == b"VP8X" and cleaned[ps] & (_EXIF_BIT | _XMP_BIT):
+            raise CleanError("Re-encoded WebP still flags Exif/XMP")
+    _validate(cleaned, chunks)
+    kinds = set(_frame_kinds(clean_webp(original, keep_icc=keep_icc).data))     # read as the encoder read them
+    if kinds != set(_frame_kinds(cleaned)) or len(kinds) != 1:
+        raise CleanError("Re-encoded WebP changed between lossy and lossless")
+    lossless = kinds == {"lossless"}
+    a, loop_a, dur_a, _b1, _i1 = _decode_images(original)
+    b, loop_b, dur_b, _b2, _i2 = _decode_images(cleaned)
+    if len(a) != len(b) or (loop_a or 0) != (loop_b or 0) or dur_a != dur_b:
+        raise CleanError("Re-encoded WebP differs in frames, durations or loop count")
+    for fa, fb in zip(a, b):
+        fa, fb = _drop_opaque_alpha(fa), _drop_opaque_alpha(fb)
+        fa = _clear_hidden_colour(fa)            # the encoder cleared it, so the source is compared the same way
+        if fa.mode != fb.mode or fa.size != fb.size:
+            raise CleanError("Re-encoded WebP differs in mode or size")
+        if lossless:
+            if fa.tobytes() != fb.tobytes():
+                raise CleanError("Re-encoded WebP pixels differ from the original")
+            continue
+        if "A" in fa.getbands() and fa.getchannel("A").tobytes() != fb.getchannel("A").tobytes():
+            raise CleanError("Re-encoded WebP transparency differs from the original")
+        if _worst_tile_psnr(fa.convert("RGB"), fb.convert("RGB")) < _MIN_PSNR_DB:
+            raise CleanError("Re-encoded WebP differs too much from the original")
+
+
+def _drop_opaque_alpha(img):
+    """A file that sets the alpha flag but is fully opaque decodes as RGBA; the encoder stores it as RGB."""
+    if img.mode == "RGBA" and img.getchannel("A").getextrema() == (255, 255):
+        return img.convert("RGB")
+    return img

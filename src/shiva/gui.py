@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QDial
 
 from . import output, settings, shred, steps, storage, tokens
 from .metadata import CleanError, runner
-from .metadata.jpeg import REENCODE_CHANGES as JPEG_CHANGES
+from .clean_pipeline import JPEG_CHANGES
 from . import ui_model as m
 from .i18n import dyn, tr, trf
 
@@ -437,7 +437,7 @@ class TabPage(QWidget):
         self.moreOptionsCheck = QCheckBox(tr("Show more options"))
         self.keepOrientCheck = QCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
         self.keepIccCheck = QCheckBox(tr("Keep the colour profile"))
-        self.keepQualityCheck = QCheckBox(tr("JPEG: keep the image data as it is (no re-encoding)"))
+        self.keepQualityCheck = QCheckBox(tr("JPEG and WebP: keep the image data as it is (no re-encoding)"))
         self.chroma420Check = QCheckBox(tr("JPEG: reduce colour detail (smaller files)"))
         self.keepQualityHint = QLabel("⚠ " + tr("Warning: hidden bytes and compression tables in the image data stay."))
         self.keepQualityHint.setObjectName("keepQualityHint")

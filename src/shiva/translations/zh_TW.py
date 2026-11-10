@@ -77,9 +77,11 @@ _many({
     "Keep the colour profile": "保留色彩描述檔",
     "padding, compression tables and hidden bytes in the image data": "影像資料中的填充、壓縮表與隱藏的位元組",
     "JPEG re-encoded (lossy)": "JPEG 已重新編碼（有損）",
+    "WebP re-encoded (lossy)": "WebP 已重新編碼（有損）",
+    "hidden bytes in the image data": "影像資料內的隱藏位元組",
     "image rotated to match its Exif orientation": "圖片已依 Exif 旋轉方向轉正",
     "Changed: %T1": "已變更：%1",
-    "JPEG: keep the image data as it is (no re-encoding)": "JPEG：保留影像資料原樣（不重新編碼）",
+    "JPEG and WebP: keep the image data as it is (no re-encoding)": "JPEG 與 WebP：保留影像資料原樣（不重新編碼）",
     "JPEG: reduce colour detail (smaller files)": "JPEG：降低色彩細節（檔案較小）",
     "Warning: hidden bytes and compression tables in the image data stay.": "警告：影像資料中隱藏的位元組與壓縮表會保留。",
     "Learn more": "了解更多",
@@ -266,8 +268,8 @@ _many({
         "每個清理後的副本存檔並與原始檔核對之後，會先覆寫再刪除原始檔。",
     "If cleaning changes content in another way, that original is kept and the result says so.":
         "如果清理以其他方式改變了內容，該原始檔會被保留，結果中也會說明。",
-    "JPEG images, including those inside documents and archives, are saved again with a small loss of quality. Shiva keeps no copy of the original images.":
-        "JPEG 圖片（包含文件與壓縮檔內的）會重新存檔，畫質會略有損失。Shiva 不會保留原始圖片的副本。",
+    "JPEG and lossy WebP images, including those inside documents and archives, are saved again with a small loss of quality. Shiva keeps no copy of the original images.":
+        "JPEG 與有損 WebP 圖片（包含文件與壓縮檔內的）會重新存檔，畫質會略有損失。Shiva 不會保留原始圖片的副本。",
     "Archives with parts left out lose those parts.": "有排除部分內容的壓縮檔會失去那些部分。",
     "Their originals are kept.": "會保留它們的原始檔。",
 })

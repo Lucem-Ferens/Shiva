@@ -74,6 +74,21 @@ def test_reencoded_jpeg_blocks_shred_unless_confirmed(tmp_path):
 
 
 @needs_age
+def test_lossy_webp_blocks_shred_unless_confirmed_but_lossless_does_not(tmp_path):
+    from PIL import Image
+    lossy, lossless = tmp_path / "a.webp", tmp_path / "b.webp"
+    Image.new("RGB", (16, 16), "red").save(lossy, "WEBP", quality=80)
+    Image.new("RGB", (16, 16), "red").save(lossless, "WEBP", lossless=True)
+    res = clean_encrypt_verify_shred(lossy, PW, shred_original=True)
+    assert lossy.exists() and res.shred_report is None
+    res.output.unlink()
+    res2 = clean_encrypt_verify_shred(lossy, PW, shred_original=True, confirmed_changes=["WebP re-encoded (lossy)"])
+    assert not lossy.exists() and res2.shred_report is not None
+    res3 = clean_encrypt_verify_shred(lossless, PW, shred_original=True)    # rebuilt exactly: nothing to confirm
+    assert not lossless.exists() and res3.shred_report is not None
+
+
+@needs_age
 def test_member_jpeg_change_is_covered_by_the_jpeg_confirmation(tmp_path):
     import io
     import zipfile
