@@ -412,6 +412,7 @@ class TabPage(QWidget):
         ev.addWidget(self.emptyState, 1)
         self.emptyAddBtn = QPushButton(tr("Add files...")); self.emptyAddBtn.setAccessibleName(tr("Add files"))
         self.emptyAddBtn.setProperty("primary", True)
+        self.emptyAddBtn.setFocusPolicy(Qt.ClickFocus)     # the toolbar button does the same and is the keyboard stop
         ev.addWidget(self.emptyAddBtn, 0, Qt.AlignHCenter)
         self.fileTable = _Table(0, 5)
         self.fileTable.setHorizontalHeaderLabels([tr(x) for x in ("Status", "Name", "Type", "Size", "Note")])
@@ -920,6 +921,7 @@ class TabPage(QWidget):
         self.primaryBtn.setText(dyn(m.primary_label(self.tab, ticked, infos)))
         self.primaryBtn.setEnabled(reason is None)
         self.reasonLabel.setText(dyn(reason or "")); self.reasonLabel.setVisible(bool(reason))
+        self.reasonLabel.setAccessibleDescription(dyn(reason or ""))      # the accessible name is a fixed label: the reason goes here
         self.primaryBtn.setAccessibleName(self.primaryBtn.text().replace("...", ""))
         self.primaryBtn.setAccessibleDescription(reason or ps.match_text if reason is not None else "")
         self.clearBtn.setEnabled(bool(self.rows))
