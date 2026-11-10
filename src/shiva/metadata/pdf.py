@@ -1222,6 +1222,13 @@ def clean_pdf(data: bytes, categories: set[str]) -> CleanOutcome:
                     else:
                         del page.obj["/Annots"]
 
+        if "embedded_files" in categories:
+            # an attachment annotation reachable only from the tag structure is on no page: empty it too
+            for d in nodes:
+                if d.get("/Subtype") in ("/FileAttachment", "/RichMedia"):
+                    for k in list(d.keys()):
+                        del d[k]
+
         if categories & _CONTENT_CATS:
             do_text, do_layers = "hidden_text" in categories, "hidden_layers" in categories
             do_struct = "structure_text" in categories

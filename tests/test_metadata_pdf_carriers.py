@@ -113,6 +113,21 @@ def test_attachment_does_not_survive_through_popup_or_struct_reference(popup, ob
     assert not _graph_has(out, b"ATTMARK")
 
 
+def test_attachment_reachable_only_from_the_tag_structure_is_removed():
+    pdf = _new()
+    page = pdf.pages[0]
+    att = pdf.make_indirect(Dictionary(Type=Name.Annot, Subtype=Name.FileAttachment, Rect=[0, 0, 10, 10],
+                                       FS=_filespec(pdf, "a.txt", b"ATTMARK")))
+    elem = pdf.make_indirect(Dictionary(Type=Name.StructElem, S=Name.Figure,
+                                        K=Dictionary(Type=Name.OBJR, Obj=att, Pg=page.obj)))
+    pdf.Root.StructTreeRoot = pdf.make_indirect(Dictionary(Type=Name.StructTreeRoot, K=elem))
+    elem.P = pdf.Root.StructTreeRoot
+    data = _save(pdf)
+    assert _graph_has(data, b"ATTMARK")
+    out = _clean_checked(data, {"embedded_files"})
+    assert not _graph_has(out, b"ATTMARK")
+
+
 def _rich_media_pdf() -> bytes:
     pdf = _new()
     fs = _filespec(pdf, "r.txt", b"RICHMARK")
