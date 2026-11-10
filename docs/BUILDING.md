@@ -6,7 +6,7 @@ Requires Windows and Python 3.12 or newer.
 
 ```
 pip install -e .[dev]                  # or install the dependencies listed in pyproject.toml
-python tools/fetch_third_party.py      # download the pinned age and jpegtran binaries and verify their SHA256 (needs 7-Zip)
+python tools/fetch_third_party.py      # download the pinned age binaries and verify their SHA256
 python tools/compile_translations.py   # compile the Traditional Chinese catalogue
 set PYTHONPATH=src && python -m shiva
 ```

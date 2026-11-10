@@ -30,8 +30,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AGE_DIR = ROOT / "third_party" / "bin" / "age"
-JPEGTRAN_DIR = ROOT / "third_party" / "bin" / "jpegtran"
-JPEGTRAN_FILES = ("jpegtran.exe", "jpeg62.dll", "LICENSE.md", "README.ijg")
 LOCK = ROOT / "requirements" / "lock.txt"
 MIN_PYTHON = (3, 13, 0)         # 3.12 gets source-only security releases; the last Windows installer is 3.12.10
 LICENSE_FILES = [  # (source, name inside the portable folder)
@@ -129,15 +127,12 @@ def check_environment(project_dependencies: list[str]) -> None:
             + "\nInstall with: python -m pip install --require-hashes -r requirements/lock.txt")
 
 
-def write_sbom(path: Path, version: str, packages: dict[str, str], age_version: str, jpeg_version: str,
-               commit: str) -> None:
-    """CycloneDX 1.5 list of the Python packages and the bundled age and libjpeg-turbo releases. It does not list CPython, OpenSSL, libffi,
+def write_sbom(path: Path, version: str, packages: dict[str, str], age_version: str, commit: str) -> None:
+    """CycloneDX 1.5 list of the Python packages and the bundled age release. It does not list CPython, OpenSSL, libffi,
     the C runtime or the libraries embedded in wheels (Qt, qpdf, PDFium); THIRD_PARTY_NOTICES.md names those."""
     components = [{"type": "library", "name": n, "version": v, "purl": f"pkg:pypi/{n}@{v}"} for n, v in sorted(packages.items())]
     components.append({"type": "application", "name": "age", "version": age_version,
                        "purl": f"pkg:github/FiloSottile/age@v{age_version.lstrip('v')}"})
-    components.append({"type": "application", "name": "libjpeg-turbo", "version": jpeg_version,
-                       "purl": f"pkg:github/libjpeg-turbo/libjpeg-turbo@{jpeg_version}"})
     doc = {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1,
            "metadata": {"timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "component": {"type": "application", "name": "Shiva", "version": version,
@@ -150,8 +145,6 @@ def compile_app(build_dir: Path) -> Path:
     exes = sorted(AGE_DIR.glob("*.exe"))
     if not (AGE_DIR / "age.exe").is_file() or not (AGE_DIR / "age-plugin-batchpass.exe").is_file():
         die("age binaries missing; run tools/fetch_third_party.py first")
-    if not all((JPEGTRAN_DIR / n).is_file() for n in JPEGTRAN_FILES):
-        die("jpegtran files missing; run tools/fetch_third_party.py first")
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     numeric = ".".join((version.split(".") + ["0"] * 4)[:4])      # Windows file versions are four numbers
     cmd = [sys.executable, "-m", "nuitka", "--standalone", "--assume-yes-for-downloads",
@@ -162,9 +155,7 @@ def compile_app(build_dir: Path) -> Path:
            "--output-filename=Shiva.exe", f"--output-dir={build_dir}"]
     pdfium_files()   # Nuitka's dll-files plugin and package-data support copy pdfium.dll and version.json; checked after the build
     cmd += [f"--include-data-files={e}=age/{e.name}" for e in exes]
-    cmd += [f"--include-data-files={AGE_DIR / 'LICENSE'}=age/LICENSE"]
-    cmd += [f"--include-data-files={JPEGTRAN_DIR / n}=jpegtran/{n}" for n in JPEGTRAN_FILES]
-    cmd += [str(ROOT / "src" / "shiva_launcher.py")]
+    cmd += [f"--include-data-files={AGE_DIR / 'LICENSE'}=age/LICENSE", str(ROOT / "src" / "shiva_launcher.py")]
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     if subprocess.run(cmd, env=env, cwd=ROOT).returncode != 0:
         die("nuitka failed")
@@ -220,15 +211,6 @@ def main() -> int:
     for e in AGE_DIR.glob("*.exe"):  # the silent-skip pitfall: assert instead of trusting
         if not (out / "age" / e.name).is_file():
             die(f"age/{e.name} missing from the build")
-    for n in JPEGTRAN_FILES:
-        if not (out / "jpegtran" / n).is_file():
-            die(f"jpegtran/{n} missing from the build")
-    # jpegtran.exe imports VCRUNTIME140.dll and Windows looks in the exe's own folder, not in the app's root; the
-    # self-test cannot catch a missing copy because this machine has the DLL in System32
-    vcrt = out / "vcruntime140.dll"
-    if not vcrt.is_file():
-        die("vcruntime140.dll not found in the build root; jpegtran needs a copy next to it")
-    shutil.copyfile(vcrt, out / "jpegtran" / "vcruntime140.dll")
     for _src, rel in pdfium_files():
         if not (out / rel).is_file():
             die(f"{rel} missing from the build")
@@ -274,8 +256,7 @@ def main() -> int:
     info = [f"Shiva {version}", f"commit: {source_commit()}", f"built (UTC): {datetime.now(timezone.utc):%Y-%m-%d %H:%M}",
             f"python: {sys.version.split()[0]}" + ("  (older than the recommended minimum)" if sys.version_info < MIN_PYTHON else ""),
             f"lock: requirements/lock.txt sha256 {sha256(LOCK)[:16]}...", f"nuitka: {md.version('nuitka')}",
-            f"age: {manifest['age']['version']}", f"libjpeg-turbo: {manifest['libjpeg-turbo']['version']}",
-            "", "Python packages (direct and pulled in):",
+            f"age: {manifest['age']['version']}", "", "Python packages (direct and pulled in):",
             *[f"  {k}=={v}" for k, v in sorted(dependency_versions(
                 tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"]).items())],
             "", "Reproducibility: same source + the versions above + pinned age (third_party/MANIFEST.toml)",
@@ -293,8 +274,7 @@ def main() -> int:
     digest = sha256(zip_path)
     (dist / "SHA256SUMS.txt").write_text(f"{digest} *{zip_path.name}\n", encoding="utf-8", newline="\n")
     packages = dependency_versions(project_deps)
-    write_sbom(dist / f"{name}-sbom.cdx.json", version, packages, manifest["age"]["version"],
-               manifest["libjpeg-turbo"]["version"], source_commit())
+    write_sbom(dist / f"{name}-sbom.cdx.json", version, packages, manifest["age"]["version"], source_commit())
     print(f"OK {zip_path.name}  {zip_path.stat().st_size / 1e6:.1f} MB  sha256={digest}")
     return 0
 
