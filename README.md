@@ -63,13 +63,15 @@ read in its source, November 2026):
 
 | Format | MAT2 | Shiva |
 |---|---|---|
-| JPEG | Decodes and saves the image again at the encoder's default quality and applies the Exif rotation to the pixels. Its lightweight mode only removes tags with ExifTool. | The default is the same idea: decode, apply the rotation, save again at quality 90, so unseen edge blocks, compression tables and hidden bytes in the image data are gone. Colour detail follows the original unless you tick "smaller files". The option "keep the image data as it is" leaves the pixels untouched but keeps those unseen parts. |
+| JPEG | Decodes and saves the image again at the encoder's default quality and applies the Exif rotation to the pixels. Its lightweight mode only removes tags with ExifTool. | The default is the same idea: decode, apply the rotation, re-encode at quality 90 (lossy, so the pixels are not identical to the original). Unseen edge blocks, compression tables and bytes inserted between or after the coded image data are gone; data hidden in the pixels is not reliably removed. Full colour detail is kept if the original had it (4:4:4 or CMYK), otherwise colour is stored at half detail. Under "Show more options", "JPEG: reduce colour detail" always stores less, and "JPEG: keep the image data as it is (no re-encoding)" leaves the pixels untouched but also keeps those unseen parts. |
 | PNG, GIF | PNG is decoded and written again; GIF is cleaned with ExifTool only. | Metadata chunks and blocks are removed and the image data is copied unchanged. |
 | WEBP | Decoded and saved again. | Metadata chunks are removed and the image data is copied unchanged, so bytes hidden inside the image chunk are not detected. |
 | PDF | Draws every page as a picture by default. | You choose what to remove and the text stays searchable; "flatten pages to images" is an option. |
 | Video, TIFF, HEIC, SVG, WAV | Supported. | Not supported yet. |
 
-Neither JPEG mode reliably destroys data hidden inside the compressed image itself (steganography).
+As the JPEG row says, neither JPEG mode reliably destroys data hidden inside the picture itself (steganography). JPEG
+originals are always kept when their copy was re-encoded, even if you ask to shred the originals after encryption; the
+same applies to documents and archives that contain a JPEG, unless you tick "keep the image data as it is".
 
 ### Encrypt and decrypt
 
