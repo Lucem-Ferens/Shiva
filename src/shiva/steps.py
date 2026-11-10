@@ -154,6 +154,7 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResu
                          + (list(r.shred_report.caveats) if r.shred_report else []),
                          kept=_kept(r.outcome) if r.outcome else [],
                          removed=_labels(r.outcome.removed) if r.outcome else [],
+                         changed=_labels(r.outcome.content_changed) if r.outcome else [],
                          shred_attempted=r.shred_report is not None,
                          original_untouched=bool(r.shred_report and r.shred_report.warning and r.shred_report.untouched))
     # clean only; the original is never touched
@@ -164,7 +165,8 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResu
     msg = f"Cleaned -> {res.output.name}; " + _describe(res.outcome)
     return JobResult(p, True, msg, created=res.output, original_removed=False,
                      warnings=list(res.outcome.warnings), kept=_kept(res.outcome),
-                     removed=_labels(res.outcome.removed), shred_attempted=False,
+                     removed=_labels(res.outcome.removed), changed=_labels(res.outcome.content_changed),
+                     shred_attempted=False,
                      renamed=res.output.name != runner.clean_name(p).name)
 
 

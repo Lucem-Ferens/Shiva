@@ -26,6 +26,7 @@ class JobResult:
     warnings: list[str] = field(default_factory=list)   # caveats the user should see (SSD, cloud, NOT cleaned ...)
     kept: list[str] = field(default_factory=list)       # metadata categories found but kept
     removed: list[str] = field(default_factory=list)    # metadata categories removed
+    changed: list[str] = field(default_factory=list)    # content the cleaning itself changed (re-encoded JPEG, ...)
     shred_attempted: bool = False
     partially_shredded: bool = False                    # shred failed midway: some content may already be gone
     error_kind: str | None = None                       # "unsupported" | "cancelled" | "partial_shred" | "error": picks the row status

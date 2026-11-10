@@ -148,7 +148,7 @@ def test_jpeg_options_follow_each_other(w, tmp_path):
     p.keepQualityCheck.setChecked(True)   # keeping the image data: no re-encode, so the colour choice goes away
     assert p.chroma420Check.isHidden() and not p.chroma420Check.isChecked()
     assert not p.keepOrientCheck.isHidden() and not p.keepQualityHint.isHidden()
-    assert p.keepQualityHint.text().startswith("⚠ Warning:") and p.keepQualityHint.toolTip()
+    assert p.keepQualityHint.text().startswith("⚠ Warning:") and p.keepQualityMore.toolTip() and not p.keepQualityMore.isHidden()
     o = p.build_options(); assert o.jpeg_mode == "lossless" and o.jpeg_subsampling == "source"
 
 
@@ -270,7 +270,7 @@ def test_unclean_option_has_an_inline_warning_and_no_confirmation_window(w, tmp_
     w.add_paths([f]); c.encryptCleanedCheck.setChecked(True); w.wait_for_probes()
     assert c.uncleanHint.isHidden()
     c.allowUncleanCheck.setChecked(True)
-    assert not c.uncleanHint.isHidden() and c.uncleanHint.text().startswith("Warning:")
+    assert not c.uncleanHint.isHidden() and c.uncleanHint.text().startswith("⚠ Warning:")
     assert "metadata" in c.uncleanHint.text() and "not deleted" in c.uncleanHint.text()
     assert not hasattr(w, "confirm_unclean") and not hasattr(w, "confirm_keep_parts")   # only irreversible actions confirm
     c.allowUncleanCheck.setChecked(False)
@@ -283,7 +283,7 @@ def test_keep_parts_option_has_an_inline_warning(w, tmp_path):
     c.moreOptionsCheck.setChecked(True)
     assert c.keepPartsHint.isHidden()
     c.keepPartsCheck.setChecked(True)
-    assert not c.keepPartsHint.isHidden() and c.keepPartsHint.text().startswith("Warning:")
+    assert not c.keepPartsHint.isHidden() and c.keepPartsHint.text().startswith("⚠ Warning:")
     c.keepPartsCheck.setChecked(False)
     assert c.keepPartsHint.isHidden()
 
@@ -581,7 +581,7 @@ def test_office_dialog_defaults_disabled_rows_and_inline_warning(w):
     d.okBtn.click(); assert d.result() == 1
     d = PdfDialog(w, "r.docx", _office_cats(), kind="office")
     [cb for k, cb in d.boxes if k == "comments"][0].setChecked(True)
-    assert not d.warnLabel.isHidden() and d.warnLabel.text().startswith("Warning:") and "comments" in d.warnLabel.text()
+    assert not d.warnLabel.isHidden() and d.warnLabel.text().startswith("⚠ Warning:") and "comments" in d.warnLabel.text()
     d.okBtn.click()                                  # no second window: the warning above is the notice
     assert d.result() == 1 and d.chosen() == ["props", "comments"]
 

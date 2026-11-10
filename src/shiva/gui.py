@@ -243,7 +243,7 @@ class PdfDialog(QDialog):
 
     def _update_warning(self, *_):
         text = self.warning_text()
-        self.warnLabel.setText(text); self.warnLabel.setVisible(bool(text))
+        self.warnLabel.setText("⚠ " + text if text else ""); self.warnLabel.setVisible(bool(text))
 
     def _ok(self):
         self.accept()
@@ -434,30 +434,38 @@ class TabPage(QWidget):
 
         # --- options (hidden options are un-ticked, so they never stay active invisibly)
         self.moreOptionsCheck = QCheckBox(tr("Show more options"))
-        self.keepOrientCheck = QCheckBox(tr("Keep the JPEG rotation tag (only rotation is kept)"))
+        self.keepOrientCheck = QCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
         self.keepIccCheck = QCheckBox(tr("Keep the colour profile"))
         self.keepQualityCheck = QCheckBox(tr("JPEG: keep the image data as it is (no re-encoding)"))
-        self.chroma420Check = QCheckBox(tr("JPEG: smaller files (reduced colour detail)"))
-        self.keepQualityHint = QLabel("⚠ " + tr("Warning: padding, tables and bytes hidden in the image data stay. Learn more"))
-        self.keepQualityHint.setToolTip(tr("Without re-encoding the picture is not touched, but the unseen parts of the "
-                                           "image data are copied as they are: edge blocks that can hold cropped-away "
-                                           "pixels, the compression tables that can identify the camera or program, and "
-                                           "any bytes added after the last block."))
+        self.chroma420Check = QCheckBox(tr("JPEG: reduce colour detail (smaller files)"))
+        self.keepQualityHint = QLabel("⚠ " + tr("Warning: hidden bytes and compression tables in the image data stay."))
         self.keepQualityHint.setObjectName("keepQualityHint")
+        self._keep_quality_help = tr("The picture itself is not touched, but the image data is copied as it is. It can "
+                                     "still hold leftover pixels beyond the image edge (for example from cropping), "
+                                     "compression tables that can identify the camera or program, and extra bytes "
+                                     "inside the image data. Data hidden in the pixels themselves stays too.")
+        self.keepQualityMore = QPushButton(tr("Learn more")); self.keepQualityMore.setFlat(True)
+        self.keepQualityMore.setCursor(Qt.PointingHandCursor); self.keepQualityMore.setAutoDefault(False)
+        self.keepQualityMore.setToolTip(self._keep_quality_help)
+        self.keepQualityMore.clicked.connect(
+            lambda: QMessageBox.information(self, tr("Learn more"), self._keep_quality_help))
         self.omitPartsCheck = QCheckBox(tr("Archives: leave out parts that can't be cleaned (they are missing from the copy)"))
         self.keepPartsCheck = QCheckBox(tr("Archives: keep parts that cannot be cleaned (may leak metadata)"))
         self.allowUncleanCheck = QCheckBox(tr("Encrypt files that can't be cleaned (their metadata stays)"))
-        self.keepPartsHint = QLabel(tr("Warning: parts that can't be cleaned are copied as they are and may still "
-                                       "hold personal metadata."))
-        self.uncleanHint = QLabel(tr("Warning: these files keep their metadata inside the encrypted copy, and their "
-                                     "originals are not deleted."))
+        self.keepPartsHint = QLabel("⚠ " + tr("Warning: parts that can't be cleaned are copied as they are and may still "
+                                              "hold personal metadata."))
+        self.uncleanHint = QLabel("⚠ " + tr("Warning: these files keep their metadata inside the encrypted copy, and their "
+                                            "originals are not deleted."))
         self.keepPartsHint.setObjectName("keepPartsHint"); self.uncleanHint.setObjectName("uncleanHint")
         for hint in (self.keepPartsHint, self.uncleanHint, self.keepQualityHint):
             hint.setWordWrap(True); hint.setIndent(24)
-        self.chroma420Check.setToolTip(tr("Re-encoded JPEGs normally keep full colour detail when the original had it. "
-                                          "This always stores less colour detail, so files are smaller and thin coloured "
-                                          "lines may blur."))
-        for w in (self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityHint, self.keepOrientCheck,
+        self.chroma420Check.setToolTip(tr("By default, full colour detail is kept if the original had it. This option "
+                                          "saves less colour detail instead; files get smaller and thin coloured lines "
+                                          "may blur."))
+        self.keepQualityMore.setStyleSheet(
+            "QPushButton { text-decoration: underline; border: none; text-align: left; padding-left: 24px; }")
+        for w in (self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore,
+                  self.keepOrientCheck,
                   self.chroma420Check, self.keepIccCheck, self.omitPartsCheck,
                   self.keepPartsCheck, self.keepPartsHint, self.allowUncleanCheck, self.uncleanHint):
             if isinstance(w, QCheckBox):
@@ -526,7 +534,8 @@ class TabPage(QWidget):
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.detailPane, self.showFolderBtn, self.copyBtn,
                  self.aboutShredLink, self.encryptCleanedCheck,
-                 self.shredAfterCheck, self.moreOptionsCheck, self.keepQualityCheck, self.keepOrientCheck,
+                 self.shredAfterCheck, self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityMore,
+                 self.keepOrientCheck,
                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.allowUncleanCheck, self.outCheck, self.outEdit, self.outBtn, self.pwEdit, self.showPwCheck, self.pwConfirmEdit,
                  self.primaryBtn, self.cancelBtn]
         for a, b in zip(order, order[1:]):
@@ -844,6 +853,7 @@ class TabPage(QWidget):
             if not shown:
                 w.setChecked(False)
         self.keepQualityHint.setVisible(lossless)
+        self.keepQualityMore.setVisible(lossless)
         self.keepPartsHint.setVisible(more and self.keepPartsCheck.isChecked())
         show_unclean = self.tab == "clean" and "encrypt" in st and any(r.info.can_unclean for r in self.rows)
         self.allowUncleanCheck.setVisible(show_unclean)

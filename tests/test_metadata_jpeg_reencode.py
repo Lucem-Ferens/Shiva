@@ -46,7 +46,7 @@ def test_metadata_and_comment_are_gone_and_the_check_passes():
     out = reencode_jpeg(src)
     check_reencoded_jpeg(src, out.data)
     assert b"SecretCamMaker" not in out.data and b"PrivateComment" not in out.data
-    assert "JPEG image re-encoded (quality 90)" in out.content_changed
+    assert "JPEG re-encoded (lossy)" in out.content_changed
 
 
 def test_bytes_hidden_before_the_end_marker_do_not_survive():
@@ -65,7 +65,8 @@ def test_quantisation_tables_are_the_same_whatever_the_source_used():
     assert _open(a).quantization == _open(b).quantization
 
 
-@pytest.mark.parametrize("orientation,size", [(1, (40, 24)), (3, (40, 24)), (6, (24, 40)), (8, (24, 40))])
+@pytest.mark.parametrize("orientation,size", [(1, (40, 24)), (2, (40, 24)), (3, (40, 24)), (4, (40, 24)),
+                                              (5, (24, 40)), (6, (24, 40)), (7, (24, 40)), (8, (24, 40))])
 def test_pixels_are_rotated_by_the_orientation_tag(orientation, size):
     src = _jpeg(orientation=orientation)
     out = reencode_jpeg(src)
@@ -74,8 +75,19 @@ def test_pixels_are_rotated_by_the_orientation_tag(orientation, size):
     assert got.size == size
     assert b"Exif" not in out.data
     if orientation != 1:
-        assert "pixels rotated to match the orientation tag" in out.content_changed
+        assert "image rotated to match its Exif orientation" in out.content_changed
         assert not out.warnings
+
+
+@pytest.mark.parametrize("orientation", range(1, 9))
+def test_rotation_matches_pillows_own_exif_transpose(orientation):
+    from PIL import ImageOps
+    src = _jpeg(orientation=orientation)
+    want = ImageOps.exif_transpose(_open(src))
+    got = _open(reencode_jpeg(src).data)
+    assert got.size == want.size
+    from shiva.metadata.jpeg import _psnr_worst_channel
+    assert _psnr_worst_channel(want, got) >= 25
 
 
 def test_a_wrong_orientation_is_caught_by_the_check():
@@ -138,7 +150,7 @@ def test_check_refuses_damaged_or_different_output():
 def test_dispatch_uses_reencode_by_default_and_lossless_on_request():
     src = _jpeg()
     default = dispatch.clean_and_check("jpeg", src, {})
-    assert "JPEG image re-encoded (quality 90)" in default.content_changed
+    assert "JPEG re-encoded (lossy)" in default.content_changed
     lossless = dispatch.clean_and_check("jpeg", src, {"jpeg_mode": "lossless"})
     assert not lossless.content_changed
     assert lossless.data == clean_jpeg(src).data
@@ -163,7 +175,7 @@ def test_jpeg_inside_a_zip_is_re_encoded_by_default_and_checked():
     with zipfile.ZipFile(io.BytesIO(out.data)) as z:
         inner = z.read("pic.jpg")
     assert b"SecretCamMaker" not in inner and b"PrivateComment" not in inner
-    assert any("JPEG image re-encoded" in c for c in out.content_changed)
+    assert any("JPEG re-encoded" in c for c in out.content_changed)
 
 
 def test_jpeg_inside_a_zip_stays_lossless_when_asked():

@@ -33,7 +33,7 @@ SHRED_BODY = ("They will be overwritten and deleted as far as the drive allows. 
               "undo this.")
 PIPE_BODY = ("After each encrypted copy passes a trial decrypt, its original is overwritten and deleted as far as "
              "the drive allows. If a check fails, the original is kept.")
-NOTE_CONTENT = ("If cleaning changes content in another way (for example JPEG rotation), that original is kept and "
+NOTE_CONTENT = ("If cleaning changes content in another way (for example a re-encoded JPEG), that original is kept and "
                 "the result says so.")
 NOTE_ARCHIVE = ("Archives with parts left out lose those parts. Their originals are kept unless you confirm that "
                 "change here.")
@@ -552,6 +552,9 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
         d.append(f"Output: {r.created}")
     if r.removed:
         d.append("Removed: " + ", ".join(r.removed))
+    changed = [c for c in r.changed if c not in r.removed]    # what cleaning did to the content itself
+    if changed:
+        d.append("Changed: " + ", ".join(changed))
     if r.kept:
         d.append("Not removed: " + ", ".join(r.kept))
     d += [f"Note: {w}" for w in r.warnings]

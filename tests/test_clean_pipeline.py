@@ -47,7 +47,7 @@ def test_content_change_blocks_shred_unless_confirmed(tmp_path):
     _jpeg(src, orientation=6)
     res = clean_encrypt_verify_shred(src, PW, shred_original=True, options=lossless)
     assert src.exists() and res.shred_report is None
-    assert any("changed content" in n for n in res.notes)
+    assert any("Cleaning changed its content" in n for n in res.notes)
     res.output.unlink()
     res2 = clean_encrypt_verify_shred(src, PW, shred_original=True, options=lossless,
                                       confirmed_changes=["JPEG orientation tag (display rotation may change)"])
@@ -66,10 +66,10 @@ def test_reencoded_jpeg_blocks_shred_unless_confirmed(tmp_path):
     _jpeg(src)
     res = clean_encrypt_verify_shred(src, PW, shred_original=True)   # re-encode is the default JPEG mode
     assert src.exists() and res.shred_report is None
-    assert any("changed content" in n for n in res.notes)
+    assert any("Cleaning changed its content" in n for n in res.notes)
     res.output.unlink()
     res2 = clean_encrypt_verify_shred(src, PW, shred_original=True,
-                                      confirmed_changes=["JPEG image re-encoded (quality 90)"])
+                                      confirmed_changes=["JPEG re-encoded (lossy)"])
     assert not src.exists() and res2.shred_report is not None
 
 

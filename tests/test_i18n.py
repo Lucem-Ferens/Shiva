@@ -100,6 +100,11 @@ def test_units_plurals_and_lists(zh):
     # a list whose items contain commas is matched longest label first
     out = zh.dyn("Removed: Page labels, output intents and web-capture data, Document ID")
     assert "Page labels" not in out and "文件 ID" in out
+    # the JPEG re-encode notes: one item holds commas and still translates as a whole
+    assert zh.dyn("Removed: Exif camera/date, padding, compression tables and hidden bytes in the image data") \
+        == "已移除：Exif 相機/日期資料、影像資料中的填充、壓縮表與隱藏的位元組"
+    assert zh.dyn("Changed: JPEG re-encoded (lossy), image rotated to match its Exif orientation") \
+        == "已變更：JPEG 已重新編碼（有損）、圖片已依 Exif 旋轉方向轉正"
     # file names are never translated, even when they look like a count
     assert zh.dyn("Saved as 3 files.txt. Original kept.") == "已存為 3 files.txt。已保留原始檔。"
     # unknown text stays English
@@ -282,7 +287,9 @@ def test_engine_labels_are_translated(zh):
              "text becomes unselectable and unsearchable, links, bookmarks and forms are lost, the file is usually larger",
              "x.pdf was kept unchanged and may leak metadata", "omitted member with an unsupported format: x.bin",
              "NOT cleaned: This file type cannot be cleaned yet. Metadata, file name, size and times of this file are unchanged.",
-             "The original was kept: cleaning changed content (comments) and shredding was not confirmed for that."]
+             "The original was kept. Cleaning changed its content: comments.",
+             "padding, compression tables and hidden bytes in the image data", "JPEG re-encoded (lossy)",
+             "image rotated to match its Exif orientation"]
     missing = [s for s in srcs if not _translated(zh, s)]
     assert not missing, missing
 

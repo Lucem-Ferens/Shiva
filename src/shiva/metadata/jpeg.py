@@ -292,9 +292,9 @@ def _load(data: bytes):
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(data)) as im:
-                im.load()
-                return im, im.copy()
+            im = Image.open(io.BytesIO(data))
+            im.load()   # not closed: closing would discard the pixels, and a copy would add a second full image to memory
+            return im, im
     except CleanError:
         raise
     except Exception as exc:
@@ -334,10 +334,10 @@ def reencode_jpeg(data: bytes, *, keep_icc: bool = False, subsampling: str = "so
         raise CleanError("JPEG could not be re-encoded: %s" % exc) from exc
     out.data = buf.getvalue()
     out.kept = [k for k in out.kept if k != "Exif orientation"]
-    _add(out.removed, "image data rebuilt (padding, tables, hidden bytes)")
-    _add(out.content_changed, "JPEG image re-encoded (quality %d)" % REENCODE_QUALITY)
+    _add(out.removed, "padding, compression tables and hidden bytes in the image data")
+    _add(out.content_changed, "JPEG re-encoded (lossy)")
     if orientation != 1:
-        _add(out.content_changed, "pixels rotated to match the orientation tag")
+        _add(out.content_changed, "image rotated to match its Exif orientation")
     return out
 
 

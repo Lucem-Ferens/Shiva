@@ -73,23 +73,26 @@ _many({
     "Details of the selected result": "所選結果的詳細資料", "Summary of the run": "執行摘要",
     "Show in folder": "在資料夾中顯示", "Copy results": "複製結果", "Results copied.": "已複製結果。",
     "Show more options": "顯示更多選項",
-    "Keep the JPEG rotation tag (only rotation is kept)": "保留 JPEG 旋轉標記（只保留旋轉資訊）",
+    "JPEG: keep the rotation tag (only rotation is kept)": "JPEG：保留旋轉標記（只保留旋轉資訊）",
     "Keep the colour profile": "保留色彩描述檔",
+    "padding, compression tables and hidden bytes in the image data": "影像資料中的填充、壓縮表與隱藏的位元組",
+    "JPEG re-encoded (lossy)": "JPEG 已重新編碼（有損）",
+    "image rotated to match its Exif orientation": "圖片已依 Exif 旋轉方向轉正",
+    "Changed: %T1": "已變更：%1",
     "JPEG: keep the image data as it is (no re-encoding)": "JPEG：保留影像資料原樣（不重新編碼）",
-    "JPEG: smaller files (reduced colour detail)": "JPEG：縮小檔案（降低色彩細節）",
-    "Warning: padding, tables and bytes hidden in the image data stay. Learn more":
-        "警告：影像資料中的填充、資料表與隱藏的位元組會保留。了解更多",
-    "Without re-encoding the picture is not touched, but the unseen parts of the "
-    "image data are copied as they are: edge blocks that can hold cropped-away "
-    "pixels, the compression tables that can identify the camera or program, and "
-    "any bytes added after the last block.":
-        "不重新編碼時，畫面本身不會被更動，但影像資料中看不見的部分會原樣複製：可能留有被裁掉像素的邊緣區塊、"
-        "可辨識相機或程式的壓縮表，以及最後一個區塊之後附加的任何位元組。",
-    "Re-encoded JPEGs normally keep full colour detail when the original had it. "
-    "This always stores less colour detail, so files are smaller and thin coloured "
-    "lines may blur.":
-        "重新編碼的 JPEG 在原檔具有完整色彩細節時，通常會維持完整細節。此選項一律改存較少的色彩細節，"
-        "檔案較小，但細的彩色線條可能變模糊。",
+    "JPEG: reduce colour detail (smaller files)": "JPEG：降低色彩細節（檔案較小）",
+    "Warning: hidden bytes and compression tables in the image data stay.": "警告：影像資料中隱藏的位元組與壓縮表會保留。",
+    "Learn more": "了解更多",
+    "The picture itself is not touched, but the image data is copied as it is. It can "
+    "still hold leftover pixels beyond the image edge (for example from cropping), "
+    "compression tables that can identify the camera or program, and extra bytes "
+    "inside the image data. Data hidden in the pixels themselves stays too.":
+        "圖片本身不會被更動，但影像資料會原樣複製，因此可能仍留有超出圖片邊緣的殘餘像素（例如裁切後留下的）、"
+        "可辨識相機或程式的壓縮表，以及影像資料內多餘的位元組。藏在像素本身的資料也會保留。",
+    "By default, full colour detail is kept if the original had it. This option "
+    "saves less colour detail instead; files get smaller and thin coloured lines "
+    "may blur.":
+        "預設會在原檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。",
     "Archives: leave out parts that can't be cleaned (they are missing from the copy)": "壓縮檔：排除無法清理的部分（副本中不會有這些部分）",
     "Archives: keep parts that cannot be cleaned (may leak metadata)": "壓縮檔：保留無法清理的部分（可能洩漏中繼資料）",
     "Encrypt files that can't be cleaned (their metadata stays)": "加密無法清理的檔案（其中繼資料會保留）",
@@ -261,8 +264,8 @@ _many({
     "If any check fails, the original is kept.": "只要有任何檢查失敗，就會保留原始檔。",
     "After each cleaned copy is saved and checked against the original, the original is overwritten and deleted.":
         "每個清理後的副本存檔並與原始檔核對之後，會先覆寫再刪除原始檔。",
-    "If cleaning changes content in another way (for example JPEG rotation), that original is kept and the result says so.":
-        "如果清理以其他方式改變了內容（例如 JPEG 的旋轉），該原始檔會被保留，結果中也會說明。",
+    "If cleaning changes content in another way (for example a re-encoded JPEG), that original is kept and the result says so.":
+        "如果清理以其他方式改變了內容（例如重新編碼的 JPEG），該原始檔會被保留，結果中也會說明。",
     "Archives with parts left out lose those parts.": "有排除部分內容的壓縮檔會失去那些部分。",
     "Their originals are kept unless you confirm that change here.": "除非您在這裡確認這項變更，否則會保留它們的原始檔。",
 })
@@ -400,8 +403,7 @@ _many({
     "NOT cleaned: %T1.": "未清理：%1。",
     "Metadata, file name, size and times of this file are unchanged.": "這個檔案的中繼資料、檔名、大小與時間都沒有改變。",
     "The original was kept: files that were not cleaned are never shredded here.": "已保留原始檔：沒有清理過的檔案在這裡絕不會被銷毀。",
-    "The original was kept: cleaning changed content (%T1) and shredding was not confirmed for that.":
-        "已保留原始檔：清理改變了內容（%1），而銷毀並未對此確認。",
+    "The original was kept. Cleaning changed its content: %T1.": "已保留原始檔。清理改變了其內容：%1。",
     "This file type cannot be cleaned yet": "目前還不能清理這種檔案類型",
     "Output folder is not writable": "輸出資料夾無法寫入",
     "The output folder does not exist: %1": "輸出資料夾不存在：%1",

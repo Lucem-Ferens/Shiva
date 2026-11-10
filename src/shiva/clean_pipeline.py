@@ -80,8 +80,7 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         unconfirmed = [c for c in (outcome.content_changed if outcome is not None else []) if c not in set(confirmed_changes)]
         if can_shred and unconfirmed:  # every actual content change must be one the user was shown and confirmed
             can_shred = False
-            notes.append("The original was kept: cleaning changed content (" + ", ".join(unconfirmed)
-                         + ") and shredding was not confirmed for that.")
+            notes.append("The original was kept. Cleaning changed its content: " + ", ".join(unconfirmed) + ".")
 
         part = output.part_for(dst)
         try:
