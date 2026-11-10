@@ -144,3 +144,37 @@ def test_dispatch_uses_reencode_by_default_and_lossless_on_request():
     assert lossless.data == clean_jpeg(src).data
     forced = dispatch.clean_and_check("jpeg", _jpeg(subsampling=0), {"jpeg_subsampling": "420"})
     assert JpegImagePlugin.get_sampling(_open(forced.data)) == 2
+
+
+# ---------------------------------------------------------------- embedded in documents and archives
+
+def _zip_with(name: str, data: bytes) -> bytes:
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(name, data)
+    return buf.getvalue()
+
+
+def test_jpeg_inside_a_zip_is_re_encoded_by_default_and_checked():
+    src = _jpeg(comment=b"PrivateComment")
+    out = dispatch.clean_and_check("zip", _zip_with("pic.jpg", src), {})
+    import zipfile
+    with zipfile.ZipFile(io.BytesIO(out.data)) as z:
+        inner = z.read("pic.jpg")
+    assert b"SecretCamMaker" not in inner and b"PrivateComment" not in inner
+    assert any("JPEG image re-encoded" in c for c in out.content_changed)
+
+
+def test_jpeg_inside_a_zip_stays_lossless_when_asked():
+    src = _jpeg()
+    out = dispatch.clean_and_check("zip", _zip_with("pic.jpg", src), {"jpeg_mode": "lossless"})
+    assert not out.content_changed
+
+
+def test_hidden_bytes_in_an_embedded_jpeg_do_not_survive():
+    hid = _jpeg()[:-2] + MARK + b"\xff\xd9"
+    out = dispatch.clean_and_check("zip", _zip_with("pic.jpg", hid), {})
+    import zipfile
+    with zipfile.ZipFile(io.BytesIO(out.data)) as z:
+        assert MARK not in z.read("pic.jpg")

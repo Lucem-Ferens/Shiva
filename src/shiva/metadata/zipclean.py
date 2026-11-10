@@ -15,6 +15,8 @@ from __future__ import annotations
 import io
 import zipfile
 import zlib
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from xml.parsers import expat
@@ -39,6 +41,20 @@ POLICIES = ("abort", "omit", "keep")
 IMAGE_KINDS = ("jpeg", "png", "gif", "webp")
 AUDIO_KINDS = ("mp3", "flac", "ogg", "opus")
 ARCHIVE_KINDS = ("zip", "docx", "xlsx", "pptx", "odt", "ods", "odp")
+
+
+# How JPEG members are cleaned: ("reencode" | "lossless", "source" | "420"). A context variable keeps the many
+# nested call sites free of an extra argument; dispatch sets it around one clean-and-check.
+JPEG_SETTINGS: ContextVar[tuple[str, str]] = ContextVar("jpeg_settings", default=("reencode", "source"))
+
+
+@contextmanager
+def jpeg_settings(mode: str, subsampling: str = "source"):
+    token = JPEG_SETTINGS.set((mode, subsampling))
+    try:
+        yield
+    finally:
+        JPEG_SETTINGS.reset(token)
 
 
 def note(lst: list[str], item: str) -> None:
@@ -450,7 +466,8 @@ def _clean_blob(kind: str, name: str, data: bytes, policy: str, budget: Budget, 
     try:
         if kind == "jpeg":
             from . import jpeg
-            return jpeg.clean_jpeg(data)
+            mode, sampling = JPEG_SETTINGS.get()
+            return jpeg.clean_jpeg(data) if mode == "lossless" else jpeg.reencode_jpeg(data, subsampling=sampling)
         if kind == "png":
             from . import png
             return png.clean_png(data)
@@ -506,7 +523,10 @@ def check_blob(name: str, original: bytes, cleaned: bytes, policy: str, ob: Budg
     try:
         if kind == "jpeg":
             from . import jpeg
-            jpeg.check_equivalent_jpeg(original, cleaned)
+            if JPEG_SETTINGS.get()[0] == "lossless":
+                jpeg.check_equivalent_jpeg(original, cleaned)
+            else:
+                jpeg.check_reencoded_jpeg(original, cleaned)
         elif kind == "png":
             from . import png
             png.check_equivalent_png(original, cleaned)

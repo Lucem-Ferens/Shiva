@@ -27,6 +27,12 @@ def detect(data: bytes) -> str | None:
 
 def clean_and_check(fmt: str, data: bytes, options: dict) -> CleanOutcome:
     """Clean, then prove the content is unchanged. Any failure raises CleanError and nothing is published."""
+    from . import zipclean
+    with zipclean.jpeg_settings(options.get("jpeg_mode", "reencode"), options.get("jpeg_subsampling", "source")):
+        return _clean_and_check(fmt, data, options)
+
+
+def _clean_and_check(fmt: str, data: bytes, options: dict) -> CleanOutcome:
     if fmt == "jpeg":
         from . import jpeg
         keep_icc = bool(options.get("keep_icc"))

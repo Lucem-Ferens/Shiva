@@ -15,6 +15,14 @@ CT = "http://schemas.openxmlformats.org/package/2006/content-types"
 HDR = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
 
 
+@pytest.fixture(autouse=True)
+def _lossless_images():
+    """These tests are about document categories; the fixture documents carry a JPEG that would otherwise be re-encoded
+    (re-encoding embedded images is tested in test_metadata_jpeg_reencode.py)."""
+    with zc.jpeg_settings("lossless"):
+        yield
+
+
 def build(parts: dict, date=(2021, 5, 6, 7, 8, 9), stored=()) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
@@ -591,7 +599,7 @@ def test_default_keys_keep_comments_and_tracked_changes():
     assert not out.content_changed
     # dispatch without "categories" uses exactly this default set
     from shiva.metadata import dispatch
-    assert dispatch.clean_and_check("docx", src, {}).data == out.data
+    assert dispatch.clean_and_check("docx", src, {"jpeg_mode": "lossless"}).data == out.data
 
 
 def test_checker_respects_the_selection():
