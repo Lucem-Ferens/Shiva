@@ -419,6 +419,19 @@ def _make_pages(packets: list[bytes], serial: bytes, seq0: int, bos: bool) -> li
     return out
 
 
+def _opus_head_length(pkt: bytes) -> int:
+    """Expected length of an OpusHead packet: 19 bytes for mapping family 0; families 1, 2 and 255 add stream and
+    coupled counts plus one byte per channel; family 3 adds the counts plus a 16-bit demixing matrix of
+    (streams + coupled) x channels entries."""
+    if len(pkt) < 19 or pkt[18] == 0:
+        return 19
+    if pkt[18] == 3:
+        if len(pkt) < 21:
+            return 21
+        return 21 + 2 * (pkt[19] + pkt[20]) * pkt[9]
+    return 21 + pkt[9]
+
+
 def _ogg_layout(data: bytes, fmt: str):
     pages, end = _ogg_pages(data)
     if not pages:
@@ -428,7 +441,7 @@ def _ogg_layout(data: bytes, fmt: str):
     magic = b"\x01vorbis" if fmt == "ogg" else b"OpusHead"
     if not packets[0].startswith(magic):
         raise CleanError("Ogg stream is not %s" % ("Vorbis" if fmt == "ogg" else "Opus"))
-    want = 30 if fmt == "ogg" else (19 if len(packets[0]) < 19 or packets[0][18] == 0 else 21 + packets[0][9])
+    want = 30 if fmt == "ogg" else _opus_head_length(packets[0])
     if len(packets[0]) != want:
         raise CleanError("Ogg identification header has an unexpected length (%d bytes, expected %d)" % (len(packets[0]), want))
     if nh >= len(pages):

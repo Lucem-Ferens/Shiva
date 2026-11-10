@@ -341,6 +341,18 @@ def test_opus_head_length_is_exact():
     clean_audio(_with_ident("opus", bytes(mapped) + b"\x00\x01"), "opus")
 
 
+def test_opus_ambisonic_family_3_header_is_accepted_at_its_exact_length():
+    good = ogg_stream("opus")
+    head = bytearray(good[good.index(b"OpusHead"):][:19])
+    head[9], head[18] = 4, 3  # 4 output channels, demixing-matrix family
+    full = bytes(head) + bytes([2, 2]) + bytes(2 * (2 + 2) * 4)  # 21 + 32 = 53 bytes
+    assert len(full) == 53
+    clean_audio(_with_ident("opus", full), "opus")
+    for bad in (full + b"X", full[:-1]):
+        with pytest.raises(CleanError, match="unexpected length"):
+            clean_audio(_with_ident("opus", bad), "opus")
+
+
 def test_ogg_renumbers_when_header_page_count_changes():
     tagged = ogg_tagged("ogg")
     out = clean_audio(tagged, "ogg")
