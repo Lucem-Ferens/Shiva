@@ -18,7 +18,7 @@ update_mechanism = "tools/check_upstream.py report, then tools/fetch_third_party
 last_reviewed = "2026-11-02"
 
 [libjpeg-turbo]
-kind = "bundled"
+kind = "tracked"            # not shipped yet: nothing calls jpegtran. Set "bundled" with the lossless-mode integration; fetch and hashes below are ready.
 repo = "libjpeg-turbo/libjpeg-turbo"
 version = "3.2.1"
 tag = "3.2.1"
