@@ -29,6 +29,8 @@ class StepOptions:
     allow_unclean: bool = False           # encrypt files that cannot be cleaned (marked NOT cleaned, never shredded)
     keep_orientation: bool = False
     keep_icc: bool = False
+    jpeg_mode: str = "reencode"           # reencode | lossless (the image data is kept as it is)
+    jpeg_subsampling: str = "source"      # source | 420 (re-encode only)
     unknown_members: str = "abort"      # archives (docx/xlsx/pptx/odt/ods/odp/zip): abort | omit | keep parts that cannot be cleaned
     out_dir: Path | None = None           # save results here instead of next to the original (None = next to it)
     confirmed_changes: dict[str, list[str]] = field(default_factory=dict)  # str(path) -> content changes the user was shown
@@ -51,7 +53,8 @@ def _kept(outcome) -> list[str]:
 
 
 def _clean_options(p: Path, opts: StepOptions, fmt: str) -> dict:
-    o: dict = {"keep_orientation": opts.keep_orientation, "keep_icc": opts.keep_icc}
+    o: dict = {"keep_orientation": opts.keep_orientation, "keep_icc": opts.keep_icc,
+               "jpeg_mode": opts.jpeg_mode, "jpeg_subsampling": opts.jpeg_subsampling}
     if fmt in _ARCHIVES:
         o["unknown_members"] = opts.unknown_members
     if fmt == "pdf":

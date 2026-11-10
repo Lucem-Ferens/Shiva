@@ -75,6 +75,21 @@ _many({
     "Show more options": "顯示更多選項",
     "Keep the JPEG rotation tag (only rotation is kept)": "保留 JPEG 旋轉標記（只保留旋轉資訊）",
     "Keep the colour profile": "保留色彩描述檔",
+    "JPEG: keep the image data as it is (no re-encoding)": "JPEG：保留影像資料原樣（不重新編碼）",
+    "JPEG: smaller files (reduced colour detail)": "JPEG：縮小檔案（降低色彩細節）",
+    "Warning: padding, tables and bytes hidden in the image data stay. Learn more":
+        "警告：影像資料中的填充、資料表與隱藏的位元組會保留。了解更多",
+    "Without re-encoding the picture is not touched, but the unseen parts of the "
+    "image data are copied as they are: edge blocks that can hold cropped-away "
+    "pixels, the compression tables that can identify the camera or program, and "
+    "any bytes added after the last block.":
+        "不重新編碼時，畫面本身不會被更動，但影像資料中看不見的部分會原樣複製：可能留有被裁掉像素的邊緣區塊、"
+        "可辨識相機或程式的壓縮表，以及最後一個區塊之後附加的任何位元組。",
+    "Re-encoded JPEGs normally keep full colour detail when the original had it. "
+    "This always stores less colour detail, so files are smaller and thin coloured "
+    "lines may blur.":
+        "重新編碼的 JPEG 在原檔具有完整色彩細節時，通常會維持完整細節。此選項一律改存較少的色彩細節，"
+        "檔案較小，但細的彩色線條可能變模糊。",
     "Archives: leave out parts that can't be cleaned (they are missing from the copy)": "壓縮檔：排除無法清理的部分（副本中不會有這些部分）",
     "Archives: keep parts that cannot be cleaned (may leak metadata)": "壓縮檔：保留無法清理的部分（可能洩漏中繼資料）",
     "Encrypt files that can't be cleaned (their metadata stays)": "加密無法清理的檔案（其中繼資料會保留）",

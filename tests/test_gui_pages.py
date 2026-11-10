@@ -128,11 +128,28 @@ def test_hidden_options_are_not_active(w, tmp_path):
     assert p.moreOptionsCheck.isHidden() is True or True
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
     assert not p.moreOptionsCheck.isHidden() and p.keepOrientCheck.isHidden()
-    p.moreOptionsCheck.setChecked(True); p.keepOrientCheck.setChecked(True); p.keepIccCheck.setChecked(True)
-    o = p.build_options(); assert o.keep_orientation and o.keep_icc
+    p.moreOptionsCheck.setChecked(True); p.keepQualityCheck.setChecked(True)
+    p.keepOrientCheck.setChecked(True); p.keepIccCheck.setChecked(True)
+    o = p.build_options(); assert o.keep_orientation and o.keep_icc and o.jpeg_mode == "lossless"
     p.moreOptionsCheck.setChecked(False)
     o = p.build_options(); assert not o.keep_orientation and not o.keep_icc and not p.keepOrientCheck.isChecked()
+    assert o.jpeg_mode == "reencode" and o.jpeg_subsampling == "source" and not p.keepQualityCheck.isChecked()
     assert w.pages["shred"].moreOptionsCheck.isHidden()
+
+
+def test_jpeg_options_follow_each_other(w, tmp_path):
+    p = w.pages["clean"]
+    w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
+    p.moreOptionsCheck.setChecked(True)
+    # default: re-encode; the colour-detail choice is offered, the rotation tag and the warning are not
+    assert not p.chroma420Check.isHidden() and p.keepOrientCheck.isHidden() and p.keepQualityHint.isHidden()
+    p.chroma420Check.setChecked(True)
+    assert p.build_options().jpeg_subsampling == "420"
+    p.keepQualityCheck.setChecked(True)   # keeping the image data: no re-encode, so the colour choice goes away
+    assert p.chroma420Check.isHidden() and not p.chroma420Check.isChecked()
+    assert not p.keepOrientCheck.isHidden() and not p.keepQualityHint.isHidden()
+    assert p.keepQualityHint.text().startswith("⚠ Warning:") and p.keepQualityHint.toolTip()
+    o = p.build_options(); assert o.jpeg_mode == "lossless" and o.jpeg_subsampling == "source"
 
 
 # ---------------------------------------------------------------- passphrase block
