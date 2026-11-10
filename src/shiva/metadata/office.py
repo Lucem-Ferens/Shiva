@@ -339,21 +339,28 @@ def _property_parts(ct_data: bytes, rels_data: bytes | None) -> tuple[set, set]:
     """Names of the core and extended property parts: the standard names plus every part that a content-type
     override or a package relationship declares as one."""
     core, app = {"docProps/core.xml"}, {"docProps/app.xml"}
+    declared: dict[str, str] = {}
     for el in zc.parse_tree(ct_data).children:
         if isinstance(el, Node) and el.local == "Override":
             pn, ctype = zc.get_attr(el, "PartName"), zc.get_attr(el, "ContentType")
-            if pn and ctype == _CORE_CT:
-                core.add(pn[1:] if pn.startswith("/") else pn)
-            elif pn and ctype == _APP_CT:
-                app.add(pn[1:] if pn.startswith("/") else pn)
+            if pn and ctype:
+                name = pn[1:] if pn.startswith("/") else pn
+                declared[name] = ctype
+                if ctype == _CORE_CT:
+                    core.add(name)
+                elif ctype == _APP_CT:
+                    app.add(name)
     if rels_data:
         for el in zc.parse_tree(rels_data).children:
             if isinstance(el, Node) and el.local == "Relationship" and zc.get_attr(el, "TargetMode") != "External":
                 typ, target = zc.get_attr(el, "Type") or "", zc.get_attr(el, "Target")
-                if target and typ.endswith("/core-properties"):
-                    core.add(_resolve("_rels/.rels", target))
-                elif target and typ.endswith("/extended-properties"):
-                    app.add(_resolve("_rels/.rels", target))
+                if target and typ.endswith(("/core-properties", "/extended-properties")):
+                    name = _resolve("_rels/.rels", target)
+                    if declared.get(name) not in (None, _CORE_CT, _APP_CT):
+                        # blanking it would wipe a part that the package declares as something else
+                        raise Unsupported("A relationship names a part with another content type as the document "
+                                          "properties, so the file is refused")
+                    (core if typ.endswith("/core-properties") else app).add(name)
     return core, app
 
 

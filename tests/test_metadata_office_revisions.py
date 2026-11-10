@@ -1,7 +1,7 @@
 """Office cleaning: spreadsheet change tracking, property parts under other names, less common revision elements."""
 import pytest
 
-from shiva.metadata import CleanError, office
+from shiva.metadata import CleanError, Unsupported, office
 from test_metadata_office import DOC_BODY, HDR, W, build, docx_parts, members
 
 MARK = "Zed Marker"
@@ -105,6 +105,13 @@ def test_core_properties_declared_by_relationship_only_are_blanked():
     out = office.clean_office(src, "docx")
     assert b"Alice Author" not in b"".join(members(out.data).values())
     office.check_equivalent_office(src, out.data, "docx")
+
+
+def test_relationship_naming_the_document_body_as_properties_is_refused():
+    p = docx_parts(comments=False)
+    p["_rels/.rels"] = p["_rels/.rels"].replace('Target="docProps/app.xml"', 'Target="word/document.xml"')
+    with pytest.raises(Unsupported):
+        office.clean_office(build(p), "docx")
 
 
 def test_core_properties_under_other_name_kept_when_category_not_chosen():
