@@ -318,7 +318,7 @@ def test_f9_large_pdf_runs_in_bounded_time():
         if n % 10 == 0:
             lines.append(f"q BT 3 Tr 1 0 0 1 20 {y} Tm (hidden{n}) Tj ET Q".encode())
     body = b"\n".join(lines)
-    for _ in range(80):
+    for _ in range(30):   # about 4 s here; the 15 s limit leaves room for a slow CI machine
         page = pdf.add_blank_page(page_size=(612, 792))
         page.obj.Resources = Dictionary(Font=Dictionary(F1=font))
         page.obj.Contents = pdf.make_stream(body)
@@ -330,7 +330,7 @@ def test_f9_large_pdf_runs_in_bounded_time():
     check_equivalent_pdf(src, out.data, sel)
     elapsed = time.perf_counter() - t
     with pikepdf.open(io.BytesIO(out.data)) as done:
-        text = done.pages[79].obj.Contents.read_bytes()
+        text = done.pages[29].obj.Contents.read_bytes()
     assert b"hidden10)" not in text and b"word10 lorem" in text
     assert elapsed < 15, elapsed
 

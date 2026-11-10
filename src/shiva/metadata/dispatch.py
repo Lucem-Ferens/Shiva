@@ -29,9 +29,13 @@ def clean_and_check(fmt: str, data: bytes, options: dict) -> CleanOutcome:
     """Clean, then prove the content is unchanged. Any failure raises CleanError and nothing is published."""
     if fmt == "jpeg":
         from . import jpeg
-        out = jpeg.clean_jpeg(data, keep_orientation=bool(options.get("keep_orientation")),
-                              keep_icc=bool(options.get("keep_icc")))
-        jpeg.check_equivalent_jpeg(data, out.data)
+        keep_icc = bool(options.get("keep_icc"))
+        if options.get("jpeg_mode", "reencode") == "lossless":
+            out = jpeg.clean_jpeg(data, keep_orientation=bool(options.get("keep_orientation")), keep_icc=keep_icc)
+            jpeg.check_equivalent_jpeg(data, out.data)
+        else:
+            out = jpeg.reencode_jpeg(data, keep_icc=keep_icc, subsampling=options.get("jpeg_subsampling", "source"))
+            jpeg.check_reencoded_jpeg(data, out.data, keep_icc=keep_icc)
     elif fmt == "png":
         from . import png
         out = png.clean_png(data, keep_icc=bool(options.get("keep_icc")))

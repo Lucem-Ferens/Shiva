@@ -164,7 +164,10 @@ def _add(lst: list[str], item: str) -> None:
         lst.append(item)
 
 
-def clean_jpeg(data: bytes, *, keep_orientation: bool = False, keep_icc: bool = False) -> CleanOutcome:
+def clean_jpeg(data: bytes, *, keep_orientation: bool = False, keep_icc: bool = False,
+               rotate_pixels: bool = False) -> CleanOutcome:
+    """rotate_pixels: the caller re-encodes the image with the orientation applied to the pixels, so dropping the
+    tag needs no warning."""
     data = bytes(data)
     segs, eoi_end = _walk(data)
     out = CleanOutcome(data=b"")
@@ -232,8 +235,9 @@ def clean_jpeg(data: bytes, *, keep_orientation: bool = False, keep_icc: bool = 
             _add(out.kept, "Exif orientation")
         else:
             _add(out.removed, "Exif orientation")
-            out.warnings.append("The Exif orientation tag (%d) was removed; the image may display rotated." % orientation)
-            _add(out.content_changed, "JPEG orientation tag (display rotation may change)")
+            if not rotate_pixels:
+                out.warnings.append("The Exif orientation tag (%d) was removed; the image may display rotated." % orientation)
+                _add(out.content_changed, "JPEG orientation tag (display rotation may change)")
 
     if eoi_end < len(data):
         _add(out.removed, "data after EOI")
@@ -260,6 +264,114 @@ def _decode(data: bytes):
         raise CleanError("JPEG could not be decoded: %s" % exc) from exc
     finally:
         Image.MAX_IMAGE_PIXELS = old
+
+
+# Re-encode mode: decode, rotate the pixels by the orientation tag, save a fresh JPEG. Nothing of the original entropy
+# data, tables, padding blocks or markers survives. The result is not pixel-identical to the input.
+REENCODE_QUALITY = 90
+_MIN_PSNR_DB = 20.0   # separates a correct re-encode (>= 21.7 dB measured) from a broken one (inverted colours: <= 20.0 dB)
+_ORIENT_OPS = {2: "FLIP_LEFT_RIGHT", 3: "ROTATE_180", 4: "FLIP_TOP_BOTTOM", 5: "TRANSPOSE", 6: "ROTATE_270",
+               7: "TRANSVERSE", 8: "ROTATE_90"}
+
+
+def _source_orientation(data: bytes) -> int:
+    segs, _ = _walk(data)
+    for m, s, e in segs:
+        if 0xE0 <= m <= 0xEF or m == 0xFE:
+            payload = data[s + 4:e]
+            if _classify(m, payload) == "exif":
+                o = _exif_tags(payload[len(_EXIF_ID):])[1]
+                return o if 2 <= o <= 8 else 1
+    return 1
+
+
+def _load(data: bytes):
+    from PIL import Image
+    old = Image.MAX_IMAGE_PIXELS
+    Image.MAX_IMAGE_PIXELS = _MAX_PIXELS
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(data)) as im:
+                im.load()
+                return im, im.copy()
+    except CleanError:
+        raise
+    except Exception as exc:
+        raise CleanError("JPEG could not be decoded: %s" % exc) from exc
+    finally:
+        Image.MAX_IMAGE_PIXELS = old
+
+
+def _rotated(img, orientation: int):
+    from PIL import Image
+    return img.transpose(getattr(Image.Transpose, _ORIENT_OPS[orientation])) if orientation in _ORIENT_OPS else img
+
+
+def reencode_jpeg(data: bytes, *, keep_icc: bool = False, subsampling: str = "source") -> CleanOutcome:
+    """subsampling: 'source' keeps 4:4:4 when the input is 4:4:4 and uses 4:2:0 otherwise; '420' always uses 4:2:0."""
+    from PIL import Image, JpegImagePlugin
+    data = bytes(data)
+    out = clean_jpeg(data, keep_icc=keep_icc, rotate_pixels=True)   # structure checks, unsupported-marker refusals
+    orientation = _source_orientation(data)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        _info, img = _load(out.data)
+        icc = _info.info.get("icc_profile") if keep_icc else None
+        sampling = JpegImagePlugin.get_sampling(_info) if img.mode in ("RGB", "CMYK") else -1
+    img = _rotated(img, orientation)
+    fresh = Image.frombytes(img.mode, img.size, img.tobytes())   # a copy: Pillow would write the source's comment back
+    kw = {"quality": REENCODE_QUALITY, "optimize": False, "progressive": False}
+    if img.mode in ("RGB", "CMYK"):
+        # CMYK is print material and Pillow reports no sampling for it: always full resolution (4:2:0 blurs the 4th channel)
+        kw["subsampling"] = 0 if img.mode == "CMYK" or (subsampling == "source" and sampling == 0) else 2
+    if icc:
+        kw["icc_profile"] = icc
+    buf = io.BytesIO()
+    try:
+        fresh.save(buf, "JPEG", **kw)
+    except Exception as exc:
+        raise CleanError("JPEG could not be re-encoded: %s" % exc) from exc
+    out.data = buf.getvalue()
+    out.kept = [k for k in out.kept if k != "Exif orientation"]
+    _add(out.removed, "image data rebuilt (padding, tables, hidden bytes)")
+    _add(out.content_changed, "JPEG image re-encoded (quality %d)" % REENCODE_QUALITY)
+    if orientation != 1:
+        _add(out.content_changed, "pixels rotated to match the orientation tag")
+    return out
+
+
+def _psnr_worst_channel(a, b) -> float:
+    import math
+    from PIL import ImageChops
+    diff = ImageChops.difference(a, b)
+    n = a.size[0] * a.size[1]
+    worst = 99.0
+    for hist in (diff.getchannel(i).histogram() for i in range(len(diff.getbands()))):
+        mse = sum(v * v * c for v, c in enumerate(hist)) / n
+        worst = min(worst, 99.0 if mse == 0 else 10 * math.log10(255 * 255 / mse))
+    return worst
+
+
+def check_reencoded_jpeg(original: bytes, cleaned: bytes, *, keep_icc: bool = False) -> None:
+    """Replaces pixel equality for the re-encode mode: the output carries no metadata segments and its size, colour mode
+    and content match the original after the orientation is applied (worst colour channel at least 20 dB)."""
+    cleaned = bytes(cleaned)
+    _verify_clean(cleaned)
+    if keep_icc is False:
+        segs, _ = _walk(cleaned)
+        if any(_classify(m, cleaned[s + 4:e]) == "icc" for m, s, e in segs if 0xE0 <= m <= 0xEF):
+            raise CleanError("Re-encoded JPEG still has a colour profile")
+    orientation = _source_orientation(bytes(original))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        _i, want = _load(bytes(original))
+        _j, got = _load(cleaned)
+    want = _rotated(want, orientation)
+    if want.mode != got.mode or want.size != got.size:
+        raise CleanError("Re-encoded JPEG differs in mode or size")
+    if _psnr_worst_channel(want, got) < _MIN_PSNR_DB:
+        raise CleanError("Re-encoded JPEG differs too much from the original")
 
 
 def _verify_clean(cleaned: bytes) -> None:
