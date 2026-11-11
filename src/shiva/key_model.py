@@ -23,6 +23,7 @@ class CredState:
     recipients: list = field(default_factory=list)       # list[rcp.Recipient]
     paste_text: str = ""                                  # text in the paste box that was not added yet
     key_file: str = KF_NONE
+    key_file_public: list = field(default_factory=list)  # public keys (text) of the usable key file
     own_key: bool = False                                 # "Also encrypt to my own key"
     password_reason: str | None = None                    # reason from the password block (Password mode)
 
@@ -47,6 +48,9 @@ def cred_reason(c: CredState, decrypting: bool) -> str | None:
         return "Add at least one recipient key."
     if rcp.mixed(c.recipients):
         return MIXED_REASON
+    if c.key_file_public and c.key_file in (KF_CHOSEN, KF_UNLOCKED) \
+            and not set(c.key_file_public) & {r.text for r in c.recipients}:
+        return NOT_RECIPIENT
     if c.key_file in (KF_NOT_A_KEY, KF_WRONG_PASSWORD):
         return "This isn't a key file." if c.key_file == KF_NOT_A_KEY else "The key file password is wrong."
     if c.key_file == KF_LOCKED:
@@ -55,6 +59,8 @@ def cred_reason(c: CredState, decrypting: bool) -> str | None:
 
 
 MIXED_REASON = "A file can't use both post-quantum and standard keys. Remove one kind."
+NOT_RECIPIENT = ("Your key file is not one of the recipients. Tick \"Also encrypt to my own key\", or remove the key "
+                 "file.")
 
 
 def shred_after_reason(c: CredState) -> str | None:
@@ -104,7 +110,7 @@ def key_fail_text(code: str, decrypting: bool) -> str | None:
         if decrypting:
             return ("This key file can't open this file. The file may be for another key, may use a password, or may "
                     "be damaged.")
-        return ("Your key file is not one of the recipients. Tick \"Also encrypt to my own key\", or remove the key file.")
+        return NOT_RECIPIENT
     return _FAIL.get(code)
 
 

@@ -14,9 +14,10 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
                                QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
-from .. import i18n, output, steps, storage, tokens
+from .. import creds, i18n, key_model as K, output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
+from .keypanel import KeyPanel
 from .widgets import WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
@@ -328,6 +329,8 @@ class TabPage(QWidget):
         self._out_problem: str | None = None
         self._out_note_cache: dict[str, str] = {}
         self._opt["out"] = self.outCheck
+        if tab == "encrypt":
+            self._opt["own_key"] = None       # set when the credentials group is built
         bl.addWidget(self.outCheck); bl.addWidget(self.outChildren)
         for w in (self.outBox, self.outNoteLabel):
             ocl.addWidget(w)
@@ -358,7 +361,10 @@ class TabPage(QWidget):
             cl.addWidget(w)
         pl.addWidget(self.confirmBox)
         self.pwBlock.setVisible(False)
-        bl.insertWidget(bl.indexOf(self.moreOptionsCheck), self.pwBlock)     # the required input comes before the optional ones
+        if tab == "encrypt":
+            self._build_credentials(bl)
+        else:
+            bl.insertWidget(bl.indexOf(self.moreOptionsCheck), self.pwBlock)     # the required input comes before the optional ones
         bl.addStretch(1)       # spare height goes below the options, not into the check boxes
         # the options and the passphrase scroll only when the page is too short for them; hidden while a run or its
         # results show (what an option does comes from ui_model.option_view, never from this container's visibility)
@@ -392,6 +398,11 @@ class TabPage(QWidget):
                  self.keepQualityCheck, self.keepQualityMore, self.keepOrientCheck,
                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
                  self.primaryBtn, self.cancelBtn]
+        if tab == "encrypt":        # the credentials come before the optional steps
+            moved = (self.pwEdit, self.showPwCheck, self.pwConfirmEdit)
+            order = [w for w in order if w not in moved]
+            i = order.index(self.encryptCleanedCheck)
+            order[i:i] = [self.credPasswordRadio, self.credKeysRadio, *moved, *self.keyPanel.tab_widgets()]
         for a, b in zip(order, order[1:]):
             QWidget.setTabOrder(a, b)
 
@@ -447,10 +458,12 @@ class TabPage(QWidget):
         return box, lay
 
     def _option_view(self) -> m.OptionView:
-        ticks = {n: w.isChecked() for n, w in self._opt.items()}
+        ticks = {n: w.isChecked() for n, w in self._opt.items() if w is not None}
+        key = self.key_mode() and self.cryptMode == "encrypt"
         return m.option_view(self.tab, self.cryptMode, ticks,
                              m.OptionFacts(any(r.info.can_unclean for r in self.rows),
-                                           any(r.info.run and r.facts.fmt in m.JPEG_HOLDERS for r in self.rows)))
+                                           any(r.info.run and r.facts.fmt in m.JPEG_HOLDERS for r in self.rows),
+                                           key, key and self.keyPanel.keyFile.usable()))
 
     @staticmethod
     def _style_table(t: QTableWidget) -> None:
@@ -493,7 +506,33 @@ class TabPage(QWidget):
         pw = self.pwEdit.text()
         self.showPwCheck.setChecked(False)
         self.pwEdit.setText(""); self.pwConfirmEdit.setText("")
+        if self.tab == "encrypt":
+            self.keyPanel.keyFile.showKeyPwCheck.setChecked(False)
+            self.keyPanel.keyFile.keyPwEdit.setText("")
         return pw
+
+    def forget_keys(self) -> None:
+        """The window closes or is rebuilt: drop any unlocked key."""
+        if self.tab == "encrypt":
+            self.keyPanel.forget()
+
+    def key_mode(self) -> bool:
+        """Encrypt page with recipient keys (or a key file, when decrypting) instead of a password."""
+        return self.tab == "encrypt" and self.credKeysRadio.isChecked()
+
+    def take_credential(self):
+        """What unlocks this run, and empty the fields: the password string, or a creds.Keys object."""
+        if not self.key_mode():
+            return self.take_passphrase()
+        texts = self.keyPanel.recipient_texts()         # read first: clearing the password fields locks the key file again
+        ident = self.keyPanel.keyFile.identity()
+        self.keyPanel.quiet = True
+        try:
+            self.take_passphrase()          # the password fields are cleared in either mode
+            self.keyPanel.take_secrets()
+        finally:
+            self.keyPanel.quiet = False
+        return creds.Keys([] if self.cryptMode == "decrypt" else texts, ident)
 
     # ---- list management
     def add_paths(self, paths: list[Path]) -> tuple[int, int]:
@@ -702,6 +741,7 @@ class TabPage(QWidget):
     def set_crypt_mode(self, mode: str) -> None:
         self.cryptMode = mode
         self.modeEncBtn.setChecked(mode == "encrypt"); self.modeDecBtn.setChecked(mode == "decrypt")
+        self._credentials_for_mode()
         head, sub = (("Add .age files to decrypt", "Drop files ending in .age here.\n"
                       "You need the passphrase they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
         head, sub = tr(head), tr(sub)
@@ -713,6 +753,7 @@ class TabPage(QWidget):
         if (self.tab == "encrypt" and self.cryptMode == "encrypt" and self.rows
                 and all(r.facts.probed and r.facts.is_age for r in self.rows)):
             self.cryptMode = "decrypt"; self.modeEncBtn.setChecked(False); self.modeDecBtn.setChecked(True)
+            self._credentials_for_mode()
         keys = [r.key for r in self.rows]
         dirs = {r.key for r in self.rows if r.facts.is_dir}
         over = m.overlapping(keys, dirs)
@@ -793,7 +834,9 @@ class TabPage(QWidget):
         for name, w in self._opt_notes.items():
             w.setVisible(v.shown[name])
         self.moreChildren.setVisible(v.live["more"])
-        reason_text = dyn(m.shred_after_reason(self.tab))
+        key_enc = self.key_mode() and self.cryptMode == "encrypt"
+        reason_text = dyn((K.shred_after_reason(self.keyPanel.cred_state()) if key_enc else None)
+                          or m.shred_after_reason(self.tab))
         self.shredAfterReason.setText(reason_text)
         self.shredAfterCheck.setAccessibleDescription(reason_text if v.shown["shred_after_reason"] else "")
         st = self.steps(); ticked = self.ticked()
@@ -810,13 +853,26 @@ class TabPage(QWidget):
                      (self.tab == "clean" and "encrypt" in st and bool(infos))
         decrypting = self.tab == "encrypt" and any(i.action == "decrypt" for i in infos)
         ps = m.pw_state(self.pwEdit.text(), self.pwConfirmEdit.text(), encrypting, decrypting)
-        self.pwBlock.setVisible(encrypting or decrypting)
+        cred_reason = None
+        if self.tab == "encrypt":
+            keys = self.key_mode()
+            self.credGroup.setVisible(encrypting or decrypting)
+            self.credStack.setCurrentIndex(1 if keys else 0)
+            self.pwBlock.setVisible(not keys)
+            if keys:
+                cs = self.keyPanel.cred_state()
+                cred_reason = K.cred_reason(cs, self.cryptMode == "decrypt")
+                own_off = v.shown["own_key"] and not v.enabled["own_key"]
+                self.keyPanel.set_own_reason(dyn(self._own_reason(cs)) if own_off else "")
+        else:
+            self.pwBlock.setVisible(encrypting or decrypting)
         self.confirmBox.setVisible(ps.show_confirm)
         self.strengthLabel.setText(dyn(ps.strength_text)); self.strengthLabel.setVisible(bool(ps.strength_text))
         self.pwWarnLabel.setText(dyn(ps.warning)); self.pwWarnLabel.setVisible(bool(ps.warning))
         self.matchLabel.setText(dyn(ps.match_text)); self.matchLabel.setVisible(bool(ps.match_text))
         # reason, label, button
-        reason = m.disable_reason(self.tab, ticked, len(self.rows), len(run_rows), out_reason or ps.reason,
+        pw_reason = cred_reason if (self.tab == "encrypt" and self.key_mode()) else ps.reason
+        reason = m.disable_reason(self.tab, ticked, len(self.rows), len(run_rows), out_reason or pw_reason,
                                   self.win.busy, self.pending())
         self.primaryBtn.setText(dyn(m.primary_label(self.tab, ticked, infos)))
         self.primaryBtn.setEnabled(reason is None)
@@ -849,6 +905,63 @@ class TabPage(QWidget):
     def _blocked_text(self) -> str:
         """Why the primary button is disabled, for the status line."""
         return self.reasonLabel.text() or self.matchLabel.text().lstrip("✗ ") or tr("Nothing to do.")
+
+    # ---- credentials group (Encrypt page): Password or Recipient keys / Key file
+    def _build_credentials(self, bl: QVBoxLayout) -> None:
+        self.credGroup = QWidget(); self.credGroup.setObjectName("credGroup")
+        lay = QVBoxLayout(self.credGroup); lay.setContentsMargins(0, 0, 0, 0); lay.setSpacing(tokens.SPACE[1])
+        row = QHBoxLayout()
+        self.credHeading = QLabel(tr("Protect with"))      # one row with the radios: the required input stays compact
+        row.addWidget(self.credHeading)
+        self.credPasswordRadio = QRadioButton(tr("Password")); self.credKeysRadio = QRadioButton(tr("Recipient keys"))
+        for b in (self.credPasswordRadio, self.credKeysRadio):
+            b.setAutoExclusive(True); b.setMinimumHeight(28); row.addWidget(b)
+        row.addStretch(1)
+        self.credPasswordRadio.setChecked(True)
+        self.credHelper = QLabel(""); self.credHelper.setWordWrap(True)
+        self.keyPanel = KeyPanel()
+        self.credStack = QStackedWidget()
+        self.credStack.addWidget(self.pwBlock); self.credStack.addWidget(self.keyPanel)
+        lay.addLayout(row); lay.addWidget(self.credHelper); lay.addWidget(self.credStack)
+        self._opt["own_key"] = self.keyPanel.ownKeyCheck
+        bl.insertWidget(bl.indexOf(self.nextStepsGroup), self.credGroup)     # the required input comes before the optional ones
+        self.credPasswordRadio.toggled.connect(self._credentials_changed)
+        self.credKeysRadio.toggled.connect(self._credentials_changed)
+        self.keyPanel.changed.connect(self.update_controls)
+        self.keyPanel.status.connect(lambda t: self.win.set_status(t))
+        self._credentials_for_mode()
+
+    def _credentials_for_mode(self) -> None:
+        """Heading, second radio and helper line follow the Encrypt / Decrypt switch."""
+        if self.tab != "encrypt":
+            return
+        dec = self.cryptMode == "decrypt"
+        self.credHeading.setText(tr("Unlock with") if dec else tr("Protect with"))
+        self.credKeysRadio.setText(tr("Key file") if dec else tr("Recipient keys"))
+        self.keyPanel.set_decrypt(dec)
+        self._cred_helper()
+
+    def _cred_helper(self) -> None:
+        dec = self.cryptMode == "decrypt"
+        if self.credKeysRadio.isChecked():
+            text = (tr("Choose the key file that matches the key the files were encrypted for.") if dec
+                    else tr("Each recipient opens the files with their own key file."))
+        else:
+            text = (tr("You type the password the files were encrypted with.") if dec
+                    else tr("You type the same password to open the files."))
+        self.credHelper.setText(text)
+        self.credHelper.setVisible(self.credKeysRadio.isChecked())      # the password panel explains itself
+        self.credPasswordRadio.setAccessibleDescription(
+            tr("You type the password the files were encrypted with.") if dec
+            else tr("You type the same password to open the files."))
+
+    def _credentials_changed(self, *_) -> None:
+        self._cred_helper()
+        self.refresh_rows(); self._ensure_probes()
+
+    @staticmethod
+    def _own_reason(cs: K.CredState) -> str:
+        return "Unlock your key file first." if cs.key_file in (K.KF_LOCKED, K.KF_WRONG_PASSWORD) else "Choose your key file first."
 
     # ---- options -> StepOptions
     def build_options(self) -> steps.StepOptions:

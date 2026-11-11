@@ -62,9 +62,10 @@ def test_tab_order_follows_the_screen_and_includes_every_control():
         while wd not in chain:
             chain.append(wd); wd = wd.nextInFocusChain()
         pos = {id(x): i for i, x in enumerate(chain)}
+        cred = [page.pwEdit] if page.tab == "encrypt" else []     # on the Encrypt page the credentials come before the optional steps
         want = [page.addFilesBtn, page.addFolderBtn, page.removeSelectedBtn, page.clearBtn, page.modeEncBtn,
-                page.fileTable, page.resultTable, page.showFolderBtn, page.copyBtn, page.shredAfterCheck,
-                page.pwEdit, page.outCheck, page.primaryBtn, page.cancelBtn]
+                page.fileTable, page.resultTable, page.showFolderBtn, page.copyBtn, *cred, page.shredAfterCheck,
+                *([] if cred else [page.pwEdit]), page.outCheck, page.primaryBtn, page.cancelBtn]
         idx = [pos[id(x)] for x in want]
         assert idx == sorted(idx), [x.objectName() or type(x).__name__ for x in want]
 

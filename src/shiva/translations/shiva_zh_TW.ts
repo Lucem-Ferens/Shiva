@@ -701,5 +701,104 @@
     <message><source>What Shiva can't promise</source><translation>Shiva 無法保證什麼</translation></message>
     <message><source>Shiva can't promise that deleted data stays unrecoverable.</source><translation>Shiva 無法保證已刪除的資料不可復原。</translation></message>
     <message><source>Results are labelled "best effort".</source><translation>結果會標示為「盡力而為」。</translation></message>
+    <message><source>Protect with</source><translation>保護方式</translation></message>
+    <message><source>Unlock with</source><translation>解鎖方式</translation></message>
+    <message><source>Password</source><translation>密碼</translation></message>
+    <message><source>Recipient keys</source><translation>收件人金鑰</translation></message>
+    <message><source>Key file</source><translation>金鑰檔</translation></message>
+    <message><source>Each recipient opens the files with their own key file.</source><translation>每位收件人用自己的金鑰檔開啟檔案。</translation></message>
+    <message><source>You type the same password to open the files.</source><translation>開啟檔案時輸入相同的密碼。</translation></message>
+    <message><source>You type the password the files were encrypted with.</source><translation>輸入加密這些檔案時使用的密碼。</translation></message>
+    <message><source>Choose the key file that matches the key the files were encrypted for.</source><translation>選擇與加密這些檔案時所用金鑰相符的金鑰檔。</translation></message>
+    <message><source>Public keys of the recipients</source><translation>收件人的公開金鑰</translation></message>
+    <message><source>Paste a public key here (starts with age1)</source><translation>在這裡貼上公開金鑰（以 age1 開頭）</translation></message>
+    <message><source>Public keys to add</source><translation>要加入的公開金鑰</translation></message>
+    <message><source>Public key check</source><translation>公開金鑰檢查</translation></message>
+    <message><source>Add key</source><translation>加入金鑰</translation></message>
+    <message><source>Add from file...</source><translation>從檔案加入...</translation></message>
+    <message><source>Remove key</source><translation>移除金鑰</translation></message>
+    <message><source>Recipient keys: kind, key, source</source><translation>收件人金鑰：種類、金鑰、來源</translation></message>
+    <message><source>Kind</source><translation>種類</translation></message>
+    <message><source>Key</source><translation>金鑰</translation></message>
+    <message><source>Source</source><translation>來源</translation></message>
+    <message><source>No keys added yet.</source><translation>尚未加入任何金鑰。</translation></message>
+    <message><source>Post-quantum</source><translation>後量子</translation></message>
+    <message><source>Standard</source><translation>一般</translation></message>
+    <message><source>Pasted</source><translation>貼上</translation></message>
+    <message><source>Your key file</source><translation>你的金鑰檔</translation></message>
+    <message><source>Your key file (optional)</source><translation>你的金鑰檔（選填）</translation></message>
+    <message><source>Lets Shiva check the encrypted copy before shredding, and add your own key.</source><translation>讓 Shiva 在銷毀前開啟加密後的複本檢查，並可加上你自己的金鑰。</translation></message>
+    <message><source>Key file path</source><translation>金鑰檔路徑</translation></message>
+    <message><source>Choose key file...</source><translation>選擇金鑰檔...</translation></message>
+    <message><source>Choose key file</source><translation>選擇金鑰檔</translation></message>
+    <message><source>Key file password</source><translation>金鑰檔密碼</translation></message>
+    <message><source>Show password</source><translation>顯示密碼</translation></message>
+    <message><source>Show key file password</source><translation>顯示金鑰檔密碼</translation></message>
+    <message><source>Unlock</source><translation>解鎖</translation></message>
+    <message><source>Unlock the key file</source><translation>解鎖金鑰檔</translation></message>
+    <message><source>Key file status</source><translation>金鑰檔狀態</translation></message>
+    <message><source>Copy public key</source><translation>複製公開金鑰</translation></message>
+    <message><source>Public key copied.</source><translation>已複製公開金鑰。</translation></message>
+    <message><source>Post-quantum key.</source><translation>後量子金鑰。</translation></message>
+    <message><source>Standard key.</source><translation>一般金鑰。</translation></message>
+    <message><source>Unlocked.</source><translation>已解鎖。</translation></message>
+    <message><source>Ready.</source><translation>已就緒。</translation></message>
+    <message><source>Also encrypt to my own key</source><translation>同時加密給我自己的金鑰</translation></message>
+    <message><source>Paste a public key, or add keys from a file.</source><translation>貼上公開金鑰，或從檔案加入金鑰。</translation></message>
+    <message><source>Post-quantum key. Press Add key to use it.</source><translation>後量子金鑰。按「加入金鑰」使用它。</translation></message>
+    <message><source>Standard key. Press Add key to use it.</source><translation>一般金鑰。按「加入金鑰」使用它。</translation></message>
+    <message><source>%1 keys found (%2 post-quantum, %3 standard). Press Add key to use them.</source><translation>找到 %1 把金鑰（%2 把後量子、%3 把一般）。按「加入金鑰」使用它們。</translation></message>
+    <message><source>This key is already in the list.</source><translation>這把金鑰已在清單中。</translation></message>
+    <message><source>%1 key added.</source><translation>已加入 %1 把金鑰。</translation></message>
+    <message><source>Added %1 keys.</source><translation>已加入 %1 把金鑰。</translation></message>
+    <message><source>Line %1 is not a key and was skipped.</source><translation>第 %1 行不是金鑰，已略過。</translation></message>
+    <message><source>Added %1 keys from %2.</source><translation>已從 %2 加入 %1 把金鑰。</translation></message>
+    <message><source>%1 was already in the list.</source><translation>有 %1 把已在清單中。</translation></message>
+    <message><source>%1 key removed.</source><translation>已移除 %1 把金鑰。</translation></message>
+    <message><source>Untick "Also encrypt to my own key" to remove it.</source><translation>取消勾選「同時加密給我自己的金鑰」才能移除它。</translation></message>
+    <message><source>Options that need your key file were turned off. Unlock it again.</source><translation>需要你金鑰檔的選項已關閉。請再解鎖一次。</translation></message>
+    <message><source>This key file needs its password.</source><translation>這個金鑰檔需要密碼。</translation></message>
+    <message><source>No keys found in this file. Keys start with age1, one per line.</source><translation>這個檔案中找不到金鑰。金鑰以 age1 開頭，每行一把。</translation></message>
+    <message><source>Error: This isn't a key Shiva can use. Public keys start with age1.</source><translation>錯誤：這不是 Shiva 能使用的金鑰。公開金鑰以 age1 開頭。</translation></message>
+    <message><source>Error: That was a secret key. Shiva cleared the box. Never share it. Paste a public key (starts with age1).</source><translation>錯誤：那是私密金鑰。Shiva 已清空輸入框。請勿分享它。請貼上公開金鑰（以 age1 開頭）。</translation></message>
+    <message><source>Error: This file holds a secret key, not public keys. Choose it under "Your key file".</source><translation>錯誤：這個檔案是私密金鑰，不是公開金鑰。請在「你的金鑰檔」選擇它。</translation></message>
+    <message><source>Error: This file can't be read as a list of keys.</source><translation>錯誤：無法將這個檔案當作金鑰清單讀取。</translation></message>
+    <message><source>Error: A file can't use both post-quantum and standard keys. Remove one kind.</source><translation>錯誤：同一個檔案不能同時使用後量子與一般金鑰。請移除其中一種。</translation></message>
+    <message><source>Error: The key file password is wrong. Try again.</source><translation>錯誤：金鑰檔密碼不正確。請再試一次。</translation></message>
+    <message><source>Error: This isn't a key file. A key file has a line starting AGE-SECRET-KEY-.</source><translation>錯誤：這不是金鑰檔。金鑰檔有一行以 AGE-SECRET-KEY- 開頭。</translation></message>
+    <message><source>Error: SSH keys aren't supported yet. Use an age key (starts with age1).</source><translation>錯誤：尚不支援 SSH 金鑰。請使用 age 金鑰（以 age1 開頭）。</translation></message>
+    <message><source>Error: Keys for plugins or hardware devices aren't supported yet.</source><translation>錯誤：尚不支援外掛或硬體裝置的金鑰。</translation></message>
+    <message><source>Choose your key file</source><translation>選擇你的金鑰檔</translation></message>
+    <message><source>Key files (*.agekey *.txt);;All files (*)</source><translation>金鑰檔 (*.agekey *.txt);;所有檔案 (*)</translation></message>
+    <message><source>Add public keys from a file</source><translation>從檔案加入公開金鑰</translation></message>
+    <message><source>Text files (*.txt);;All files (*)</source><translation>文字檔 (*.txt);;所有檔案 (*)</translation></message>
+    <message><source>Press Add key to use the pasted key.</source><translation>按「加入金鑰」使用貼上的金鑰。</translation></message>
+    <message><source>Add at least one recipient key.</source><translation>請至少加入一把收件人金鑰。</translation></message>
+    <message><source>A file can't use both post-quantum and standard keys. Remove one kind.</source><translation>同一個檔案不能同時使用後量子與一般金鑰。請移除其中一種。</translation></message>
+    <message><source>Unlock the key file, or remove it.</source><translation>請解鎖金鑰檔，或移除它。</translation></message>
+    <message><source>Choose a key file.</source><translation>請選擇金鑰檔。</translation></message>
+    <message><source>This isn't a key file.</source><translation>這不是金鑰檔。</translation></message>
+    <message><source>Enter the key file password.</source><translation>請輸入金鑰檔密碼。</translation></message>
+    <message><source>The key file password is wrong.</source><translation>金鑰檔密碼不正確。</translation></message>
+    <message><source>Choose your key file to enable this: Shiva opens each encrypted copy with it before shredding.</source><translation>請選擇你的金鑰檔以啟用：Shiva 會在銷毀前用它開啟每個加密後的複本。</translation></message>
+    <message><source>Choose your key file first.</source><translation>請先選擇你的金鑰檔。</translation></message>
+    <message><source>Unlock your key file first.</source><translation>請先解鎖你的金鑰檔。</translation></message>
+    <message><source>Each copy is opened with your key file to check it before its original is shredded.</source><translation>每個複本會先用你的金鑰檔開啟檢查，確認後才銷毀原始檔。</translation></message>
+    <message><source>age-inspect confirms the file uses a post-quantum key.</source><translation>age-inspect 確認這個檔案使用後量子金鑰。</translation></message>
+    <message><source>age-inspect says the file does not use a post-quantum key.</source><translation>age-inspect 表示這個檔案未使用後量子金鑰。</translation></message>
+    <message><source>Not confirmed: age-inspect gave no answer.</source><translation>未確認：age-inspect 沒有回答。</translation></message>
+    <message><source>A key file is needed to open this file. Choose one and run again.</source><translation>開啟這個檔案需要金鑰檔。請選擇一個後再執行。</translation></message>
+    <message><source>Shredding needs your key file, to open the encrypted copy first. Choose it, or turn off shredding.</source><translation>銷毀需要你的金鑰檔，先開啟加密後的複本檢查。請選擇金鑰檔，或關閉銷毀。</translation></message>
+    <message><source>Enter the key file password and run again.</source><translation>請輸入金鑰檔密碼後再執行。</translation></message>
+    <message><source>The key file password is wrong, or the key file is damaged.</source><translation>金鑰檔密碼不正確，或金鑰檔已損毀。</translation></message>
+    <message><source>The key file is damaged. Use a backup copy of it.</source><translation>金鑰檔已損毀。請改用它的備份。</translation></message>
+    <message><source>This isn't a usable key file. Choose another one.</source><translation>這不是可用的金鑰檔。請選擇另一個。</translation></message>
+    <message><source>A key in the list was rejected. Remove it and run again.</source><translation>清單中有一把金鑰被拒絕。請移除它後再執行。</translation></message>
+    <message><source>This key file can't open this file. The file may be for another key, may use a password, or may be damaged.</source><translation>這個金鑰檔無法開啟這個檔案。檔案可能是給另一把金鑰的、可能使用密碼，或已損毀。</translation></message>
+    <message><source>Your key file is not one of the recipients. Tick "Also encrypt to my own key", or remove the key file.</source><translation>你的金鑰檔不在收件人之中。請勾選「同時加密給我自己的金鑰」，或移除金鑰檔。</translation></message>
+    <message><source>Remove key file</source><translation>移除金鑰檔</translation></message>
+    <message><source>%1, %2 characters, %3</source><translation>%1，%2 個字元，%3</translation></message>
+    <message><source>%1 key, %2 characters, starts %3, ends %4, from %5</source><translation>%1金鑰，%2 個字元，開頭 %3，結尾 %4，來源 %5</translation></message>
+    <message><source>Error: Shiva could not read the key file. Nothing was changed.</source><translation>錯誤：Shiva 無法讀取這個金鑰檔。沒有變更任何東西。</translation></message>
 </context>
 </TS>

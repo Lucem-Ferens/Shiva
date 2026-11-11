@@ -14,6 +14,7 @@ POST_QUANTUM = "post-quantum"
 # Characters age uses after the "age1" prefix (the Bech32 data alphabet plus the separator "1").
 _BECH32 = frozenset("qpzry9x8gf2tvdw0s3jn54khce6mua7l")
 _BOM = chr(0xFEFF)
+_INVISIBLE = {0x200B: None, 0x200C: None, 0x200D: None, 0x2060: None, 0xFEFF: None}   # zero-width characters
 _PLUGIN_NAME =frozenset("abcdefghijklmnopqrstuvwxyz0123456789-_.")   # ASCII only
 _SECRET_PREFIX ="AGE-SECRET-KEY-"
 _SSH_PREFIXES = ("ssh-", "ecdsa-", "sk-ssh-", "sk-ecdsa-")
@@ -40,12 +41,12 @@ class ParseResult:
 
 def is_secret_key(text: str) -> bool:
     """True when any line looks like a private key, so the caller can refuse and clear it."""
-    return any(ln.strip().upper().startswith(_SECRET_PREFIX) for ln in text.lstrip(_BOM).splitlines())
+    return _SECRET_PREFIX in text.translate(_INVISIBLE).upper()
 
 
 def classify(line: str) -> str:
     """Return STANDARD, POST_QUANTUM, or a problem code for one trimmed, non-comment line."""
-    if line.upper().startswith(_SECRET_PREFIX):
+    if _SECRET_PREFIX in line.translate(_INVISIBLE).upper():       # anywhere in the line: quoted, labelled, in backticks
         return "secret_key"
     if line.startswith(_SSH_PREFIXES):
         return "ssh_key"
@@ -96,4 +97,4 @@ def mixed(keys: list[Recipient]) -> bool:
 
 def shorten(key: str) -> str:
     """Display form of a long key: the start and the end, never the whole text."""
-    return key if len(key) <= 24 else key[:12] + "..." + key[-8:]
+    return key if len(key) <= 24 else key[:12] + "..." + key[-6:]

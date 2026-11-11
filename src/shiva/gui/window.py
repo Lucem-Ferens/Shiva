@@ -136,6 +136,7 @@ class MainWindow(QMainWindow):
         new.setGeometry(self.geometry())
         for tab, page in self.pages.items():
             page.take_passphrase()
+            page.forget_keys()
             if page.rows:
                 new.pages[tab].add_paths([r.path for r in page.rows])
         new.nav[self._last_tab].setChecked(True)
@@ -459,13 +460,15 @@ class MainWindow(QMainWindow):
                     notes.append(m.NOTE_JPEG)       # one line names the loss, so the changes need no per-file line
                 if unclean:
                     notes.append("Files that can't be cleaned are encrypted but their originals are never shredded.")
+                if page.key_mode():
+                    notes.append("Each copy is opened with your key file to check it before its original is shredded.")
                 if not self.confirm_shred(items, notes, changes, opts, tips):
                     return self.set_status("Cancelled. Nothing was changed.")
                 opts.confirmed_changes = {p: list(cs) for p, cs in changes.items()}  # exactly what was shown
                 for r in holders:
                     opts.confirmed_changes.setdefault(str(r.path), []).extend(sorted(JPEG_CHANGES))
             paths = [r.path for r in run_rows]
-            pw = page.take_passphrase()
+            pw = page.take_credential()
             if not steps.needs_passphrase(paths, opts):
                 pw = ""
             self._log = []
@@ -525,6 +528,8 @@ class MainWindow(QMainWindow):
             self.set_status("Closing after the current file...")
             event.ignore()
             return
+        for page in self.pages.values():
+            page.forget_keys()
         if self.busy:
             # the run is still being prepared (a category scan keeps the window alive): cancel the scan and close once
             # begin_run has stopped, so no worker is started in a window that is going away

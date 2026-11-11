@@ -694,3 +694,93 @@ _many({
     "Shiva can't promise that deleted data stays unrecoverable.": "Shiva 無法保證已刪除的資料不可復原。",
     'Results are labelled "best effort".': "結果會標示為「盡力而為」。",
 })
+
+# ------------------------------------------------------------------ recipient keys and key files
+_many({
+    "Protect with": "保護方式", "Unlock with": "解鎖方式", "Password": "密碼", "Recipient keys": "收件人金鑰",
+    "Key file": "金鑰檔",
+    "Each recipient opens the files with their own key file.": "每位收件人用自己的金鑰檔開啟檔案。",
+    "You type the same password to open the files.": "開啟檔案時輸入相同的密碼。",
+    "You type the password the files were encrypted with.": "輸入加密這些檔案時使用的密碼。",
+    "Choose the key file that matches the key the files were encrypted for.": "選擇與加密這些檔案時所用金鑰相符的金鑰檔。",
+    "Public keys of the recipients": "收件人的公開金鑰",
+    "Paste a public key here (starts with age1)": "在這裡貼上公開金鑰（以 age1 開頭）",
+    "Public keys to add": "要加入的公開金鑰", "Public key check": "公開金鑰檢查",
+    "Add key": "加入金鑰", "Add from file...": "從檔案加入...", "Remove key": "移除金鑰",
+    "Recipient keys: kind, key, source": "收件人金鑰：種類、金鑰、來源",
+    "Kind": "種類", "Key": "金鑰", "Source": "來源", "No keys added yet.": "尚未加入任何金鑰。",
+    "Post-quantum": "後量子", "Standard": "一般", "Pasted": "貼上", "Your key file": "你的金鑰檔",
+    "Your key file (optional)": "你的金鑰檔（選填）",
+    "Lets Shiva check the encrypted copy before shredding, and add your own key.":
+        "讓 Shiva 在銷毀前開啟加密後的複本檢查，並可加上你自己的金鑰。",
+    "Key file path": "金鑰檔路徑", "Choose key file...": "選擇金鑰檔...", "Choose key file": "選擇金鑰檔",
+    "Key file password": "金鑰檔密碼", "Show password": "顯示密碼", "Show key file password": "顯示金鑰檔密碼",
+    "Unlock": "解鎖", "Unlock the key file": "解鎖金鑰檔", "Key file status": "金鑰檔狀態",
+    "Copy public key": "複製公開金鑰", "Public key copied.": "已複製公開金鑰。",
+    "Post-quantum key.": "後量子金鑰。", "Standard key.": "一般金鑰。", "Unlocked.": "已解鎖。", "Ready.": "已就緒。",
+    "Also encrypt to my own key": "同時加密給我自己的金鑰",
+    "Paste a public key, or add keys from a file.": "貼上公開金鑰，或從檔案加入金鑰。",
+    "Post-quantum key. Press Add key to use it.": "後量子金鑰。按「加入金鑰」使用它。",
+    "Standard key. Press Add key to use it.": "一般金鑰。按「加入金鑰」使用它。",
+    "%1 keys found (%2 post-quantum, %3 standard). Press Add key to use them.":
+        "找到 %1 把金鑰（%2 把後量子、%3 把一般）。按「加入金鑰」使用它們。",
+    "This key is already in the list.": "這把金鑰已在清單中。",
+    "%1 key added.": "已加入 %1 把金鑰。", "Added %1 keys.": "已加入 %1 把金鑰。",
+    "Line %1 is not a key and was skipped.": "第 %1 行不是金鑰，已略過。",
+    "Added %1 keys from %2.": "已從 %2 加入 %1 把金鑰。", "%1 was already in the list.": "有 %1 把已在清單中。",
+    "%1 key removed.": "已移除 %1 把金鑰。",
+    "Untick \"Also encrypt to my own key\" to remove it.": "取消勾選「同時加密給我自己的金鑰」才能移除它。",
+    "Options that need your key file were turned off. Unlock it again.": "需要你金鑰檔的選項已關閉。請再解鎖一次。",
+    "This key file needs its password.": "這個金鑰檔需要密碼。",
+    "No keys found in this file. Keys start with age1, one per line.": "這個檔案中找不到金鑰。金鑰以 age1 開頭，每行一把。",
+    "Error: This isn't a key Shiva can use. Public keys start with age1.": "錯誤：這不是 Shiva 能使用的金鑰。公開金鑰以 age1 開頭。",
+    "Error: That was a secret key. Shiva cleared the box. Never share it. Paste a public key (starts with age1).":
+        "錯誤：那是私密金鑰。Shiva 已清空輸入框。請勿分享它。請貼上公開金鑰（以 age1 開頭）。",
+    "Error: This file holds a secret key, not public keys. Choose it under \"Your key file\".":
+        "錯誤：這個檔案是私密金鑰，不是公開金鑰。請在「你的金鑰檔」選擇它。",
+    "Error: This file can't be read as a list of keys.": "錯誤：無法將這個檔案當作金鑰清單讀取。",
+    "Error: A file can't use both post-quantum and standard keys. Remove one kind.":
+        "錯誤：同一個檔案不能同時使用後量子與一般金鑰。請移除其中一種。",
+    "Error: The key file password is wrong. Try again.": "錯誤：金鑰檔密碼不正確。請再試一次。",
+    "Error: This isn't a key file. A key file has a line starting AGE-SECRET-KEY-.":
+        "錯誤：這不是金鑰檔。金鑰檔有一行以 AGE-SECRET-KEY- 開頭。",
+    "Error: SSH keys aren't supported yet. Use an age key (starts with age1).":
+        "錯誤：尚不支援 SSH 金鑰。請使用 age 金鑰（以 age1 開頭）。",
+    "Error: Keys for plugins or hardware devices aren't supported yet.": "錯誤：尚不支援外掛或硬體裝置的金鑰。",
+    "Choose your key file": "選擇你的金鑰檔", "Key files (*.agekey *.txt);;All files (*)": "金鑰檔 (*.agekey *.txt);;所有檔案 (*)",
+    "Add public keys from a file": "從檔案加入公開金鑰", "Text files (*.txt);;All files (*)": "文字檔 (*.txt);;所有檔案 (*)",
+    # reasons and results (key_model)
+    "Press Add key to use the pasted key.": "按「加入金鑰」使用貼上的金鑰。",
+    "Add at least one recipient key.": "請至少加入一把收件人金鑰。",
+    "A file can't use both post-quantum and standard keys. Remove one kind.": "同一個檔案不能同時使用後量子與一般金鑰。請移除其中一種。",
+    "Unlock the key file, or remove it.": "請解鎖金鑰檔，或移除它。",
+    "Choose a key file.": "請選擇金鑰檔。", "This isn't a key file.": "這不是金鑰檔。",
+    "Enter the key file password.": "請輸入金鑰檔密碼。", "The key file password is wrong.": "金鑰檔密碼不正確。",
+    "Choose your key file to enable this: Shiva opens each encrypted copy with it before shredding.":
+        "請選擇你的金鑰檔以啟用：Shiva 會在銷毀前用它開啟每個加密後的複本。",
+    "Choose your key file first.": "請先選擇你的金鑰檔。", "Unlock your key file first.": "請先解鎖你的金鑰檔。",
+    "Each copy is opened with your key file to check it before its original is shredded.":
+        "每個複本會先用你的金鑰檔開啟檢查，確認後才銷毀原始檔。",
+    "age-inspect confirms the file uses a post-quantum key.": "age-inspect 確認這個檔案使用後量子金鑰。",
+    "age-inspect says the file does not use a post-quantum key.": "age-inspect 表示這個檔案未使用後量子金鑰。",
+    "Not confirmed: age-inspect gave no answer.": "未確認：age-inspect 沒有回答。",
+    "A key file is needed to open this file. Choose one and run again.": "開啟這個檔案需要金鑰檔。請選擇一個後再執行。",
+    "Shredding needs your key file, to open the encrypted copy first. Choose it, or turn off shredding.":
+        "銷毀需要你的金鑰檔，先開啟加密後的複本檢查。請選擇金鑰檔，或關閉銷毀。",
+    "Enter the key file password and run again.": "請輸入金鑰檔密碼後再執行。",
+    "The key file password is wrong, or the key file is damaged.": "金鑰檔密碼不正確，或金鑰檔已損毀。",
+    "The key file is damaged. Use a backup copy of it.": "金鑰檔已損毀。請改用它的備份。",
+    "This isn't a usable key file. Choose another one.": "這不是可用的金鑰檔。請選擇另一個。",
+    "A key in the list was rejected. Remove it and run again.": "清單中有一把金鑰被拒絕。請移除它後再執行。",
+    "This key file can't open this file. The file may be for another key, may use a password, or may be damaged.":
+        "這個金鑰檔無法開啟這個檔案。檔案可能是給另一把金鑰的、可能使用密碼，或已損毀。",
+    "Your key file is not one of the recipients. Tick \"Also encrypt to my own key\", or remove the key file.":
+        "你的金鑰檔不在收件人之中。請勾選「同時加密給我自己的金鑰」，或移除金鑰檔。",
+})
+
+_many({
+    "Remove key file": "移除金鑰檔",
+    "%1, %2 characters, %3": "%1，%2 個字元，%3",
+    "%1 key, %2 characters, starts %3, ends %4, from %5": "%1金鑰，%2 個字元，開頭 %3，結尾 %4，來源 %5",
+    "Error: Shiva could not read the key file. Nothing was changed.": "錯誤：Shiva 無法讀取這個金鑰檔。沒有變更任何東西。",
+})
