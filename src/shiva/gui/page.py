@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, _Table, high_contrast_active, status_icon, status_item
+from .widgets import WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -101,6 +101,7 @@ class TabPage(QWidget):
         self.removeSelectedBtn.setAccessibleName(tr("Remove selected")); self.removeSelectedBtn.setEnabled(False)
         for b in (self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn):
             b.setMinimumHeight(32)
+        self.addFilesBtn.setToolTip(tr("Add files (Ctrl+O)"))
         tools.addWidget(self.addFilesBtn); tools.addWidget(self.addFolderBtn); tools.addStretch(1)
         tools.addWidget(self.removeSelectedBtn); tools.addWidget(self.clearBtn)
         bl.addLayout(tools)
@@ -120,6 +121,8 @@ class TabPage(QWidget):
         if tab == "clean":
             self.addFolderBtn.setEnabled(False)
             self.addFolderBtn.setToolTip(tr("Folders can't be cleaned yet."))
+        else:
+            self.addFolderBtn.setToolTip(tr("Add folder (Ctrl+Shift+O)"))
 
         self.view = QStackedWidget();
         self.dropCue = QLabel(""); self.dropCue.setObjectName("dropCue"); self.dropCue.setAlignment(Qt.AlignCenter)
@@ -175,8 +178,7 @@ class TabPage(QWidget):
         self.noteLabel = QLabel(dyn(m.CLEAN_LIMITS if tab == "clean" else m.SHRED_LINE if tab == "shred" else ""))
         self.noteLabel.setWordWrap(True); bl.addWidget(self.noteLabel)
         self.aboutShredLink = QPushButton(dyn(m.ABOUT_LINK)); self.aboutShredLink.setFlat(True)
-        self.aboutShredLink.setCursor(Qt.PointingHandCursor); self.aboutShredLink.setAutoDefault(False)
-        self.aboutShredLink.setStyleSheet("QPushButton { text-decoration: underline; border: none; text-align: left; background: transparent; padding: 0; }")
+        link_button(self.aboutShredLink)
         self.aboutShredLink.setAccessibleName(dyn(m.ABOUT_LINK))
         self.aboutShredLink.setVisible(tab == "shred")
         self.aboutShredLink.clicked.connect(lambda: self.win.show_about_shredding())
@@ -214,8 +216,7 @@ class TabPage(QWidget):
                                      "still hold leftover pixels beyond the image edge (for example from cropping), "
                                      "compression tables that can identify the camera or program, and extra bytes "
                                      "inside the image data. Data hidden in the pixels themselves stays too.")
-        self.keepQualityMore = QPushButton(tr("Learn more")); self.keepQualityMore.setFlat(True)
-        self.keepQualityMore.setCursor(Qt.PointingHandCursor); self.keepQualityMore.setAutoDefault(False)
+        self.keepQualityMore = link_button(QPushButton(tr("Learn more")), indent=True)
         self.keepQualityMore.setToolTip(self._keep_quality_help)
         self.keepQualityMore.clicked.connect(
             lambda: QMessageBox.information(self, tr("Learn more"), self._keep_quality_help))
@@ -232,8 +233,6 @@ class TabPage(QWidget):
         self.chroma420Check.setToolTip(tr("By default, full colour detail is kept if the original had it. This option "
                                           "saves less colour detail instead; files get smaller and thin coloured lines "
                                           "may blur."))
-        self.keepQualityMore.setStyleSheet(
-            "QPushButton { text-decoration: underline; border: none; text-align: left; background: transparent; padding: 0 0 0 24px; }")
         # children of "Encrypt the cleaned copies" (Clean page) or the Encrypt page's group
         for w in (self.allowUncleanCheck, self.uncleanHint):
             ecl.addWidget(w)
@@ -318,6 +317,7 @@ class TabPage(QWidget):
         self.progressLabel.setVisible(False); self.progressBar.setVisible(False)
         self.primaryBtn = QPushButton(""); self.primaryBtn.setMinimumHeight(32)
         self.primaryBtn.setProperty("primary", True)
+        self.primaryBtn.setToolTip(tr("Shortcut: Ctrl+Enter"))
         self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setVisible(False)
         self.cancelBtn.setAccessibleName(tr("Cancel the run"))
         # read-only list of the steps of one item (two or more steps only); not a tab stop
@@ -512,6 +512,20 @@ class TabPage(QWidget):
         self._leave_results(clear=True)
         self.win.set_status("Ready")      # the text of the last run ("1 failed ...") no longer describes anything
         self.refresh_rows()
+        self.restore_focus()              # the focused Clear list button is now disabled
+
+    def restore_focus(self, prefer: QWidget | None = None) -> None:
+        """Put keyboard focus on a predictable control of this page after a state change: Cancel while running, the
+        results while they show, otherwise Add files (or `prefer` when it is usable). Nothing happens while the page
+        is not the one shown or its body is disabled."""
+        if self.win.view() != self.tab:
+            return
+        first = {"running": self.cancelBtn, "results": self.resultTable if self._results else self.primaryBtn}.get(
+            self.mode, prefer or self.addFilesBtn)
+        for w in (first, self.primaryBtn, self.addFilesBtn):
+            if w.isEnabled() and not w.isHidden():
+                w.setFocus(Qt.OtherFocusReason)
+                return
 
     def _leave_results(self, clear: bool) -> None:
         self.mode = "list"
@@ -528,6 +542,7 @@ class TabPage(QWidget):
             self.rows.append(_Row(r.path))
         self.win.set_status("Ready")      # the results are gone; so is their summary
         self.refresh_rows(); self._ensure_probes()
+        self.restore_focus()
 
     def _steps_changed(self) -> None:
         self.refresh_rows(); self._ensure_probes()
@@ -725,10 +740,18 @@ class TabPage(QWidget):
         if self.primaryBtn.isEnabled():
             self.primaryBtn.click()
             return
-        f = self.reasonLabel.font(); f.setBold(True); self.reasonLabel.setFont(f)
+        self.win.set_status(self._blocked_text())        # the reason may be hidden (a mismatch has none): say it here
+        lab = self.reasonLabel if not self.reasonLabel.isHidden() else self.matchLabel
+        if lab.isHidden():
+            return
+        f = lab.font(); f.setBold(True); lab.setFont(f)
         def undo():
-            g = self.reasonLabel.font(); g.setBold(False); self.reasonLabel.setFont(g)
+            g = lab.font(); g.setBold(False); lab.setFont(g)
         QTimer.singleShot(700, undo)
+
+    def _blocked_text(self) -> str:
+        """Why the primary button is disabled, for the status line."""
+        return self.reasonLabel.text() or self.matchLabel.text().lstrip("✗ ") or tr("Nothing to do.")
 
     # ---- options -> StepOptions
     def build_options(self) -> steps.StepOptions:
@@ -754,7 +777,7 @@ class TabPage(QWidget):
             return
         self.update_controls()
         if not self.primaryBtn.isEnabled():
-            self.win.set_status(self.reasonLabel.text() or self.matchLabel.text().lstrip("\u2717 ") or tr("Nothing to do."))
+            self.win.set_status(self._blocked_text())
             return
         opts = self.build_options()
         run_rows = self.run_rows()
@@ -769,6 +792,7 @@ class TabPage(QWidget):
         self.progressBar.setRange(0, len(run_rows) if len(run_rows) > 1 else 0); self.progressBar.setValue(0)
         self.progressBar.setVisible(True); self.progressLabel.setVisible(True)
         self.cancelBtn.setToolTip(tr("Stops after the current item. Finished items are kept."))
+        self.restore_focus()      # the primary button that had focus is hidden now
         self._run_opts, self._run_steps = self.build_options(), self.steps()
         self._t0 = self.win.clock()
         self._progress_base = ""
@@ -858,7 +882,7 @@ class TabPage(QWidget):
         if data:
             t.selectRow(m.first_problem_index(statuses))
             self._show_details()        # selectRow sends no signal when the same row stays selected
-            t.setFocus()
+        self.restore_focus()            # no effect while the body is still disabled: the window calls it again afterwards
 
     _BANNER = {"success": ("✓", None), "warning": ("⚠", "Warning:"), "error": ("✗", "Failed:")}
     _BANNER_COLOR = {"success": "success", "warning": "warning", "error": "error"}
@@ -873,6 +897,7 @@ class TabPage(QWidget):
         if risky:
             text += " " + dyn(m.RISK_SUMMARY)
         self.resultBanner.setText(text)
+        _announce(self.resultBanner, text)        # real text for screen readers, announced like the status line
         self.resultBanner.setProperty("level", level)
         col = tokens.COLORS[tokens.theme_from_palette(self.palette())][self._BANNER_COLOR[level]]
         self.resultBanner.setStyleSheet(f"QLabel {{ border-left: 4px solid {col}; padding: 4px 8px; }}")

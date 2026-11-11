@@ -468,6 +468,7 @@ class MainWindow(QMainWindow):
         finally:
             if not started:
                 self._set_busy(False)
+                page.restore_focus(page.primaryBtn)     # a dialog was cancelled or refused: back to the button pressed
                 if self._closing:       # closed while preparing the run: nothing is running, so the window can go now
                     self.close()
 
@@ -491,6 +492,7 @@ class MainWindow(QMainWindow):
         self.set_status(m.finish_text([d[0].status for d in page._results], n_run))
         self._set_busy(False)
         page.primaryBtn.setEnabled(True)
+        page.restore_focus()        # the body is enabled again, so the results table can take focus now
         self.runFinished.emit(results)
         if self._closing:
             self.close()

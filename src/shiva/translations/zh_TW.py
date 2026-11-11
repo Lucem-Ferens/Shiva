@@ -97,6 +97,8 @@ _many({
     "JPEG: reduce colour detail (smaller files)": "JPEG：降低色彩細節（檔案較小）",
     "Warning: hidden bytes and compression tables in the image data stay.": "警告：影像資料中隱藏的位元組與壓縮表會保留。",
     "Learn more": "了解更多",
+    "Current page": "目前的頁面", "Shortcut: Ctrl+Enter": "快速鍵：Ctrl+Enter",
+    "Add files (Ctrl+O)": "加入檔案（Ctrl+O）", "Add folder (Ctrl+Shift+O)": "加入資料夾（Ctrl+Shift+O）",
     "The picture itself is not touched, but the image data is copied as it is. It can "
     "still hold leftover pixels beyond the image edge (for example from cropping), "
     "compression tables that can identify the camera or program, and extra bytes "

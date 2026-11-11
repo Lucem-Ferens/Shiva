@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QLabel, QPushButton, QRadi
 from .. import settings, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
+from .widgets import link_button
 
 LANGUAGES = (("system", "System default"), ("en", "English"), ("zh_TW", "繁體中文"))
 NOTICES_NAME = "THIRD_PARTY_NOTICES.md"
@@ -31,7 +32,7 @@ def _header(page: QWidget, key: str, outer: QVBoxLayout) -> None:
 
 
 def _link(text: str) -> QPushButton:
-    b = QPushButton(text); b.setObjectName("learnLink"); b.setFlat(True); b.setAutoDefault(False)
+    b = link_button(QPushButton(text))
     b.setAccessibleName(text)
     return b
 

@@ -7,12 +7,12 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QPointF, QRectF
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPalette, QPen, QPixmap
-from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QProxyStyle, QStyle, QStyleOptionButton,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
                                QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QWidget)
 
 from .. import tokens
 from .. import ui_model as m
-from ..i18n import dyn
+from ..i18n import dyn, tr
 
 def _announce(widget: QWidget, text: str) -> None:
     """Tell screen readers about a status change (best effort)."""
@@ -72,7 +72,8 @@ class NavButton(QToolButton):
         title, sub = m.TITLES[tab]
         self.tab = tab
         self.setObjectName("nav"); self.setCheckable(True); self.setAutoExclusive(True)
-        self.setFocusPolicy(Qt.TabFocus)   # focus ring only for keyboard users, not after a mouse click
+        self.setFocusPolicy(Qt.NoFocus)    # TabFocus while checked: the sidebar is one tab stop, on the selected item
+        self.toggled.connect(self._roving)
         self.setAccessibleName(f"{dyn(title)}, {dyn(sub)}")
         self.setToolTip(dyn(sub))
         self.setFixedHeight(tokens.TARGET["nav_h"])
@@ -84,6 +85,12 @@ class NavButton(QToolButton):
         for w in (icon, a):
             w.setAttribute(Qt.WA_TransparentForMouseEvents)
         lay.addWidget(icon); lay.addWidget(a, 1)
+
+    def _roving(self, on: bool) -> None:
+        """Only the selected item takes Tab (focus ring only for keyboard users); the arrow keys still move between the
+        items and select them. The description says which item is the current page."""
+        self.setFocusPolicy(Qt.TabFocus if on else Qt.NoFocus)
+        self.setAccessibleDescription(tr("Current page") if on else "")
 
     def _set_target(self, on: bool) -> None:
         if bool(self.property("dropTarget")) == on:
@@ -163,6 +170,10 @@ class _Table(QTableWidget):
     deleteRequested = Signal()
     copyRequested = Signal()
 
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setTabKeyNavigation(False)    # Tab leaves the table (the default walks cell by cell and never lets go)
+
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Delete:
             self.deleteRequested.emit()
@@ -180,6 +191,16 @@ class _TokenStyle(QProxyStyle):
         self._c = tokens.COLORS[theme]
 
     def drawPrimitive(self, element, option, painter, widget=None):
+        if element == QStyle.PE_FrameFocusRect and not isinstance(widget, (QPushButton, QToolButton)):
+            # check boxes, radios, table cells: the buttons' ring (accent, focus width); shown for keyboard focus only
+            if option.state & QStyle.State_KeyboardFocusChange:
+                painter.save()
+                painter.setRenderHint(QPainter.Antialiasing)
+                painter.setPen(QPen(QColor(self._c["accent"]), tokens.FOCUS["width"]))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRoundedRect(QRectF(option.rect).adjusted(1, 1, -1, -1), 3, 3)
+                painter.restore()
+            return
         if element not in (QStyle.PE_IndicatorCheckBox, QStyle.PE_IndicatorRadioButton):
             return super().drawPrimitive(element, option, painter, widget)
         c = self._c
@@ -207,6 +228,22 @@ class _TokenStyle(QProxyStyle):
                 painter.drawLine(QPointF(x + w * .25, y + h * .52), QPointF(x + w * .43, y + h * .70))
                 painter.drawLine(QPointF(x + w * .43, y + h * .70), QPointF(x + w * .76, y + h * .30))
         painter.restore()
+
+
+_HC_LINK_CSS = ("QPushButton#learnLink { text-decoration: underline; border: 2px solid transparent; text-align: left; "
+                "background: transparent; padding: 0 4px; } QPushButton#learnLink:focus { border: 2px solid palette(highlight); }")
+
+
+def link_button(b: QPushButton, indent: bool = False) -> QPushButton:
+    """Style a flat button as a link: the token sheet styles #learnLink; in Windows High Contrast (no token sheet) the
+    system palette is used instead."""
+    b.setObjectName("learnLink"); b.setFlat(True); b.setAutoDefault(False)
+    b.setCursor(Qt.PointingHandCursor)
+    if indent:
+        b.setProperty("indent", True)
+    if high_contrast_active():
+        b.setStyleSheet(_HC_LINK_CSS + ("QPushButton#learnLink { padding-left: 24px; }" if indent else ""))
+    return b
 
 
 def high_contrast_active() -> bool:

@@ -104,6 +104,10 @@
     <message><source>JPEG: reduce colour detail (smaller files)</source><translation>JPEG：降低色彩細節（檔案較小）</translation></message>
     <message><source>Warning: hidden bytes and compression tables in the image data stay.</source><translation>警告：影像資料中隱藏的位元組與壓縮表會保留。</translation></message>
     <message><source>Learn more</source><translation>了解更多</translation></message>
+    <message><source>Current page</source><translation>目前的頁面</translation></message>
+    <message><source>Shortcut: Ctrl+Enter</source><translation>快速鍵：Ctrl+Enter</translation></message>
+    <message><source>Add files (Ctrl+O)</source><translation>加入檔案（Ctrl+O）</translation></message>
+    <message><source>Add folder (Ctrl+Shift+O)</source><translation>加入資料夾（Ctrl+Shift+O）</translation></message>
     <message><source>The picture itself is not touched, but the image data is copied as it is. It can still hold leftover pixels beyond the image edge (for example from cropping), compression tables that can identify the camera or program, and extra bytes inside the image data. Data hidden in the pixels themselves stays too.</source><translation>圖片本身不會被更動，但影像資料會原樣複製，因此可能仍留有超出圖片邊緣的殘餘像素（例如裁切後留下的）、可辨識相機或程式的壓縮表，以及影像資料內多餘的位元組。藏在像素本身的資料也會保留。</translation></message>
     <message><source>By default, full colour detail is kept if the original had it. This option saves less colour detail instead; files get smaller and thin coloured lines may blur.</source><translation>預設會在原始檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。</translation></message>
     <message><source>Archives: leave out parts that can't be cleaned (they are missing from the copy)</source><translation>壓縮檔：排除無法清理的部分（副本中不會有這些部分）</translation></message>
