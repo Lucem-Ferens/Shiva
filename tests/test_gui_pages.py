@@ -393,6 +393,16 @@ def test_confirm_dialog_cancel_is_default_focus_and_esc(w):
     assert d3.result() == d3.DialogCode.Accepted
 
 
+def test_confirm_dialog_enter_never_shreds_even_with_do_button_focused(w):
+    d = ConfirmDialog(w, "Shred 1 item?", "body", ["a.bin"], [], "Shred", delay_ms=0)
+    d.show(); QApplication.processEvents()
+    d.doBtn.setFocus(); QApplication.processEvents()
+    assert d.focusWidget() is d.doBtn and not d.doBtn.isDefault() and not d.doBtn.autoDefault()
+    QTest.keyClick(d, Qt.Key_Return); QTest.keyClick(d, Qt.Key_Enter)
+    assert d.result() != d.DialogCode.Accepted
+    assert d.cancelBtn.text() == "Cancel" and d.itemList.maximumHeight() <= 140
+
+
 def test_shred_declined_leaves_files_and_passphrase(w, tmp_path, monkeypatch):
     f = mk(tmp_path, "s.bin")
     seen = {}

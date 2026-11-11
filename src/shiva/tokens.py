@@ -103,6 +103,11 @@ QHeaderView::section { background: $surface_strong; color: $text_secondary; bord
 QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
 QGroupBox { border: 0; margin-top: ${s4}px; padding: 0; font-weight: 600; }
 QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 0; padding: 0; }
+QLabel#confirmTitle { font-size: ${t_section}px; font-weight: 600; }
+QListWidget#confirmItems { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; padding: ${s1}px; }
+QListWidget#confirmItems:focus { border: ${f_width}px solid $accent; }
+QPushButton#learnLink { color: $accent; text-decoration: underline; border: 0; background: transparent; padding: 0; text-align: left; }
+QPushButton#learnLink:focus { border: ${f_width}px solid $accent; }
 QLabel#pageTitle { font-size: ${t_title}px; font-weight: 600; }
 QLabel#pageScope, QLabel#shredAfterReason { color: $text_secondary; }
 QLabel#statusWarning { color: $warning; }
