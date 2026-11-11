@@ -117,9 +117,12 @@ def test_early_returns_and_cancel_before_start_list_every_planned_stage_not_star
 
 
 @needs_age
-def test_failure_before_the_first_stage_leaves_all_not_started(tmp_path):
+def test_failure_before_the_first_stage_leaves_all_not_started(tmp_path, monkeypatch):
     f = _plain(tmp_path)
-    (tmp_path / "plain.bin.age").write_bytes(b"in the way")
+
+    def refuse(*a, **k):
+        raise agecli.AgeError("another program has this file open", "in_use")
+    monkeypatch.setattr(pipeline, "hold_for_shredding", refuse)
     r = _run(f, encrypt=True, shred=True)
     assert not r.ok and set(_st(r).values()) == {"not_started"}
 
@@ -192,14 +195,15 @@ def test_changed_during_run_and_after_verify(tmp_path, monkeypatch):
     assert r.error_code == "changed_during_run" and _st(r) == {ENCRYPT: "done", VERIFY: "failed"}
 
     g = _plain(tmp_path, "g.bin")
-    real_publish = output.publish
+    real_publish = output.publish_numbered
 
-    def grow(part, final):
-        real_publish(part, final)
+    def grow(*a):
+        final, renamed = real_publish(*a)
         with open(final, "ab") as fh:
             fh.write(b"x")
+        return final, renamed
     with monkeypatch.context() as m:
-        m.setattr(output, "publish", grow)
+        m.setattr(output, "publish_numbered", grow)
         r = _run(g, encrypt=True, shred=True)
     assert r.error_code == "changed_after_verify" and g.exists()
     assert _st(r) == {ENCRYPT: "done", VERIFY: "failed", SHRED: "not_started"}
@@ -207,14 +211,14 @@ def test_changed_during_run_and_after_verify(tmp_path, monkeypatch):
     # the same size re-check on the Clean + Encrypt path and on the folder path
     j = tmp_path / "a.jpg"; _jpeg(j)
     with monkeypatch.context() as m:
-        m.setattr(output, "publish", grow)
+        m.setattr(output, "publish_numbered", grow)
         r = _run(j, clean=True, encrypt=True, shred=True, confirmed_changes={str(j): list(clean_pipeline.JPEG_CHANGES)})
     assert r.error_code == "changed_after_verify" and j.exists()
     assert _st(r) == {CLEAN: "done", ENCRYPT: "done", VERIFY: "failed", SHRED: "not_started"}
 
     fo = _fold(tmp_path)
     with monkeypatch.context() as m:
-        m.setattr(output, "publish", grow)
+        m.setattr(output, "publish_numbered", grow)
         r = _run(fo, encrypt=True, shred=True)
     assert r.error_code == "changed_after_verify" and (fo / "a.txt").exists()
     assert _st(r) == {ENCRYPT: "done", VERIFY: "failed", SHRED: "not_started"}

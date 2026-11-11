@@ -43,7 +43,7 @@ def needs_passphrase(paths: list[Path], opts: StepOptions) -> bool:
 
 
 _ARCHIVES = ("docx", "xlsx", "pptx", "odt", "ods", "odp", "zip")
-KEPT_UNCLEAN = "parts copied unchanged (NOT fully cleaned)"
+KEPT_UNCLEAN = "parts left as they are (NOT fully cleaned)"
 
 
 def _kept(outcome) -> list[str]:
@@ -81,7 +81,7 @@ def _describe(outcome) -> str:
     if outcome.kept:
         parts.append("kept: " + ", ".join(_LABELS.get(k, k) for k in outcome.kept))
     parts += outcome.warnings
-    return "; ".join(parts) or "nothing to remove"
+    return "".join("; " + x for x in parts)     # "" when the lists are empty: whether anything changed is the bytes' business
 
 
 def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
@@ -142,8 +142,11 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline, rec=NULL) 
                                                       opts.confirmed_changes.get(str(p), ()),
                                                       opts.allow_unclean, cancel, opts.out_dir, rec=rec)
         msg = f"{'Cleaned, encrypted' if r.cleaned else 'Encrypted WITHOUT cleaning'} and verified -> {r.output.name}"
+        if r.unchanged:
+            lead = "Cleaning would not change the file" if r.outcome is not None and r.outcome.kept_unclean else "Nothing to remove"
+            msg = f"{lead}; encrypted and verified -> {r.output.name}"
         if r.outcome is not None:
-            msg += "; " + _describe(r.outcome)
+            msg += _describe(r.outcome)
         msg += "".join(f"; NOTE: {n}" for n in r.notes)
         removed = False
         if r.shred_report is not None:
@@ -153,7 +156,10 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline, rec=NULL) 
             else:
                 removed = True
                 msg += "; original overwritten and removed (best-effort). " + " ".join(r.shred_report.caveats)
+        usual = f"{p.stem}.cleaned{p.suffix}.age" if r.cleaned else p.name + ".age"
+        taken = jobs.usual_item(r.output, usual)
         return JobResult(p, True, msg, created=r.output, original_removed=removed,
+                         renamed=taken is not None, usual=taken, unchanged=r.unchanged,
                          warnings=(r.outcome.warnings if r.outcome else []) + r.notes
                          + (list(r.shred_report.caveats) if r.shred_report else []),
                          kept=_kept(r.outcome) if r.outcome else [],
@@ -168,12 +174,17 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline, rec=NULL) 
     rec.begin(CLEAN)
     res = runner.clean_file(p, _clean_options(p, opts, fmt), cancel, opts.out_dir)
     rec.done(CLEAN)
-    msg = f"Cleaned -> {res.output.name}; " + _describe(res.outcome)
+    if res.unchanged:
+        lead = "Cleaning would not change the file" if res.outcome.kept_unclean else "Nothing to remove"
+        msg = f"{lead}; no copy was saved"
+    else:
+        msg = f"Cleaned -> {res.output.name}"
+    msg += _describe(res.outcome)
+    taken = jobs.usual_item(res.output, runner.clean_name(p).name)
     return JobResult(p, True, msg, created=res.output, original_removed=False,
                      warnings=list(res.outcome.warnings), kept=_kept(res.outcome),
                      removed=_labels(res.outcome.removed), changed=_labels(res.outcome.content_changed),
-                     shred_attempted=False,
-                     renamed=res.output.name != runner.clean_name(p).name)
+                     shred_attempted=False, unchanged=res.unchanged, renamed=taken is not None, usual=taken)
 
 
 def _shred_only(p: Path, rec=NULL) -> JobResult:

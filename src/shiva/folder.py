@@ -21,6 +21,7 @@ from .stages import ENCRYPT, NULL, SHRED, VERIFY
 
 MARKER = ".shiva-staging-marker"
 MAX_MEMBERS = 1_000_000
+MAX_NUMBER = 9999        # highest number tried for a restored folder's name
 _CLOUD_ATTRS = 0x400000 | 0x80000 | 0x100000
 
 
@@ -213,14 +214,13 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
     src = Path(src)
     if shred_original:
         shred.check_target(src)     # a drive, user, system or program folder is never shredded as a whole
-    dst = output.dest_dir(src, out_dir, inside=src) / (src.name + ".tar.age")
-    if dst.exists():
-        raise FileExistsError(dst)
+    base = output.dest_dir(src, out_dir, inside=src)
+    stem, tail = src.name, ".tar.age"
     plan = plan_folder(src, shred_original)
     notes = []
     if plan.hidden_streams:
         notes.append(f"{plan.hidden_streams} hidden NTFS data stream(s) are not included in the archive")
-    part = output.part_for(dst)
+    part = output.part_for(base / (stem + tail))
     digests: dict[str, str] = {}
     try:
         rec.begin(ENCRYPT)
@@ -233,13 +233,13 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
         again = plan_folder(src, shred_original)
         if again.entries != plan.entries:
             raise agecli.AgeError("the folder changed while it was being encrypted; nothing was removed", "changed_during_run")
-        verified_size = os.stat(part).st_size
-        output.publish(part, dst)
+        ident = output.identity(part)
+        dst, _ = output.publish_numbered(part, base, stem, tail)     # dst: the file this run wrote, whatever its number
     except BaseException as e:
         if not isinstance(e, agecli.OutputExists):
             output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
         raise
-    if os.stat(dst).st_size != verified_size:
+    if not output.intact(dst, ident):
         raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
     rec.done(VERIFY)
     report = None
@@ -349,23 +349,36 @@ def _extract(reader, staging: Path, free: int) -> None:
 
 def decrypt_folder(src: Path, passphrase: str, cancel: threading.Event | None = None,
                    out_dir: Path | None = None) -> Path:
-    """Restore NAME.tar.age into a new folder NAME next to it (or in out_dir). Never overwrites or merges."""
+    """Restore NAME.tar.age into a new folder NAME next to it (or in out_dir); a taken name gets a number (NAME (2)).
+    Never overwrites or merges."""
     src = Path(src)
     if not src.name.lower().endswith(".tar.age"):
         raise ValueError("not a .tar.age file")
     base = output.dest_dir(src, out_dir)
-    out = base / src.name[:-len(".tar.age")]
-    if out.exists():
-        raise FileExistsError(out)
+    stem = src.name[:-len(".tar.age")]
     try:
-        names.check_component(out.name)
+        names.check_component(stem)
     except names.UnsafeName as ex:
         raise FolderRefused(str(ex)) from ex
     free = shutil.disk_usage(base).free
     if free < src.stat().st_size:
         raise FolderRefused("not enough free disk space to restore this archive", "disk_full")
-    staging = out.with_name("." + out.name + output.PART_SUFFIX)
-    os.mkdir(staging)  # FileExistsError here: not ours, leave it alone
+    # Each number gets its own staging folder: the first staging name that is free decides the number, so a second
+    # window restoring the same archive takes the next one. A staging name that exists is not ours: leave it alone.
+    # The staging name is 12 characters longer than any final name, so the length check in _extract covers the final path.
+    n = 1
+    while True:
+        out = base / output.numbered_name(stem, "", n)
+        staging = out.with_name("." + out.name + output.PART_SUFFIX)
+        if not os.path.lexists(out):        # advisory only: it saves a restore that would have to be renumbered at the end
+            try:
+                os.mkdir(staging)
+                break
+            except FileExistsError:
+                pass
+        n += 1
+        if n > MAX_NUMBER:
+            raise FileExistsError(base / stem)
     mk = None
     try:
         # The marker stays open for the whole restore: Windows then refuses to rename the folder, so a second
@@ -383,13 +396,18 @@ def decrypt_folder(src: Path, passphrase: str, cancel: threading.Event | None = 
     mk.close()
     (staging / MARKER).unlink(missing_ok=True)
     last = None
-    for _ in range(5):
+    tries = 0
+    while n <= MAX_NUMBER:
+        out = base / output.numbered_name(stem, "", n)
         try:
-            os.rename(staging, out)
+            os.rename(staging, out)         # refused when the name exists: that name is taken, try the next number
             return out
         except FileExistsError:
-            raise RestoreIncomplete(f"'{out.name}' appeared meanwhile; the restored data is in '{staging.name}'")
+            n += 1
         except OSError as e:  # e.g. antivirus holding a file
             last = e
+            tries += 1
+            if tries >= 5:
+                break
             threading.Event().wait(0.5)
-    raise RestoreIncomplete(f"restored, but could not rename '{staging.name}' to '{out.name}': {last}")
+    raise RestoreIncomplete(f"restored, but could not rename '{staging.name}' to '{out.name}': {last or 'every number is taken'}")

@@ -134,24 +134,26 @@ def clean_bytes(data: bytes, fmt: str, options: dict, cancel: threading.Event | 
 @dataclass
 class CleanFileResult:
     source: Path
-    output: Path
+    output: Path | None                  # None when nothing was written (`unchanged`)
     outcome: CleanOutcome
     snapshot: tuple[int, int] = (0, 0)   # (size, mtime_ns) of the source when it was read
     notes: list[str] = field(default_factory=list)
+    unchanged: bool = False              # the cleaned bytes equal the original's: no copy was written
 
 
 def clean_name(src: Path) -> Path:
     return src.with_name(f"{src.stem}.cleaned{src.suffix}")
 
 
-def _unique(final: Path) -> Path:
-    if not final.exists():
-        return final
-    for i in range(2, 1000):
-        cand = final.with_name(f"{final.stem}-{i}{final.suffix}")
-        if not cand.exists():
-            return cand
-    raise FileExistsError(final)
+def mark_unchanged(outcome: CleanOutcome, data: bytes) -> bool:
+    """True when the cleaned bytes are byte-for-byte the original. Decided here, in the main process, from the two
+    buffers; the worker's own lists are not trusted for it. In that case the lists of removals and content changes
+    cannot be true, so they are cleared; what was kept, what could not be cleaned and the warnings stay."""
+    if outcome.data != data:
+        return False
+    outcome.removed.clear()
+    outcome.content_changed.clear()
+    return True
 
 
 def read_snapshot(src: Path) -> tuple[bytes, tuple[int, int]]:
@@ -174,7 +176,8 @@ def read_all(f, size: int) -> bytes:
 
 def clean_file(src: Path, options: dict | None = None, cancel: threading.Event | None = None,
                out_dir: Path | None = None) -> CleanFileResult:
-    """Standalone cleaning: writes NAME.cleaned.EXT next to the source (or into out_dir). Never overwrites, never touches the source."""
+    """Standalone cleaning: writes NAME.cleaned.EXT next to the source (or into out_dir); a taken name gets a number.
+    Never overwrites, never touches the source. When the cleaned bytes equal the original nothing is written at all."""
     src = Path(src)
     options = options or {}
     base = output.dest_dir(src, out_dir)
@@ -183,8 +186,10 @@ def clean_file(src: Path, options: dict | None = None, cancel: threading.Event |
         raise Unsupported(fmt)
     data, snap = read_snapshot(src)
     outcome = clean_bytes(data, fmt, options, cancel)
-    final = _unique(base / clean_name(src).name)
-    part = output.part_for(final)
+    if mark_unchanged(outcome, data):
+        return CleanFileResult(src, None, outcome, snap, unchanged=True)     # before any part file exists
+    stem, tail = f"{src.stem}.cleaned", src.suffix
+    part = output.part_for(base / (stem + tail))
     created = False
     try:
         with open(part, "xb") as f:
@@ -194,7 +199,7 @@ def clean_file(src: Path, options: dict | None = None, cancel: threading.Event |
         if part.stat().st_size != len(outcome.data):
             raise CleanError("Output size mismatch after writing; nothing was kept")
         part_id = part.stat().st_ino        # the file's identity, to recognise it again after publishing
-        output.publish(part, final)
+        final, _ = output.publish_numbered(part, base, stem, tail)     # final: the file this run wrote, whatever its number
     except BaseException as e:
         if created:
             output.attach(e, output.discard_part(part))

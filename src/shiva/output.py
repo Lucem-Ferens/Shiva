@@ -2,13 +2,13 @@
 
 Every function that produces a file (encrypt, decrypt, clean, folder archive) goes through this module:
 - Output is written to a hidden ".<32 random hex digits>.shiva-part" file and moved to its final name only when it is
-  complete and verified (`part_for`, `publish`). Only names of exactly that shape are ever swept.
-- `publish` never replaces an existing file: it checks, and `os.rename` itself refuses to replace one on Windows
-  (never use `os.replace` here). So an existing output is never overwritten.
+  complete and verified (`part_for`, `publish_numbered`). Only names of exactly that shape are ever swept.
+- `publish_numbered` never replaces an existing file: `os.rename` itself refuses to replace one on Windows (never use
+  `os.replace` here), and a taken name gets a number. The path it returns is the only name callers use afterwards.
 - A writer removes a part file only if it created that file itself (`open(part, "xb")` succeeded); it never
   cleans up a file it did not create. Leftovers of a crashed run are removed by `sweep_stale_parts`.
 - A part file can hold plaintext, so it is shredded, not just unlinked (`discard_part`).
-Callers use these names through the module (`output.publish(...)`), so one monkeypatch reaches every writer.
+Callers use these names through the module (`output.publish_numbered(...)`), so one monkeypatch reaches every writer.
 """
 from __future__ import annotations
 
@@ -240,8 +240,34 @@ def sweep_stale_parts(folder: Path, problems: list[Cleanup] | None = None, skip=
     return n
 
 
-def publish(part: Path, final: Path) -> None:
-    """Move a finished part file to its final name. Never replaces an existing file."""
-    if final.exists():
-        raise FileExistsError(final)
-    os.rename(part, final)  # fails if final appeared meanwhile on Windows
+def identity(p: Path) -> tuple[int, int]:
+    """(size, file id) of a part file, taken before it is published; the id is 0 where the file system gives none."""
+    st = os.stat(p)
+    return st.st_size, st.st_ino
+
+
+def intact(published: Path, ident: tuple[int, int]) -> bool:
+    """True when the published file is the one `identity` described: same size and, where ids exist, same file id."""
+    st = os.stat(published)
+    return st.st_size == ident[0] and (ident[1] == 0 or st.st_ino == ident[1])
+
+
+def numbered_name(stem: str, tail: str, n: int) -> str:
+    """`stem + tail` for n = 1, else `stem (n) + tail`: the number goes before the extension Shiva appends."""
+    return stem + tail if n == 1 else f"{stem} ({n}){tail}"
+
+
+def publish_numbered(part: Path, folder: Path, stem: str, tail: str, limit: int = 9999) -> tuple[Path, bool]:
+    """Move a finished part file to `folder/stem+tail`, or to `stem (2)+tail`, `stem (3)+tail` ... when the name is
+    taken. Returns (the path actually written, whether a number was added); callers use that path for everything
+    that follows. The rename itself is the claim: Windows refuses it when the target exists (file, folder or a name
+    differing only in case), so an existing item is never replaced and no placeholder file is needed. Only
+    FileExistsError means "taken"; any other error propagates and the part file stays for the caller to discard."""
+    for n in range(1, limit + 1):
+        cand = folder / numbered_name(stem, tail, n)
+        try:
+            os.rename(part, cand)
+            return cand, n > 1
+        except FileExistsError:
+            continue
+    raise FileExistsError(folder / (stem + tail))

@@ -137,6 +137,7 @@ def test_unsupported_refused_then_allowed_but_never_shredded(tmp_path):
 def test_existing_output_not_overwritten(tmp_path):
     src = tmp_path / "a.jpg"
     _jpeg(src)
-    clean_encrypt_verify_shred(src, PW)
-    with pytest.raises(FileExistsError):
-        clean_encrypt_verify_shred(src, PW)
+    first = clean_encrypt_verify_shred(src, PW)
+    first_bytes = first.output.read_bytes()
+    second = clean_encrypt_verify_shred(src, PW)
+    assert second.output.name == "a.cleaned (2).jpg.age" and first.output.read_bytes() == first_bytes

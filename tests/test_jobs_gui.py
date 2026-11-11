@@ -32,14 +32,14 @@ def test_decrypt_does_not_overwrite_existing(tmp_path: Path):
     a = tmp_path / "a.bin"; a.write_bytes(b"x")
     jobs.run_jobs([a], "pw", shred_original=False)
     res = jobs.run_jobs([tmp_path / "a.bin.age"], "pw", shred_original=False)
-    assert not res[0].ok and a.read_bytes() == b"x"
+    assert res[0].ok and res[0].created == tmp_path / "a (2).bin" and res[0].renamed
+    assert a.read_bytes() == b"x" and res[0].created.read_bytes() == b"x" and res[0].usual == a
 
 
 def test_existing_output_row_names_the_blocker_and_the_remedy(tmp_path: Path):
     from shiva import ui_model
     (tmp_path / "docs").mkdir()
-    age = tmp_path / "docs.tar.age"; age.write_bytes(b"x")
-    r = jobs.run_jobs([age], "pw", shred_original=False)[0]
+    r = jobs.failure(tmp_path / "docs.tar.age", FileExistsError(str(tmp_path / "docs")))
     assert not r.ok and r.error_code == jobs.OUTPUT_EXISTS
     rr = ui_model.result_row(r, "encrypt")
     assert "output folder docs already exists" in rr.text and "Rename or move it" in rr.text

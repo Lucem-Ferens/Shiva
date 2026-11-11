@@ -87,6 +87,5 @@ def test_existing_output_is_not_overwritten(tmp_path: Path):
     src = tmp_path / "doc.bin"
     src.write_bytes(b"data")
     (tmp_path / "doc.bin.age").write_bytes(b"precious")
-    with pytest.raises(FileExistsError):
-        encrypt_verify_shred(src, "pw")
-    assert src.exists() and (tmp_path / "doc.bin.age").read_bytes() == b"precious"
+    out, _ = encrypt_verify_shred(src, "pw", shred_original=False)
+    assert out.name == "doc (2).bin.age" and src.exists() and (tmp_path / "doc.bin.age").read_bytes() == b"precious"

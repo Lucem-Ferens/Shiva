@@ -92,9 +92,8 @@ def test_cjk_path_and_error_text(tmp_path: Path):
 def test_existing_part_or_output_is_not_overwritten(tmp_path: Path):
     src = tmp_path / "doc.bin"; src.write_bytes(b"data")
     (tmp_path / "doc.bin.age").write_bytes(b"precious")
-    with pytest.raises(FileExistsError):
-        pipeline.encrypt_verify_shred(src, "pw")
-    assert (tmp_path / "doc.bin.age").read_bytes() == b"precious"
+    out, _ = pipeline.encrypt_verify_shred(src, "pw")       # a taken name gets a number; the existing file is untouched
+    assert out.name == "doc (2).bin.age" and (tmp_path / "doc.bin.age").read_bytes() == b"precious"
     # raw age wrapper itself also refuses an existing destination
     with pytest.raises(FileExistsError):
         agecli.encrypt_passphrase(src, tmp_path / "doc.bin.age", "pw")
@@ -197,12 +196,13 @@ def test_h1_existing_file_at_part_name_is_not_destroyed(tmp_path: Path, monkeypa
 @needs_age
 def test_h1_published_file_size_is_rechecked_before_shredding_original(tmp_path: Path, monkeypatch):
     src = tmp_path / "doc.bin"; src.write_bytes(b"data")
-    real = output.publish
+    real = output.publish_numbered
 
-    def truncating(part, final):
-        real(part, final)
+    def truncating(*a):
+        final, renamed = real(*a)
         final.write_bytes(b"")
-    monkeypatch.setattr(output, "publish", truncating)
+        return final, renamed
+    monkeypatch.setattr(output, "publish_numbered", truncating)
     with pytest.raises(agecli.AgeError):
         pipeline.encrypt_verify_shred(src, "pw", shred_original=True)
     assert src.read_bytes() == b"data"

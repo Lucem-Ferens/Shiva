@@ -375,6 +375,14 @@ _many({
     "Saved as %T1.": "已存為 %1。",
     "%1 in folder %2": "%1（位於資料夾 %2）",
     "Original kept.": "已保留原始檔。",
+    "Nothing to remove.": "沒有可移除的項目。",
+    "Nothing else to remove.": "沒有其他可移除的項目。",
+    "No copy was saved.": "沒有儲存複本。",
+    "No copy was saved because cleaning would not change the file.": "清理不會改變這個檔案，所以沒有儲存複本。",
+    "Cleaning would not change the file.": "清理不會改變這個檔案。",
+    "%1 already exists and was not overwritten.": "%1 已存在，沒有被覆寫。",
+    "A number was added to the new name.": "新檔名已加上編號。",
+    "That name already exists, so a number was added.": "該名稱已存在，所以加上了編號。",
     "Encrypted without cleaning (its metadata stays).": "未經清理就加密（其中繼資料會保留）。",
     "Cleaned, encrypted and verified.": "已清理、加密並驗證。",
     "Original shredded (best effort).": "已銷毀原始檔（盡力而為）。",
@@ -577,7 +585,7 @@ _many({
     "embedded audio metadata": "內嵌音訊的中繼資料",
     "omitted member with an unsupported format: %1": "已排除格式不支援的成員：%1",
     "%1 was kept unchanged and may leak metadata": "%1 被原封不動地保留，可能洩漏中繼資料",
-    steps.KEPT_UNCLEAN: "原封不動複製的部分（未完全清理）",
+    steps.KEPT_UNCLEAN: "維持原樣的部分（未完全清理）",
 })
 # image, audio and archive labels
 _many({

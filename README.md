@@ -79,7 +79,7 @@ loss of quality and that no copy of the original images is kept; the originals a
 - Folders become `NAME.tar.age` and are restored into a new folder.
 - Optional: shred the originals (best effort), but only after a trial decrypt matches the original's hash. If verification fails,
   everything is kept.
-- Existing output files are never overwritten.
+- Existing output files are never overwritten; a taken name gets a number (`notes (2).txt.age`).
 
 ### Shred
 

@@ -486,7 +486,9 @@ def test_shred_run_builds_results_table(w, tmp_path, monkeypatch):
 
 def test_clean_run_on_png(w, tmp_path):
     Image = pytest.importorskip("PIL.Image")
-    f = tmp_path / "a.png"; Image.new("RGB", (8, 8), "red").save(f)
+    from PIL.PngImagePlugin import PngInfo
+    info = PngInfo(); info.add_text("Comment", "a note that cleaning removes")
+    f = tmp_path / "a.png"; Image.new("RGB", (8, 8), "red").save(f, pnginfo=info)
     w.add_paths([f, mk(tmp_path, "n.bin")]); w.wait_for_probes()
     p = w.pages["clean"]
     assert [r.info.status for r in p.rows] == ["Ready", "Not supported"] and p.primaryBtn.text() == "Clean 1 file"

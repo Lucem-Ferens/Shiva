@@ -83,8 +83,6 @@ def _clean_and_check(fmt: str, data: bytes, options: dict) -> CleanOutcome:
         zipclean.check_equivalent_zip(data, out.data, unknown_members=um)
     else:
         raise Unsupported(f"format not supported: {fmt}")
-    if out.data == data:
-        out.warnings.append("Nothing to remove: the file was already clean for the checked categories.")
     return out
 
 

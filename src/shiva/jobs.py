@@ -34,11 +34,18 @@ class JobResult:
     error_code: str | None = None                       # finer reason (metadata.ARCHIVE_MEMBER ...): picks the row text; never parse `message`
     original_untouched: bool = False                    # shred_attempted but the original was neither removed nor modified
     renamed: bool = False                               # the output name got a number because the usual name was taken
+    usual: Path | None = None                           # with `renamed`: the existing item of the usual name, left unchanged
+    unchanged: bool = False                             # the cleaned bytes equal the original's (decided by comparing them)
     conflict: Path | None = None                      # error_code "output_exists": the existing file or folder in the way
     plaintext_left: list[str] = field(default_factory=list)     # readable temporary items that could not be removed (paths)
     plaintext_deleted: list[str] = field(default_factory=list)  # temporary items deleted without being overwritten (paths)
     unrecognized: list[str] = field(default_factory=list)       # leftover-looking items the sweep did not touch (paths)
     stages: tuple = ()                                          # ((stage, state), ...) observed by the recorder; never decides a status
+
+
+def usual_item(created: Path | None, usual_name: str) -> Path | None:
+    """The existing item a numbered output stepped around (same folder, the usual name), or None when it got the usual name."""
+    return None if created is None or created.name == usual_name else created.with_name(usual_name)
 
 
 def note_cleanup(res: JobResult, items) -> JobResult:
@@ -119,15 +126,19 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
             out, removed, notes, rep = None, False, [], None
             if not is_dir and p.name.lower().endswith(".tar.age"):
                 out = folder.decrypt_folder(p, passphrase, cancel, out_dir)
+                usual = p.name[:-len(".tar.age")]
                 msg = f"Decrypted -> folder {out.name}"
             elif not is_dir and p.suffix.lower() == ".age":
                 out = pipeline.decrypt_file(p, passphrase, cancel, out_dir)
+                usual = p.with_suffix("").name
                 msg = f"Decrypted -> {out.name}"
             else:
                 if is_dir:
                     out, rep, notes = folder.encrypt_folder_verify_shred(p, passphrase, shred_original, cancel, out_dir, rec=rec)
+                    usual = p.name + ".tar.age"
                 else:
                     out, rep = pipeline.encrypt_verify_shred(p, passphrase, shred_original, cancel, out_dir, rec=rec)
+                    usual = p.name + ".age"
                 msg = f"Encrypted and verified -> {out.name}" + "".join(f"; NOTE: {n}" for n in notes)
                 if rep is not None:
                     if rep.warning:
@@ -136,9 +147,10 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
                     else:
                         removed = True
                         msg += "; original overwritten and removed (best-effort). " + " ".join(rep.caveats)
+            taken = usual_item(out, usual)
             results.append(JobResult(p, True, msg, created=out, original_removed=removed,
                                      original_untouched=bool(rep is not None and rep.warning and rep.untouched),
-                                     shred_attempted=rep is not None))
+                                     shred_attempted=rep is not None, renamed=taken is not None, usual=taken))
         except agecli.Cancelled as e:
             results.append(note_cleanup(JobResult(p, False, "Cancelled; partial output removed", cancelled=True),
                                         getattr(e, "cleanup_problems", [])))

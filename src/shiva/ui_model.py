@@ -754,10 +754,12 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
     elif tab == "encrypt" and not shred_req:
         text = f"Encrypted and verified. Saved as {saved}. Original kept."
     elif tab == "clean" and "encrypt" not in steps:
-        text = f"Saved as {saved}. Original kept." + (" The usual name was taken, so a number was added." if r.renamed else "")
+        text = unchanged_text(r, False) if r.unchanged else f"Saved as {saved}. Original kept."
     else:       # the pipeline: clean (optional) -> encrypt -> trial decrypt -> shred (optional)
         if "clean" in steps:
             head = "Encrypted without cleaning (its metadata stays)." if uncleanable else "Cleaned, encrypted and verified."
+            if r.unchanged:
+                head = unchanged_text(r, True)
         else:
             head = "Encrypted and verified."
         if r.original_removed:
@@ -771,6 +773,9 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
         else:
             tail = " Original kept."
         text = f"{head} Saved as {saved}.{tail}"
+    if r.renamed:
+        text += " " + (f"{r.usual.name} already exists and was not overwritten. A number was added to the new name."
+                       if r.usual is not None else "That name already exists, so a number was added.")
     if r.kept:
         text = "Not removed: " + ", ".join(r.kept) + ". " + text
     if not shred_req and not r.kept and r.warnings:
@@ -782,11 +787,22 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
     return ResultRow("Warning" if warn else "Done", text, size_text, d)
 
 
+def unchanged_text(r: JobResult, encrypted: bool) -> str:
+    """The lead of a row whose cleaned bytes equal the original's. It states only what was found, never that the file
+    is clean: parts that cannot be cleaned (or kept on purpose) may still be in it."""
+    from .steps import KEPT_UNCLEAN
+    if KEPT_UNCLEAN in r.kept:
+        return "Cleaning would not change the file. Encrypted and verified." if encrypted else \
+            "No copy was saved because cleaning would not change the file. Original unchanged."
+    nothing = "Nothing else to remove." if r.kept else "Nothing to remove."
+    return f"{nothing} Encrypted and verified." if encrypted else f"{nothing} No copy was saved. Original unchanged."
+
+
 def split_warnings(warnings) -> tuple[list[str], list[str]]:
-    """(specific to this file, standing limits). "Nothing to remove" is neither: it stays in the details only."""
+    """(specific to this file, standing limits)."""
     from .metadata import pdf
     limits = {pdf.IMAGES_WARNING, pdf.NOT_CLEANED_WARNING}
-    specific = [w for w in warnings if w not in limits and not w.startswith("Nothing to remove")]
+    specific = [w for w in warnings if w not in limits]
     return specific, [w for w in warnings if w in limits]
 
 

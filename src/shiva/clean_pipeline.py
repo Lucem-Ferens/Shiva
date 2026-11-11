@@ -32,6 +32,7 @@ class CleanEncryptResult:
     cleaned: bool
     shred_report: ShredReport | None = None
     notes: list[str] = field(default_factory=list)
+    unchanged: bool = False               # the cleaned bytes equal the original's: the original bytes were encrypted
 
 
 def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None = None, shred_original: bool = False,
@@ -55,15 +56,14 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
                 pipeline.release(held)
                 held = None
         outcome: CleanOutcome | None = None
+        unchanged = False
         if status == "supported":
-            dst = base / f"{src.stem}.cleaned{src.suffix}.age"
+            stem, tail = f"{src.stem}.cleaned", src.suffix + ".age"
         elif allow_unclean:
-            dst = base / (src.name + ".age")
+            stem, tail = src.stem, src.suffix + ".age"
             notes.append(f"NOT cleaned: {fmt}. Metadata, file name, size and times of this file are unchanged.")
         else:
             raise Unsupported(fmt)
-        if dst.exists():
-            raise FileExistsError(dst)
         if status != "supported":
             rec.skip(CLEAN)
         names: list[str] = []
@@ -79,6 +79,7 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
             rec.begin(CLEAN)
             outcome = runner.clean_bytes(data, fmt, options, cancel)
             rec.done(CLEAN)
+            unchanged = runner.mark_unchanged(outcome, data)    # decided here, from the bytes: the encrypted bytes are the original's
             plain = outcome.data
         else:
             st = os.stat(src)
@@ -97,7 +98,7 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         if shred_original and not can_shred:
             rec.skip(SHRED)
 
-        part = output.part_for(dst)
+        part = output.part_for(base / (stem + tail))
         try:
             rec.begin(ENCRYPT)
             if plain is not None:
@@ -116,13 +117,13 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
                 if (now.st_size, now.st_mtime_ns) != tuple(snap):
                     raise agecli.AgeError("source file changed while it was being processed; nothing was removed",
                                           "changed_during_run")
-            verified_size = os.stat(part).st_size
-            output.publish(part, dst)
+            ident = output.identity(part)
+            dst, _ = output.publish_numbered(part, base, stem, tail)     # dst: the file this run wrote, whatever its number
         except BaseException as e:
             if not isinstance(e, agecli.OutputExists):
                 output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
             raise
-        if os.stat(dst).st_size != verified_size:
+        if not output.intact(dst, ident):
             raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
         rec.done(VERIFY)
 
@@ -132,6 +133,6 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
             report.caveats = storage.assess(src).warnings() + report.caveats
             rec.begin(SHRED)
             pipeline.shred_held_original(held, src, report, names)
-        return CleanEncryptResult(dst, outcome, status == "supported", report, notes)
+        return CleanEncryptResult(dst, outcome, status == "supported", report, notes, unchanged)
     finally:
         pipeline.release(held)       # any early exit, and the "kept" cases: the file is given back as it was

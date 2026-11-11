@@ -389,6 +389,14 @@
     <message><source>Saved as %T1.</source><translation>已存為 %1。</translation></message>
     <message><source>%1 in folder %2</source><translation>%1（位於資料夾 %2）</translation></message>
     <message><source>Original kept.</source><translation>已保留原始檔。</translation></message>
+    <message><source>Nothing to remove.</source><translation>沒有可移除的項目。</translation></message>
+    <message><source>Nothing else to remove.</source><translation>沒有其他可移除的項目。</translation></message>
+    <message><source>No copy was saved.</source><translation>沒有儲存複本。</translation></message>
+    <message><source>No copy was saved because cleaning would not change the file.</source><translation>清理不會改變這個檔案，所以沒有儲存複本。</translation></message>
+    <message><source>Cleaning would not change the file.</source><translation>清理不會改變這個檔案。</translation></message>
+    <message><source>%1 already exists and was not overwritten.</source><translation>%1 已存在，沒有被覆寫。</translation></message>
+    <message><source>A number was added to the new name.</source><translation>新檔名已加上編號。</translation></message>
+    <message><source>That name already exists, so a number was added.</source><translation>該名稱已存在，所以加上了編號。</translation></message>
     <message><source>Encrypted without cleaning (its metadata stays).</source><translation>未經清理就加密（其中繼資料會保留）。</translation></message>
     <message><source>Cleaned, encrypted and verified.</source><translation>已清理、加密並驗證。</translation></message>
     <message><source>Original shredded (best effort).</source><translation>已銷毀原始檔（盡力而為）。</translation></message>
@@ -597,7 +605,7 @@
     <message><source>embedded audio metadata</source><translation>內嵌音訊的中繼資料</translation></message>
     <message><source>omitted member with an unsupported format: %1</source><translation>已排除格式不支援的成員：%1</translation></message>
     <message><source>%1 was kept unchanged and may leak metadata</source><translation>%1 被原封不動地保留，可能洩漏中繼資料</translation></message>
-    <message><source>parts copied unchanged (NOT fully cleaned)</source><translation>原封不動複製的部分（未完全清理）</translation></message>
+    <message><source>parts left as they are (NOT fully cleaned)</source><translation>維持原樣的部分（未完全清理）</translation></message>
     <message><source>other APPn</source><translation>其他 APPn 區段</translation></message>
     <message><source>JFIF thumbnail</source><translation>JFIF 縮圖</translation></message>
     <message><source>ICC profile</source><translation>ICC 色彩描述檔</translation></message>

@@ -265,13 +265,14 @@ def test_a_leftover_found_by_a_clean_only_run_is_reported_when_it_cannot_be_over
 def test_a_cleaned_file_that_fails_the_read_back_is_overwritten_not_just_deleted(tmp_path: Path, monkeypatch):
     from shiva.metadata import CleanError, runner
     img = _png(tmp_path / "a.png")
-    real_publish = output.publish
+    real_publish = output.publish_numbered
 
-    def publish_then_damage(part, final):
-        real_publish(part, final)
+    def publish_then_damage(*a):
+        final, renamed = real_publish(*a)
         final.write_bytes(final.read_bytes() + b"x")
+        return final, renamed
 
-    monkeypatch.setattr(output, "publish", publish_then_damage)
+    monkeypatch.setattr(output, "publish_numbered", publish_then_damage)
     overwritten: list[Path] = []
     real_shred = output.shred_file
     monkeypatch.setattr(output, "shred_file", lambda p, *a, **k: (overwritten.append(Path(p)), real_shred(p, *a, **k))[1])
@@ -283,8 +284,13 @@ def test_a_cleaned_file_that_fails_the_read_back_is_overwritten_not_just_deleted
 def test_a_cleaned_file_that_cannot_be_overwritten_after_a_failed_read_back_is_reported(tmp_path: Path, monkeypatch):
     from shiva.metadata import CleanError, runner
     img = _png(tmp_path / "a.png")
-    real_publish = output.publish
-    monkeypatch.setattr(output, "publish", lambda part, final: (real_publish(part, final), final.write_bytes(b"damaged"))[0])
+    real_publish = output.publish_numbered
+
+    def publish_then_damage(*a):
+        final, renamed = real_publish(*a)
+        final.write_bytes(b"damaged")
+        return final, renamed
+    monkeypatch.setattr(output, "publish_numbered", publish_then_damage)
     monkeypatch.setattr(output, "shred_file", _no_shred)
     with pytest.raises(CleanError) as e:
         runner.clean_file(img)
@@ -294,14 +300,15 @@ def test_a_cleaned_file_that_cannot_be_overwritten_after_a_failed_read_back_is_r
 def test_a_cleaned_file_replaced_by_another_program_is_left_alone(tmp_path: Path, monkeypatch):
     from shiva.metadata import CleanError, runner
     img = _png(tmp_path / "a.png")
-    real_publish = output.publish
+    real_publish = output.publish_numbered
 
-    def publish_then_replace(part, final):
-        real_publish(part, final)
+    def publish_then_replace(*a):
+        final, renamed = real_publish(*a)
         final.unlink()
         final.write_bytes(b"someone else's file")
+        return final, renamed
 
-    monkeypatch.setattr(output, "publish", publish_then_replace)
+    monkeypatch.setattr(output, "publish_numbered", publish_then_replace)
     with pytest.raises(CleanError, match="replaced by another program"):
         runner.clean_file(img)
     assert (tmp_path / "a.cleaned.png").read_bytes() == b"someone else's file"

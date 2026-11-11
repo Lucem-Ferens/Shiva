@@ -88,8 +88,6 @@ def test_standing_limits_stay_done_but_file_specific_warnings_make_a_warning_row
     assert standing.status == "Done" and "Limits apply" in standing.text
     specific = _clean_row(tmp_path, [pdf.IMAGES_WARNING, "Warning: possible covered content on page 3."])
     assert specific.status == "Warning" and "Limits apply" not in specific.text and "See details" in specific.text
-    clean = _clean_row(tmp_path, ["Nothing to remove: the file was already clean for the checked categories."])
-    assert clean.status == "Done" and "Limits apply" not in clean.text and "See details" not in clean.text
 
 
 def test_clean_cancel_has_its_own_exception_and_half_shredded_uses_the_error_icon():
@@ -99,7 +97,9 @@ def test_clean_cancel_has_its_own_exception_and_half_shredded_uses_the_error_ico
 
 
 def test_clean_only_row_says_when_a_number_was_added(tmp_path):
-    r = jobs.JobResult(tmp_path / "a.jpg", True, "m", created=tmp_path / "a.cleaned-2.jpg", renamed=True)
-    assert "a number was added" in ui_model.result_row(r, "clean").text
+    r = jobs.JobResult(tmp_path / "a.jpg", True, "m", created=tmp_path / "a.cleaned (2).jpg", renamed=True,
+                       usual=tmp_path / "a.cleaned.jpg")
+    text = ui_model.result_row(r, "clean").text
+    assert "a.cleaned.jpg already exists and was not overwritten" in text and "A number was added" in text
     r.renamed = False
-    assert "a number was added" not in ui_model.result_row(r, "clean").text
+    assert "number was added" not in ui_model.result_row(r, "clean").text
