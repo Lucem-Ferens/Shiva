@@ -13,8 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from . import agecli, jobs, storage
+from . import agecli, jobs, stages, storage
 from .jobs import JobResult
+from .stages import CLEAN, NULL, SHRED
 from .metadata import CleanCancelled, CleanError, Unsupported, runner
 from .shred import (ShredChanged, ShredInUse, ShredRefused, ShredVolumeRefused, StreamListError, check_target,
                     shred_tree)
@@ -92,12 +93,14 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
     for i, p in enumerate(paths):
         p = Path(p)
         progress(i, len(paths))
+        rec = stages.make(p, opts)
         if cancel is not None and cancel.is_set():
             results.append(JobResult(p, False, "Cancelled before start; nothing changed", cancelled=True))
+            results[-1].stages = rec.freeze(results[-1])
             log(f"SKIP {p.name}: cancelled")
             continue
         try:
-            results.append(_one(p, passphrase, opts, cancel, clean_pipeline))
+            results.append(_one(p, passphrase, opts, cancel, clean_pipeline, rec))
         except (agecli.Cancelled, CleanCancelled) as e:
             results.append(jobs.note_cleanup(JobResult(p, False, "Cancelled; partial output removed", cancelled=True,
                                                        error_kind="cancelled"), getattr(e, "cleanup_problems", [])))
@@ -106,25 +109,26 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
                                      error_code=getattr(e, "code", None)))
         except Exception as e:
             results.append(jobs.failure(p, e))
+        results[-1].stages = rec.freeze(results[-1])
         log(f"{'OK  ' if results[-1].ok else 'FAIL'} {p.name}: {results[-1].message}")
     progress(len(paths), len(paths))
     jobs.report_leftovers(results, sweep_problems, log)
     return results
 
 
-def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResult:
+def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline, rec=NULL) -> JobResult:
     if p.suffix.lower() == ".age":
         if opts.decrypt_age:                             # decrypt, never combined with other steps
             return jobs.run_jobs([p], pw, False, cancel=cancel, out_dir=opts.out_dir, sweep=False)[0]
         if opts.shred and not opts.clean and not opts.encrypt:
-            return _shred_only(p)                        # the Shred tab may shred .age files
+            return _shred_only(p, rec)                   # the Shred tab may shred .age files
         return JobResult(p, False, "This is an encrypted .age file: it can only be decrypted or shredded here. "
                                    "Nothing was changed.", error_kind="unsupported")
     if not opts.clean:
         if opts.encrypt:
-            return jobs.run_jobs([p], pw, opts.shred, cancel=cancel, out_dir=opts.out_dir, sweep=False)[0]
+            return jobs.run_jobs([p], pw, opts.shred, cancel=cancel, out_dir=opts.out_dir, sweep=False, rec=rec)[0]
         if opts.shred:
-            return _shred_only(p)
+            return _shred_only(p, rec)
         return JobResult(p, False, "No step selected")
     if opts.shred and not opts.encrypt:                  # a plaintext copy is never a verified replacement
         return JobResult(p, False, "Shredding after cleaning needs Encrypt: the original is shredded only after a "
@@ -136,7 +140,7 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResu
         copts = _clean_options(p, opts, fmt) if status == "supported" else {}
         r = clean_pipeline.clean_encrypt_verify_shred(p, pw, copts, opts.shred,
                                                       opts.confirmed_changes.get(str(p), ()),
-                                                      opts.allow_unclean, cancel, opts.out_dir)
+                                                      opts.allow_unclean, cancel, opts.out_dir, rec=rec)
         msg = f"{'Cleaned, encrypted' if r.cleaned else 'Encrypted WITHOUT cleaning'} and verified -> {r.output.name}"
         if r.outcome is not None:
             msg += "; " + _describe(r.outcome)
@@ -161,7 +165,9 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResu
     status, fmt = runner.classify(p)
     if status != "supported":
         raise Unsupported(fmt)
+    rec.begin(CLEAN)
     res = runner.clean_file(p, _clean_options(p, opts, fmt), cancel, opts.out_dir)
+    rec.done(CLEAN)
     msg = f"Cleaned -> {res.output.name}; " + _describe(res.outcome)
     return JobResult(p, True, msg, created=res.output, original_removed=False,
                      warnings=list(res.outcome.warnings), kept=_kept(res.outcome),
@@ -170,12 +176,13 @@ def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline) -> JobResu
                      renamed=res.output.name != runner.clean_name(p).name)
 
 
-def _shred_only(p: Path) -> JobResult:
+def _shred_only(p: Path, rec=NULL) -> JobResult:
     try:
         check_target(p)     # protected location: refused before anything is scanned or changed
     except ShredRefused as e:
         return JobResult(p, False, f"Not shredded: {e} Nothing was changed.", error_kind="unsupported")
     where = storage.assess(p).warnings()
+    rec.begin(SHRED)
     try:
         rep = shred_tree(p)  # handles a single file and a folder, refuses links
     except (StreamListError, ShredInUse, ShredVolumeRefused, ShredChanged) as e:    # raised before anything was written

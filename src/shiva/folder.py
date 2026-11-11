@@ -17,6 +17,7 @@ from pathlib import Path
 
 from . import agecli, errors, names, output, shred, storage
 from .shred import ShredReport, ShredRefused, _named_streams, _wipe_streams, is_link, shred_held, shred_tree
+from .stages import ENCRYPT, NULL, SHRED, VERIFY
 
 MARKER = ".shiva-staging-marker"
 MAX_MEMBERS = 1_000_000
@@ -207,7 +208,7 @@ def _shred_manifest(plan: Plan, report: ShredReport, digests: dict[str, str]) ->
 
 
 def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool = False,
-                                cancel: threading.Event | None = None, out_dir: Path | None = None):
+                                cancel: threading.Event | None = None, out_dir: Path | None = None, rec=NULL):
     """Returns (output path, ShredReport | None, notes). out_dir must not be inside the folder."""
     src = Path(src)
     if shred_original:
@@ -222,7 +223,10 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
     part = output.part_for(dst)
     digests: dict[str, str] = {}
     try:
+        rec.begin(ENCRYPT)
         want = agecli.encrypt_stream(lambda w: _write_tar(plan, w, cancel), part, passphrase, cancel)
+        rec.done(ENCRYPT)
+        rec.begin(VERIFY)
         got = agecli.decrypt_consume(part, passphrase, lambda r: _verify_tar(plan, r, digests), cancel)
         if got != want:
             raise agecli.AgeError("verification failed: decrypted archive differs from what was encrypted", "verify_failed")
@@ -237,10 +241,12 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
         raise
     if os.stat(dst).st_size != verified_size:
         raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
+    rec.done(VERIFY)
     report = None
     if shred_original:
         report = ShredReport()
         report.caveats = storage.assess(src).warnings() + report.caveats
+        rec.begin(SHRED)
         try:
             left = _shred_manifest(plan, report, digests)
         except Exception as e:    # files may already be shredded: never report this as a failure with the original unchanged

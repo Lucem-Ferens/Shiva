@@ -19,6 +19,7 @@ from pathlib import Path
 from . import agecli, errors, output, shred, storage
 from .heldfile import HeldError, HeldFile
 from .shred import ShredReport, ShredRefused, _check_file
+from .stages import ENCRYPT, NULL, SHRED, VERIFY
 
 
 def refuse_unarchived_streams(src: Path, held: HeldFile | None = None) -> list[str]:
@@ -116,7 +117,7 @@ def decrypt_file(src: Path, passphrase: str, cancel: threading.Event | None = No
 
 def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True,
                          cancel: threading.Event | None = None,
-                         out_dir: Path | None = None) -> tuple[Path, ShredReport | None]:
+                         out_dir: Path | None = None, rec=NULL) -> tuple[Path, ShredReport | None]:
     src = Path(src)
     dst = output.dest_dir(src, out_dir) / (src.name + ".age")
     if dst.exists():
@@ -130,7 +131,10 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
         try:
             if held is not None:
                 held.file.seek(0)
+            rec.begin(ENCRYPT)
             want = agecli.encrypt_passphrase(held.file if held is not None else src, part, passphrase, cancel=cancel)
+            rec.done(ENCRYPT)
+            rec.begin(VERIFY)
             got = agecli.decrypt_hash_passphrase(part, passphrase, cancel=cancel)
             if got != want:
                 raise agecli.AgeError("verification failed: decrypted output differs from original", "verify_failed")
@@ -147,10 +151,12 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
             raise
         if os.stat(dst).st_size != verified_size:
             raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
+        rec.done(VERIFY)
         report = None
         if held is not None:
             report = ShredReport()
             report.caveats = storage.assess(src).warnings() + report.caveats  # location-specific first
+            rec.begin(SHRED)
             shred_held_original(held, src, report, names)
         return dst, report
     finally:

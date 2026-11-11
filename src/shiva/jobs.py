@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import agecli, errors, folder, output, pipeline, storage
+from .stages import NULL
 
 
 OUTPUT_EXISTS = errors.OUTPUT_EXISTS
@@ -37,6 +38,7 @@ class JobResult:
     plaintext_left: list[str] = field(default_factory=list)     # readable temporary items that could not be removed (paths)
     plaintext_deleted: list[str] = field(default_factory=list)  # temporary items deleted without being overwritten (paths)
     unrecognized: list[str] = field(default_factory=list)       # leftover-looking items the sweep did not touch (paths)
+    stages: tuple = ()                                          # ((stage, state), ...) observed by the recorder; never decides a status
 
 
 def note_cleanup(res: JobResult, items) -> JobResult:
@@ -98,9 +100,9 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
              log: Callable[[str], None] = lambda s: None,
              cancel: threading.Event | None = None,
              progress: Callable[[int, int], None] = lambda done, total: None,
-             out_dir: Path | None = None, sweep: bool = True) -> list[JobResult]:
+             out_dir: Path | None = None, sweep: bool = True, rec=NULL) -> list[JobResult]:
     """Encrypt each file (or decrypt if it ends with .age). One failure never stops the others.
-    `sweep=False`: the caller already removed leftovers for this run."""
+    `sweep=False`: the caller already removed leftovers for this run. One recorder serves a single path."""
     results: list[JobResult] = []
     sweep_problems = sweep_leftovers(paths, out_dir, log) if sweep else []
     for i, p in enumerate(paths):
@@ -123,9 +125,9 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
                 msg = f"Decrypted -> {out.name}"
             else:
                 if is_dir:
-                    out, rep, notes = folder.encrypt_folder_verify_shred(p, passphrase, shred_original, cancel, out_dir)
+                    out, rep, notes = folder.encrypt_folder_verify_shred(p, passphrase, shred_original, cancel, out_dir, rec=rec)
                 else:
-                    out, rep = pipeline.encrypt_verify_shred(p, passphrase, shred_original, cancel, out_dir)
+                    out, rep = pipeline.encrypt_verify_shred(p, passphrase, shred_original, cancel, out_dir, rec=rec)
                 msg = f"Encrypted and verified -> {out.name}" + "".join(f"; NOTE: {n}" for n in notes)
                 if rep is not None:
                     if rep.warning:

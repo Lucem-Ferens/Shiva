@@ -20,6 +20,7 @@ from .metadata.jpeg import REENCODE_CHANGES
 from .metadata.webp import REENCODED as WEBP_REENCODED
 from .metadata.zipclean import OMITTED
 from .shred import ShredReport, _check_file
+from .stages import CLEAN, ENCRYPT, NULL, SHRED, VERIFY
 
 JPEG_CHANGES = REENCODE_CHANGES | {WEBP_REENCODED}     # what re-encoding reports; a confirmation for a file names them all
 
@@ -36,7 +37,7 @@ class CleanEncryptResult:
 def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None = None, shred_original: bool = False,
                                confirmed_changes: Iterable[str] = (), allow_unclean: bool = False,
                                cancel: threading.Event | None = None,
-                               out_dir: Path | None = None) -> CleanEncryptResult:
+                               out_dir: Path | None = None, rec=NULL) -> CleanEncryptResult:
     src = Path(src)
     base = output.dest_dir(src, out_dir)
     options = options or {}
@@ -63,6 +64,8 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
             raise Unsupported(fmt)
         if dst.exists():
             raise FileExistsError(dst)
+        if status != "supported":
+            rec.skip(CLEAN)
         names: list[str] = []
         if held is not None:
             _check_file(src)  # refuse links / hard links before doing any work
@@ -73,7 +76,9 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
                 data, snap = runner.read_all(held.file, size), None
             else:
                 data, snap = runner.read_snapshot(src)
+            rec.begin(CLEAN)
             outcome = runner.clean_bytes(data, fmt, options, cancel)
+            rec.done(CLEAN)
             plain = outcome.data
         else:
             st = os.stat(src)
@@ -89,15 +94,20 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         if can_shred and unconfirmed:  # every actual content change must be one the user was shown and confirmed
             can_shred = False
             notes.append("The original was kept. Cleaning changed its content: " + ", ".join(unconfirmed) + ".")
+        if shred_original and not can_shred:
+            rec.skip(SHRED)
 
         part = output.part_for(dst)
         try:
+            rec.begin(ENCRYPT)
             if plain is not None:
                 want = agecli.encrypt_stream(lambda w: w.write(plain), part, passphrase, cancel)
                 if want != hashlib.sha256(plain).hexdigest():
                     raise agecli.AgeError("internal check failed: encrypted bytes differ from the cleaned bytes", "verify_failed")
             else:
                 want = agecli.encrypt_passphrase(src, part, passphrase, cancel=cancel)
+            rec.done(ENCRYPT)
+            rec.begin(VERIFY)
             got = agecli.decrypt_hash_passphrase(part, passphrase, cancel=cancel)
             if got != want:
                 raise agecli.AgeError("verification failed: decrypted output differs from what was encrypted", "verify_failed")
@@ -114,11 +124,13 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
             raise
         if os.stat(dst).st_size != verified_size:
             raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
+        rec.done(VERIFY)
 
         report = None
         if can_shred:
             report = ShredReport()
             report.caveats = storage.assess(src).warnings() + report.caveats
+            rec.begin(SHRED)
             pipeline.shred_held_original(held, src, report, names)
         return CleanEncryptResult(dst, outcome, status == "supported", report, notes)
     finally:
