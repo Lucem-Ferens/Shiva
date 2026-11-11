@@ -46,6 +46,7 @@ class JobResult:
     recipient_kinds: str = ""                                   # "post-quantum" | "standard" | "" (password mode)
     verified_with_key: bool = False                             # a trial decrypt with the user's key file matched
     post_quantum_confirmed: bool | None = None                  # age-inspect said so; None = not asked or no answer
+    key_mode: bool = False                                      # the run used keys (encrypt to recipients or decrypt with a key file)
 
 
 def usual_item(created: Path | None, usual_name: str) -> Path | None:
@@ -180,6 +181,7 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
                                         getattr(e, "cleanup_problems", [])))
         except Exception as e:  # report per file, keep going
             results.append(failure(p, e))
+        results[-1].key_mode = bool(getattr(cred, "is_keys", False))
         log(f"{'OK  ' if results[-1].ok else 'FAIL'} {p.name}: {results[-1].message}")
     progress(len(paths), len(paths))
     report_leftovers(results, sweep_problems, log)

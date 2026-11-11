@@ -10,7 +10,7 @@ import stat as _stat
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from . import shred, stages, storage
+from . import key_model, shred, stages, storage
 from .jobs import OUTPUT_EXISTS, JobResult
 from .metadata import ARCHIVE_MEMBER, runner
 
@@ -281,6 +281,8 @@ OPTION_NAMES = ("encrypt_cleaned", "shred_after", "more", "keep_quality", "keep_
 class OptionFacts:
     can_unclean: bool = False      # some listed file can be encrypted only without cleaning
     reencodes: bool = False        # some listed file may hold a JPEG or WebP that cleaning saves again
+    key_mode: bool = False         # Encrypt page: recipient keys instead of a password
+    key_ready: bool = False        # key mode and the user's key file is chosen and usable (plain or unlocked)
 
 
 @dataclass(frozen=True)
@@ -304,7 +306,8 @@ def option_view(tab: str, crypt_mode: str, ticks, facts: OptionFacts = OptionFac
     if tab == "clean":                       # visible from the start, usable once the copies are encrypted
         put("shred_after", True, live["encrypt_cleaned"])
     else:
-        put("shred_after", tab == "encrypt", crypt_mode == "encrypt")
+        # in key mode the trial decrypt needs the user's key file, so shredding waits for it
+        put("shred_after", tab == "encrypt", crypt_mode == "encrypt" and (not facts.key_mode or facts.key_ready))
     extra = set()
     if live["encrypt_cleaned"]:
         extra.add("encrypt")
@@ -325,6 +328,10 @@ def option_view(tab: str, crypt_mode: str, ticks, facts: OptionFacts = OptionFac
         shown[note] = enabled[note] = live[owner]
     # saved again (lossy) is the default; ticking "keep the image data as it is" removes the reason for the warning
     shown["reencode_hint"] = enabled["reencode_hint"] = "clean" in st and facts.reencodes and not live["keep_quality"]
+    # "Also encrypt to my own key": Encrypt page, key mode, needs the key file. Not one of OPTION_NAMES: the Clean page never has it.
+    own_shown = tab == "encrypt" and crypt_mode == "encrypt" and facts.key_mode
+    shown["own_key"], enabled["own_key"] = own_shown, own_shown and facts.key_ready
+    live["own_key"] = enabled["own_key"] and bool(ticks.get("own_key"))
     # why a visible option is greyed out
     shown["shred_after_reason"] = enabled["shred_after_reason"] = shown["shred_after"] and not enabled["shred_after"]
     return OptionView(shown, enabled, live)
@@ -643,6 +650,13 @@ def _add_cleanup_lines(rr: ResultRow, r: JobResult) -> None:
         rr.status = "Warning"
 
 
+def _encrypt_head(r: JobResult) -> str:
+    """"Encrypted and verified." for a password; the key wording (never "verified" without a key file check) for keys."""
+    if r.key_mode and r.recipient_count:
+        return key_model.encrypt_head(r.recipient_count, r.recipient_kinds, r.verified_with_key)
+    return "Encrypted and verified."
+
+
 def result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_before: int | None = None,
                size_after: int | None = None, uncleanable: bool = False, risk_lines=()) -> ResultRow:
     """One result row. Storage jargon (the per-file notes of a shred) and the engine's own reason line of a successful
@@ -689,6 +703,9 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
         d.append("Not removed: " + ", ".join(r.kept))
     notes = list(dict.fromkeys(r.warnings))          # an identical caveat is listed once
     d += [f"Note: {w}" for w in notes]
+    pq_line = key_model.pq_detail(r.recipient_kinds, r.post_quantum_confirmed) if r.ok and r.key_mode else None
+    if pq_line:
+        d.append(pq_line)
     if r.shred_attempted:
         d.append("Original shredded (best effort): " + ("yes" if r.original_removed else "not completely"))
     reason = re.sub(r"^[A-Za-z_]+(?:Error|Exception|Unsupported): ", "", r.message)
@@ -728,6 +745,11 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
             d.append(f"Note: The output {kind} {r.conflict.name} already exists in {r.conflict.parent}.")
             return ResultRow("Failed", f"Failed. The output {kind} {r.conflict.name} already exists. "
                              f"Rename or move it, or choose another output folder. {untouched}", size_text, d)
+        if r.error_code in key_model.KEY_FAIL_CODES and tab != "shred":
+            decrypting = r.path.suffix.lower() == ".age"
+            untouched = "The .age file is unchanged." if decrypting else "Original unchanged."
+            return ResultRow("Failed", f"Failed. {key_model.key_fail_text(r.error_code, decrypting)} {untouched}",
+                             size_text, d)
         if r.error_code in FAIL_TEXT and tab != "shred":
             untouched = "The .age file is unchanged." if r.path.suffix.lower() == ".age" else "Original unchanged."
             what = FAIL_TEXT[r.error_code]
@@ -750,9 +772,10 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
             text, warn = "Part of the original may remain. See details.", True
         return ResultRow("Warning" if warn else "Done", text, size_text, d)
     if tab == "encrypt" and r.path.suffix.lower() == ".age":
-        text = f"Decrypted to {saved}. The .age file is kept."
+        text = (f"Decrypted with your key file to {saved}. The .age file is kept." if r.key_mode
+                else f"Decrypted to {saved}. The .age file is kept.")
     elif tab == "encrypt" and not shred_req:
-        text = f"Encrypted and verified. Saved as {saved}. Original kept."
+        text = f"{_encrypt_head(r)} Saved as {saved}. Original kept."
     elif tab == "clean" and "encrypt" not in steps:
         text = unchanged_text(r, False) if r.unchanged else f"Saved as {saved}. Original kept."
     else:       # the pipeline: clean (optional) -> encrypt -> trial decrypt -> shred (optional)
@@ -761,7 +784,7 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
             if r.unchanged:
                 head = unchanged_text(r, True)
         else:
-            head = "Encrypted and verified."
+            head = _encrypt_head(r)
         if r.original_removed:
             tail = " Original shredded (best effort)."
         elif r.shred_attempted and r.original_untouched:

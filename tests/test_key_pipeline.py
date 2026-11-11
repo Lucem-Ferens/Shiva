@@ -166,3 +166,15 @@ def test_clean_pipeline_takes_a_password_only(tmp_path):
     with pytest.raises(TypeError):
         clean_pipeline.clean_encrypt_verify_shred(f, k)
     assert [p.name for p in tmp_path.iterdir()] == ["a.txt"]
+
+
+def test_run_jobs_marks_key_runs_and_only_key_runs(tmp_path):
+    k, ident = _keys(False)
+    f = tmp_path / "a.txt"; f.write_bytes(b"x")
+    enc = jobs.run_jobs([f], k, False)[0]
+    assert enc.key_mode is True
+    f.unlink()
+    assert jobs.run_jobs([enc.created], creds.Keys([], ident), False)[0].key_mode is True        # decrypt with a key file
+    assert jobs.run_jobs([enc.created], creds.Keys([], None), False)[0].key_mode is True          # a failed key run
+    g = tmp_path / "b.txt"; g.write_bytes(b"y")
+    assert jobs.run_jobs([g], "pw", False)[0].key_mode is False
