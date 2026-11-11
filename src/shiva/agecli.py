@@ -93,11 +93,23 @@ class HashingReader:
             pass
 
 
+def _check_identity(identity: bytes) -> None:
+    """Refuse bytes that are not plain private-key text. A password-protected key given to age
+    makes it wait for a terminal prompt that never comes."""
+    head = identity.lstrip()
+    if (head.startswith(b"age-encryption.org/v1") or head.startswith(b"-----BEGIN AGE ENCRYPTED")
+            or b"AGE-SECRET-KEY-" not in identity):
+        raise AgeError("the key is not plain private-key text", "key_unreadable")
+
+
 def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | None = None,
          hash_input: bool = False, hash_output: bool = False,
-         cancel: threading.Event | None = None, feeder=None, consumer=None):
+         cancel: threading.Event | None = None, feeder=None, consumer=None, identity: bytes | None = None):
     """Run age. Input comes from file `src` or from `feeder(writer)`; output goes to `dst` (created
     exclusively), is discarded/hashed, or is handed to `consumer(reader)` (a HashingReader).
+
+    With `identity` (the plain text of a private key, held in memory only) age reads the key from its
+    stdin (`-i -`) and `src` must be a path that age opens itself: the key never touches the disk.
 
     Returns the SHA-256 hex digest of the input (hash_input) or of age's output (hash_output).
     On failure/cancel the partially written `dst` is left for the caller to remove or shred.
@@ -112,6 +124,12 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
     if passphrase is not None:
         env["AGE_PASSPHRASE"] = passphrase
 
+    if identity is not None:    # checked before anything is created
+        if src is None or hasattr(src, "read"):
+            raise AgeError("a key needs the input as a file path", "age_failed")
+        _check_identity(identity)
+        args = [*args, "-i", "-", "--", str(src)]
+
     winjob.adopt_self()  # children inherit the kill-on-close job, so age's plugins cannot escape it
     try:
         out_f = open(dst, "xb") if dst is not None else None
@@ -120,8 +138,8 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
     err_buf: list[bytes] = []
     # `src` may be an already-open binary file (a held file: a second open of it is refused). Then it is read from its
     # current position and left open for the caller.
-    own_in = src is not None and not hasattr(src, "read")
-    in_f = open(src, "rb") if own_in else src
+    own_in = src is not None and not hasattr(src, "read") and identity is None
+    in_f = open(src, "rb") if own_in else (src if identity is None else None)
     in_name = src.name if own_in else "the file"
     try:
         # With a consumer the child reads the file directly, so we never write and read the pipes
@@ -138,6 +156,19 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
                                "before it processed the file", "not_contained")
             t_err = threading.Thread(target=lambda: err_buf.append(proc.stderr.read()), daemon=True)
             t_err.start()
+            if cancel is not None:      # a read blocked on age's output cannot see cancel by itself
+                def _watch():
+                    while proc.poll() is None:
+                        if cancel.wait(0.2):
+                            proc.kill()
+                            return
+                threading.Thread(target=_watch, daemon=True).start()
+            if identity is not None:    # first, so that a consumer reading age's output cannot wait on a key age never got
+                try:
+                    proc.stdin.write(identity)
+                    proc.stdin.close()
+                except OSError:
+                    pass        # age quit early; its exit code and stderr explain why
             h_in, h_out = hashlib.sha256(), hashlib.sha256()
             t_out = None
             reader = None
@@ -167,7 +198,7 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
                         h_out.update(chunk)
                 t_out = threading.Thread(target=drain, daemon=True)
                 t_out.start()
-            if not direct_stdin:
+            if identity is None and not direct_stdin:
                 try:
                     if feeder is not None:
                         w = _HashingWriter(proc.stdin, h_in, cancel)
@@ -267,5 +298,185 @@ def encrypt_recipients(src: Path, dst: Path, recipients: list[str], cancel=None)
     return _run(args, src, dst, hash_input=True, cancel=cancel)
 
 
-def decrypt_identity(src: Path, dst: Path, identity_file: Path, cancel=None) -> None:
-    _run(["-d", "-i", str(identity_file)], src, dst, cancel=cancel)
+def decrypt_identity(src: Path, dst: Path, identity: bytes, cancel=None) -> None:
+    _run(["-d"], src, dst, identity=identity, cancel=cancel)
+
+
+def decrypt_hash_identity(src: Path, identity: bytes, cancel=None) -> str:
+    """Trial decrypt with a key, writing nothing: SHA-256 of the plaintext."""
+    return _run(["-d"], src, None, hash_output=True, identity=identity, cancel=cancel)
+
+
+def decrypt_consume_identity(src: Path, identity: bytes, consumer, cancel=None) -> str:
+    """Stream-decrypt src with a key into `consumer(reader)`; returns SHA-256 of the plaintext stream."""
+    return _run(["-d"], src, None, hash_output=True, identity=identity, consumer=consumer, cancel=cancel)
+
+
+# ---- keys: generation, protection, unlocking, inspection -------------------------------------------
+# Every call hands age its input on a pipe and never lets it ask on a terminal: age ignores
+# AGE_PASSPHRASE for a protected key file passed with -i and would wait for a console prompt.
+
+_SECRET_MARKERS = (b"AGE-SECRET-KEY-",)
+_MAX_KEY_FILE = 1 << 20
+
+
+def _tool(name: str, args: list[str], stdin: bytes = b"", passphrase: str | None = None,
+          timeout: float = 60) -> tuple[int, bytes, bytes]:
+    d = bin_dir()
+    exe = d / name
+    if not exe.is_file():
+        raise AgeError(f"{name} not found in {d}; run tools/fetch_third_party.py")
+    env = dict(os.environ)
+    env["PATH"] = str(d) + os.pathsep + env.get("PATH", "")
+    env.pop("AGE_PASSPHRASE", None)
+    if passphrase is not None:
+        env["AGE_PASSPHRASE"] = passphrase
+    winjob.adopt_self()
+    proc = subprocess.Popen([str(exe), *args], env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, creationflags=_CREATE_NO_WINDOW)
+    if not winjob.adopt(proc):
+        proc.kill(); proc.wait()
+        raise AgeError("Windows would not apply the safety limits to the encryption helper, so it was stopped "
+                       "before it processed the file", "not_contained")
+    try:
+        out, err = proc.communicate(stdin, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        proc.kill(); proc.wait()
+        raise AgeError(f"{name} did not finish in {timeout:.0f} seconds", "age_failed") from e
+    except BaseException:
+        proc.kill(); proc.wait()
+        raise
+    return proc.returncode, out, err
+
+
+def _fail(err: bytes, rc: int, code: str = "age_failed") -> AgeError:
+    return AgeError(err.decode("utf-8", "replace").strip() or f"age exited with {rc}", code)
+
+
+def generate_identity(post_quantum: bool) -> bytes:
+    """A new private key as the text of an identity file, kept in memory (never written here)."""
+    rc, out, err = _tool("age-keygen.exe", ["-pq"] if post_quantum else [])
+    if rc != 0 or b"AGE-SECRET-KEY-" not in out:
+        raise _fail(err, rc)
+    return out
+
+
+def identity_recipients(identity: bytes) -> list[str]:
+    """The public keys that belong to an identity (age-keygen -y)."""
+    rc, out, err = _tool("age-keygen.exe", ["-y"], stdin=identity)
+    if rc != 0:
+        raise _fail(err, rc, "key_unreadable")
+    return [ln.strip() for ln in out.decode("utf-8", "replace").splitlines() if ln.strip()]
+
+
+def protect_identity(identity: bytes, password: str) -> bytes:
+    """Encrypt the identity file text with a password (age's own format)."""
+    if not password:
+        raise AgeError("a password is needed", "key_password_needed")
+    rc, out, err = _tool("age.exe", ["-e", "-j", "batchpass"], stdin=identity, passphrase=password)
+    if rc != 0:
+        raise _fail(err, rc)
+    return out
+
+
+def write_new_file(path: Path, data: bytes) -> None:
+    """Create `path` exclusively (never replaces a file) and remove it again if writing fails."""
+    try:
+        f = open(path, "xb")
+    except FileExistsError as e:
+        raise OutputExists(str(e)) from e
+    try:
+        with f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+    except BaseException:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
+
+
+def classify_key_file(path: Path) -> str:
+    """'plain' (private key text), 'protected' (password-protected key file), 'other', or 'unreadable'."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(_MAX_KEY_FILE + 1)
+    except OSError:
+        return "unreadable"
+    if len(head) > _MAX_KEY_FILE:
+        return "other"
+    top = head.lstrip()
+    if top.startswith(b"age-encryption.org/v1") or top.startswith(b"-----BEGIN AGE ENCRYPTED FILE-----"):
+        return "protected"
+    if any(ln.strip().startswith(_SECRET_MARKERS) for ln in head.splitlines()):
+        return "plain"
+    return "other"
+
+
+def unlock_identity(protected: bytes, password: str) -> bytes:
+    """Decrypt a password-protected key file into memory.
+
+    age gives the same "incorrect passphrase" for a wrong password and for damage inside the password
+    block, so `key_password_wrong` also covers a damaged key file; other damage is `key_damaged`."""
+    if not password:
+        raise AgeError("the key file needs its password", "key_password_needed")
+    rc, out, err = _tool("age.exe", ["-d", "-j", "batchpass"], stdin=protected, passphrase=password)
+    if rc != 0:
+        low = err.decode("utf-8", "replace").lower()
+        if "incorrect passphrase" in low:
+            code = "key_password_wrong"
+        elif "not passphrase-encrypted" in low or "no identity matched" in low:
+            code = "key_unreadable"
+        else:
+            code = "key_damaged"
+        raise _fail(err, rc, code)
+    if b"AGE-SECRET-KEY-" not in out:
+        raise AgeError("the file does not hold a private key", "key_unreadable")
+    return out
+
+
+def load_identity(path: Path, password: str | None = None) -> bytes:
+    """The plain identity text of a key file, unlocking it first if it is protected."""
+    kind = classify_key_file(path)
+    if kind == "unreadable" or kind == "other":
+        raise AgeError("the file does not hold a private key", "key_unreadable")
+    data = Path(path).read_bytes()
+    if kind == "protected":
+        data = unlock_identity(data, password or "")
+    _check_identity(data)
+    identity_recipients(data)       # age's own parser must accept it, so a bad key fails now, not after encrypting
+    return data
+
+
+def create_key_file(path: Path, post_quantum: bool, password: str | None) -> list[str]:
+    """Generate a key, write it to a new file (protected when a password is given), then read the file
+    back and check that it yields the same public keys. On any failure the file is removed.
+    Returns the public key(s) to share."""
+    ident = generate_identity(post_quantum)
+    expected = identity_recipients(ident)
+    write_new_file(path, protect_identity(ident, password) if password else ident)
+    try:
+        back = load_identity(path, password)
+        if back != ident or identity_recipients(back) != expected:
+            raise AgeError("the saved key file does not match the key", "key_unreadable")
+    except BaseException:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
+    return expected
+
+
+def inspect(path: Path) -> dict:
+    """age-inspect --json for an encrypted file: post-quantum yes/no and the stanza types."""
+    import json
+    rc, out, err = _tool("age-inspect.exe", ["--json", "--", str(path)])
+    if rc != 0:
+        raise _fail(err, rc)
+    try:
+        return json.loads(out.decode("utf-8", "replace"))
+    except ValueError as e:
+        raise AgeError("age-inspect gave no readable answer", "age_failed") from e
