@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from . import agecli, errors, folder, output, pipeline, storage
+from . import agecli, creds, errors, folder, output, pipeline, storage
 from .stages import NULL
 
 
@@ -41,6 +41,11 @@ class JobResult:
     plaintext_deleted: list[str] = field(default_factory=list)  # temporary items deleted without being overwritten (paths)
     unrecognized: list[str] = field(default_factory=list)       # leftover-looking items the sweep did not touch (paths)
     stages: tuple = ()                                          # ((stage, state), ...) observed by the recorder; never decides a status
+    # key mode (recipient keys); all empty/False in password mode
+    recipient_count: int = 0                                    # how many recipient keys the file was encrypted to
+    recipient_kinds: str = ""                                   # "post-quantum" | "standard" | "" (password mode)
+    verified_with_key: bool = False                             # a trial decrypt with the user's key file matched
+    post_quantum_confirmed: bool | None = None                  # age-inspect said so; None = not asked or no answer
 
 
 def usual_item(created: Path | None, usual_name: str) -> Path | None:
@@ -103,6 +108,20 @@ def report_leftovers(results: list[JobResult], problems: list[output.Cleanup], l
         log("WARNING: leftover items need your attention: " + ", ".join(str(c.path) for c in fresh))
 
 
+def _key_facts(cred, out: Path) -> dict:
+    """Result fields for a file encrypted to recipient keys; empty for a password."""
+    if not getattr(cred, "is_keys", False):
+        return {}
+    confirmed = None
+    try:
+        answer = agecli.inspect(out).get("postquantum")       # "yes" | "no" | "unknown"
+        confirmed = {"yes": True, "no": False}.get(answer)
+    except Exception:       # a missing answer is "not asked", never a failure of the encryption
+        pass
+    return dict(recipient_count=len(cred.recipients), recipient_kinds=cred.kind,
+                verified_with_key=cred.can_verify, post_quantum_confirmed=confirmed)
+
+
 def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
              log: Callable[[str], None] = lambda s: None,
              cancel: threading.Event | None = None,
@@ -111,6 +130,7 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
     """Encrypt each file (or decrypt if it ends with .age). One failure never stops the others.
     `sweep=False`: the caller already removed leftovers for this run. One recorder serves a single path."""
     results: list[JobResult] = []
+    cred = creds.as_cred(passphrase)
     sweep_problems = sweep_leftovers(paths, out_dir, log) if sweep else []
     for i, p in enumerate(paths):
         p = Path(p)
@@ -124,6 +144,7 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
             if not is_dir and not p.is_file():
                 raise FileNotFoundError(p)
             out, removed, notes, rep = None, False, [], None
+            encrypted = False
             if not is_dir and p.name.lower().endswith(".tar.age"):
                 out = folder.decrypt_folder(p, passphrase, cancel, out_dir)
                 usual = p.name[:-len(".tar.age")]
@@ -139,7 +160,9 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
                 else:
                     out, rep = pipeline.encrypt_verify_shred(p, passphrase, shred_original, cancel, out_dir, rec=rec)
                     usual = p.name + ".age"
-                msg = f"Encrypted and verified -> {out.name}" + "".join(f"; NOTE: {n}" for n in notes)
+                encrypted = True
+                msg = (f"Encrypted and verified -> {out.name}" if cred.can_verify
+                       else f"Encrypted, not opened to check -> {out.name}") + "".join(f"; NOTE: {n}" for n in notes)
                 if rep is not None:
                     if rep.warning:
                         msg += f"; WARNING: {rep.warning}"
@@ -150,7 +173,8 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
             taken = usual_item(out, usual)
             results.append(JobResult(p, True, msg, created=out, original_removed=removed,
                                      original_untouched=bool(rep is not None and rep.warning and rep.untouched),
-                                     shred_attempted=rep is not None, renamed=taken is not None, usual=taken))
+                                     shred_attempted=rep is not None, renamed=taken is not None, usual=taken,
+                                     **(_key_facts(cred, out) if encrypted else {})))
         except agecli.Cancelled as e:
             results.append(note_cleanup(JobResult(p, False, "Cancelled; partial output removed", cancelled=True),
                                         getattr(e, "cleanup_problems", [])))

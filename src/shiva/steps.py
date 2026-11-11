@@ -116,7 +116,10 @@ def run_steps(paths: list[Path], passphrase: str, opts: StepOptions,
     return results
 
 
-def _one(p: Path, pw: str, opts: StepOptions, cancel, clean_pipeline, rec=NULL) -> JobResult:
+def _one(p: Path, pw, opts: StepOptions, cancel, clean_pipeline, rec=NULL) -> JobResult:
+    if getattr(pw, "is_keys", False) and opts.clean:     # the Clean page stays password-only
+        return JobResult(p, False, "Cleaning and encrypting to keys is not available. Nothing was changed.",
+                         error_kind="unsupported")
     if p.suffix.lower() == ".age":
         if opts.decrypt_age:                             # decrypt, never combined with other steps
             return jobs.run_jobs([p], pw, False, cancel=cancel, out_dir=opts.out_dir, sweep=False)[0]

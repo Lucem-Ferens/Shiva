@@ -16,7 +16,7 @@ import os
 import threading
 from pathlib import Path
 
-from . import agecli, errors, output, shred, storage
+from . import agecli, creds, errors, output, shred, storage
 from .heldfile import HeldError, HeldFile
 from .shred import ShredReport, ShredRefused, _check_file
 from .stages import ENCRYPT, NULL, SHRED, VERIFY
@@ -105,7 +105,7 @@ def decrypt_file(src: Path, passphrase: str, cancel: threading.Event | None = No
     target = Path(src.with_suffix("").name)
     part = output.part_for(base / target.name)
     try:
-        agecli.decrypt_passphrase(src, part, passphrase, cancel=cancel)
+        creds.as_cred(passphrase).decrypt_file(src, part, cancel)
         dst, _ = output.publish_numbered(part, base, target.stem, target.suffix)
     except BaseException as e:
         if not isinstance(e, agecli.OutputExists):  # never clean up a file we did not create
@@ -118,6 +118,10 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
                          cancel: threading.Event | None = None,
                          out_dir: Path | None = None, rec=NULL) -> tuple[Path, ShredReport | None]:
     src = Path(src)
+    cred = creds.as_cred(passphrase)
+    cred.preflight()        # unusable recipients, or a key file that is not one of them: refused before any work
+    if shred_original and not cred.can_verify:     # no private key, no trial decrypt: nothing may be shredded
+        raise agecli.AgeError("shredding needs a key file for the trial decrypt; nothing was changed", "key_needed_to_verify")
     base = output.dest_dir(src, out_dir)
     stem, tail = src.stem, src.suffix + ".age"
     # With shredding the file is held from here to its removal: other programs cannot write to it, every read goes through the hold,
@@ -130,12 +134,15 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
             if held is not None:
                 held.file.seek(0)
             rec.begin(ENCRYPT)
-            want = agecli.encrypt_passphrase(held.file if held is not None else src, part, passphrase, cancel=cancel)
+            want = cred.encrypt_file(held.file if held is not None else src, part, cancel)
             rec.done(ENCRYPT)
-            rec.begin(VERIFY)
-            got = agecli.decrypt_hash_passphrase(part, passphrase, cancel=cancel)
-            if got != want:
-                raise agecli.AgeError("verification failed: decrypted output differs from original", "verify_failed")
+            if cred.can_verify:
+                rec.begin(VERIFY)
+                got = cred.verify_file(part, cancel)
+                if got != want:
+                    raise agecli.AgeError("verification failed: decrypted output differs from original", "verify_failed")
+            else:
+                rec.skip(VERIFY)
             if snap is not None:
                 now = os.stat(src)
                 if (now.st_size, now.st_mtime_ns) != (snap.st_size, snap.st_mtime_ns):
@@ -149,7 +156,8 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
             raise
         if not output.intact(dst, ident):
             raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
-        rec.done(VERIFY)
+        if cred.can_verify:
+            rec.done(VERIFY)
         report = None
         if held is not None:
             report = ShredReport()

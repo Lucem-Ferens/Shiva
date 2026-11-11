@@ -39,6 +39,8 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
                                confirmed_changes: Iterable[str] = (), allow_unclean: bool = False,
                                cancel: threading.Event | None = None,
                                out_dir: Path | None = None, rec=NULL) -> CleanEncryptResult:
+    if not isinstance(passphrase, str):      # this pipeline takes a password only
+        raise TypeError("clean_encrypt_verify_shred needs a password")
     src = Path(src)
     base = output.dest_dir(src, out_dir)
     options = options or {}

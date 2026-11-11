@@ -15,7 +15,7 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import agecli, errors, names, output, shred, storage
+from . import agecli, creds, errors, names, output, shred, storage
 from .shred import ShredReport, ShredRefused, _named_streams, _wipe_streams, is_link, shred_held, shred_tree
 from .stages import ENCRYPT, NULL, SHRED, VERIFY
 
@@ -212,6 +212,10 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
                                 cancel: threading.Event | None = None, out_dir: Path | None = None, rec=NULL):
     """Returns (output path, ShredReport | None, notes). out_dir must not be inside the folder."""
     src = Path(src)
+    cred = creds.as_cred(passphrase)
+    cred.preflight()        # unusable recipients, or a key file that is not one of them: refused before any work
+    if shred_original and not cred.can_verify:     # no private key, no trial decrypt: nothing may be shredded
+        raise agecli.AgeError("shredding needs a key file for the trial decrypt; nothing was changed", "key_needed_to_verify")
     if shred_original:
         shred.check_target(src)     # a drive, user, system or program folder is never shredded as a whole
     base = output.dest_dir(src, out_dir, inside=src)
@@ -224,12 +228,15 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
     digests: dict[str, str] = {}
     try:
         rec.begin(ENCRYPT)
-        want = agecli.encrypt_stream(lambda w: _write_tar(plan, w, cancel), part, passphrase, cancel)
+        want = cred.encrypt_stream(lambda w: _write_tar(plan, w, cancel), part, cancel)
         rec.done(ENCRYPT)
-        rec.begin(VERIFY)
-        got = agecli.decrypt_consume(part, passphrase, lambda r: _verify_tar(plan, r, digests), cancel)
-        if got != want:
-            raise agecli.AgeError("verification failed: decrypted archive differs from what was encrypted", "verify_failed")
+        if cred.can_verify:
+            rec.begin(VERIFY)
+            got = cred.verify_stream(part, lambda r: _verify_tar(plan, r, digests), cancel)
+            if got != want:
+                raise agecli.AgeError("verification failed: decrypted archive differs from what was encrypted", "verify_failed")
+        else:
+            rec.skip(VERIFY)
         again = plan_folder(src, shred_original)
         if again.entries != plan.entries:
             raise agecli.AgeError("the folder changed while it was being encrypted; nothing was removed", "changed_during_run")
@@ -241,7 +248,8 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
         raise
     if not output.intact(dst, ident):
         raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
-    rec.done(VERIFY)
+    if cred.can_verify:
+        rec.done(VERIFY)
     report = None
     if shred_original:
         report = ShredReport()
@@ -386,7 +394,7 @@ def decrypt_folder(src: Path, passphrase: str, cancel: threading.Event | None = 
         mk = open(staging / MARKER, "xb")
         mk.write(b"shiva staging folder; safe to shred if no Shiva job is running\n")
         mk.flush()
-        agecli.decrypt_consume(src, passphrase, lambda r: _extract(r, staging, free), cancel)
+        creds.as_cred(passphrase).decrypt_stream(src, lambda r: _extract(r, staging, free), cancel)
     except BaseException as e:
         if mk is not None:
             mk.close()

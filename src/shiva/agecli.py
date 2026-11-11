@@ -298,6 +298,14 @@ def encrypt_recipients(src: Path, dst: Path, recipients: list[str], cancel=None)
     return _run(args, src, dst, hash_input=True, cancel=cancel)
 
 
+def encrypt_recipients_stream(feeder, dst: Path, recipients: list[str], cancel=None) -> str:
+    """Encrypt whatever `feeder(writer)` writes to the recipients -> dst. Returns SHA-256 of the input."""
+    args = ["-e"]
+    for r in recipients:
+        args += ["-r", r]
+    return _run(args, None, dst, hash_input=True, cancel=cancel, feeder=feeder)
+
+
 def decrypt_identity(src: Path, dst: Path, identity: bytes, cancel=None) -> None:
     _run(["-d"], src, dst, identity=identity, cancel=cancel)
 
