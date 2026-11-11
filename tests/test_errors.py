@@ -92,10 +92,10 @@ def test_standing_limits_stay_done_but_file_specific_warnings_make_a_warning_row
     assert clean.status == "Done" and "Limits apply" not in clean.text and "See details" not in clean.text
 
 
-def test_clean_cancel_has_its_own_exception_and_half_shredded_uses_the_failed_glyph():
+def test_clean_cancel_has_its_own_exception_and_half_shredded_uses_the_error_icon():
     from shiva.metadata import CleanCancelled
     assert issubclass(CleanCancelled, Exception)
-    assert ui_model.GLYPH["Not fully shredded"] == "✗"
+    assert ui_model.STATUS_KIND["Not fully shredded"] == "error"
 
 
 def test_clean_only_row_says_when_a_number_was_added(tmp_path):

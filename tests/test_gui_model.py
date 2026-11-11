@@ -186,7 +186,7 @@ def test_result_rows_from_structured_fields():
     dec = m.result_row(JobResult(Path("C:/x/o.zip.age"), True, "m", created=Path("C:/x/o.zip")), "encrypt")
     assert dec.text.startswith("Decrypted to o.zip")
     for r in (ok, kept, bad, canc, part, sh, cs):
-        assert r.status_cell.split()[0] not in ("Done", "Warning", "Failed", "Cancelled", "Not")   # glyph present
+        assert r.status_cell == r.status and r.status in m.STATUS_KIND   # word only; the icon is drawn
 
 
 def test_finish_text_cancel_wording():

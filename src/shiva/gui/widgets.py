@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QPointF, QRectF
-from PySide6.QtGui import QColor, QKeySequence, QPainter, QPalette, QPen
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPalette, QPen, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QProxyStyle, QStyle, QStyleOptionButton,
                                QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QWidget)
 
@@ -224,3 +224,61 @@ def apply_theme(app: QApplication) -> str:
     app.setStyleSheet(tokens.stylesheet(theme))
     font = app.font(); font.setFamilies(["Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI"]); app.setFont(font)
     return theme
+
+
+_KIND_ROLE = {"ok": "success", "warning": "warning", "error": "error", "working": "accent",
+              "skipped": "text-secondary", "cancelled": "text-secondary", "pending": "text-secondary",
+              "ready": "text-secondary"}
+
+
+def _draw_status(p: QPainter, kind: str, s: float, color: QColor) -> None:
+    pen = QPen(color, max(1.5, s / 9), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    p.setPen(pen); p.setBrush(Qt.NoBrush)
+    r = QRectF(s * .09, s * .09, s * .82, s * .82)
+    pt = lambda x, y: QPointF(s * x, s * y)
+    if kind == "warning":                                   # triangle with a bar and a dot
+        p.drawPolygon([pt(.5, .08), pt(.94, .90), pt(.06, .90)])
+        p.drawLine(pt(.5, .38), pt(.5, .62)); p.drawPoint(pt(.5, .76))
+        return
+    p.drawEllipse(r)
+    if kind == "ok":                                        # check in a circle
+        p.drawPolyline([pt(.28, .52), pt(.44, .67), pt(.72, .35)])
+    elif kind == "error":                                   # cross in a circle
+        p.drawLine(pt(.34, .34), pt(.66, .66)); p.drawLine(pt(.66, .34), pt(.34, .66))
+    elif kind == "skipped":                                 # dash in a circle
+        p.drawLine(pt(.30, .5), pt(.70, .5))
+    elif kind == "cancelled":                               # slash in a circle
+        p.drawLine(pt(.30, .70), pt(.70, .30))
+    elif kind == "working":                                 # half-filled circle
+        p.setBrush(color); p.drawPie(r, 90 * 16, -180 * 16)
+    elif kind == "pending":                                 # clock hands
+        p.drawPolyline([pt(.5, .28), pt(.5, .5), pt(.66, .6)])
+    # "ready": plain empty circle
+
+
+def status_icon(kind: str, size: int = 16, theme: str = "light", high_contrast: bool | None = None,
+                palette: QPalette | None = None) -> QIcon:
+    """An icon whose SHAPE tells the kind (ok, warning, error, skipped, cancelled, working, pending, ready), so colour is
+    never the only cue. Normal colours come from the tokens (success, warning, error ...); the Selected mode uses the
+    selected-row text colour. In Windows High Contrast the system palette (Text / HighlightedText) is used instead."""
+    hc = high_contrast_active() if high_contrast is None else high_contrast
+    pal = palette or QApplication.palette()
+    c = tokens.COLORS[theme]
+    normal = pal.color(QPalette.Text) if hc else QColor(c[_KIND_ROLE.get(kind, "text-secondary")])
+    selected = pal.color(QPalette.HighlightedText) if hc else QColor(c["text"])
+    icon = QIcon()
+    for mode, color in ((QIcon.Normal, normal), (QIcon.Selected, selected)):
+        scale = 2
+        pix = QPixmap(size * scale, size * scale); pix.fill(Qt.transparent); pix.setDevicePixelRatio(scale)
+        p = QPainter(pix); p.setRenderHint(QPainter.Antialiasing)
+        _draw_status(p, kind, size, color)
+        p.end()
+        icon.addPixmap(pix, mode)
+    return icon
+
+
+def status_item(item, status: str, theme: str) -> None:
+    """Put the status icon beside the status word of a table item (the word stays the text and the accessible name)."""
+    kind = m.STATUS_KIND.get(status)
+    if kind:
+        item.setIcon(status_icon(kind, 16, theme))

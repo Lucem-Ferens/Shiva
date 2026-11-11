@@ -431,8 +431,12 @@ def confirm_notes(clean: bool, omit_parts: bool) -> list[str]:
 
 
 # ---------------------------------------------------------------- results
-GLYPH = {"Done": "✓", "Warning": "⚠", "Failed": "✗", "Skipped": "–", "Cancelled": "⊘",
-         "Not fully shredded": "✗"}
+# Status word -> icon shape (drawn in gui/widgets.py); the word itself stays in the cell.
+STATUS_KIND = {"Done": "ok", "Processed": "ok", "Warning": "warning", "Can't be cleaned": "warning",
+               "Failed": "error", "Not fully shredded": "error", "Not found": "error", "Not readable": "error",
+               "Skipped": "skipped", "Not supported": "skipped", "Cancelled": "cancelled",
+               "Checking...": "working", "Working...": "working", "Waiting": "pending", "Ready": "ready"}
+
 
 ARCHIVE_PART_TIP = ("The archive holds a part whose format cannot be cleaned (named under Reason), so nothing was "
                     "written. Under \"Show more options\" you can leave such parts out (they are missing from the "
@@ -450,7 +454,7 @@ class ResultRow:
 
     @property
     def status_cell(self) -> str:
-        return f"{GLYPH.get(self.status, '')} {self.status}".strip()
+        return self.status
 
 
 def skipped_row(path: Path, info: RowInfo, size: int | None) -> ResultRow:

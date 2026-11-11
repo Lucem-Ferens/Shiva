@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, _Table
+from .widgets import WrapCheckBox, _Table, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -303,7 +303,7 @@ class TabPage(QWidget):
         t.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         t.horizontalHeader().setStretchLastSection(True)
         t.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        t.setColumnWidth(0, 130); t.setColumnWidth(1, 200)
+        t.setColumnWidth(0, 164); t.setColumnWidth(1, 200)
 
     def ticked(self) -> frozenset:
         """Extra steps added by the options. Decided from the page state, not from widget visibility, so an option
@@ -544,6 +544,9 @@ class TabPage(QWidget):
             return trf("%N1 items", f"{f.count}{'+' if f.count_capped else ''}")
         return m.human_size(f.size) if f.probed else ""
 
+    def _theme(self) -> str:
+        return tokens.theme_from_palette(self.palette())
+
     def _fill_file_table(self) -> None:
         t = self.fileTable
         t.setRowCount(len(self.rows))
@@ -558,6 +561,8 @@ class TabPage(QWidget):
                 it.setData(Qt.UserRole, r.key)
                 if r.info.status in ("Not supported", "Not found", "Not readable"):
                     it.setForeground(grey)
+                if c == 0:
+                    status_item(it, r.info.status, self._theme())
                 t.setItem(i, c, it)
             t.setToolTip("")
         t.resizeRowsToContents()
@@ -694,7 +699,9 @@ class TabPage(QWidget):
             word = tr("Processed") if i < done else tr("Working...") if i == done else tr("Waiting")
             for j, row in enumerate(self.rows):
                 if row is r and self.fileTable.item(j, 0) is not None:
-                    self.fileTable.item(j, 0).setText(word)
+                    it = self.fileTable.item(j, 0)
+                    it.setText(word)
+                    status_item(it, "Processed" if i < done else "Working..." if i == done else "Waiting", self._theme())
         if done < total:
             self._progress_base = trf("Working on %N1 of %N2: %3", done + 1, total, self._run_rows[done].path.name)
         else:
@@ -743,10 +750,12 @@ class TabPage(QWidget):
         for i, (rr, jr, row) in enumerate(data):
             for c, txt in enumerate([dyn(rr.status_cell), row.path.name, dyn(rr.text), rr.size_text]):
                 it = QTableWidgetItem(txt)
+                if c == 0:
+                    status_item(it, rr.status, self._theme())
                 if c == 2 and rr.tip:
                     it.setToolTip(dyn(rr.tip)); it.setData(Qt.AccessibleTextRole, f"{txt}. {dyn(rr.tip)}")
                 t.setItem(i, c, it)
-        t.setColumnWidth(2, 360); t.resizeRowsToContents()
+        t.setColumnWidth(0, 164); t.setColumnWidth(2, 360); t.resizeRowsToContents()
         statuses = [d[0].status for d in data]
         self.summaryLabel.setText(dyn(m.summary_text(statuses))); self.summaryLabel.setVisible(False)   # the banner says it
         risky = any(self.win._risk_lines(row) for rr, jr, row in data if rr.status in ("Done", "Warning")
