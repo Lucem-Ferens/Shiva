@@ -447,7 +447,14 @@
     <message><source>Reason: %R1</source><translation>原因：%1</translation></message>
     <message><source>Original shredded (best effort): yes</source><translation>原始檔已銷毀（盡力而為）：是</translation></message>
     <message><source>Original shredded (best effort): not completely</source><translation>原始檔已銷毀（盡力而為）：未完全</translation></message>
-    <message><source>This file is on an SSD: wear levelling means overwriting cannot be guaranteed.</source><translation>這個檔案位於 SSD：由於損耗平均（wear levelling）機制，無法保證覆寫有效。</translation></message>
+    <message><source>This file is on an SSD: wear levelling means overwriting cannot be guaranteed.</source><translation>這個檔案位於 SSD：因損耗平均(wear levelling)，無法保證覆寫有效。</translation></message>
+    <message><source>Shiva could not tell whether this drive is encrypted.</source><translation>Shiva 無法判斷這個磁碟是否已加密。</translation></message>
+    <message><source>Turn it on before saving sensitive files.</source><translation>儲存敏感檔案之前先開啟。</translation></message>
+    <message><source>Windows reports BitLocker on for this drive.</source><translation>Windows 回報這個磁碟已開啟 BitLocker 加密。</translation></message>
+    <message><source>It protects leftover data only while the drive is locked, such as when the computer is off (a locked screen does not count).</source><translation>它只在磁碟鎖定時（例如電腦關機）保護殘留資料；鎖定螢幕不算。</translation></message>
+    <message><source>Data written before BitLocker was turned on may not be covered.</source><translation>開啟 BitLocker 之前寫入的資料可能不在保護範圍內。</translation></message>
+    <message><source>Windows reports no BitLocker encryption for this drive.</source><translation>Windows 回報這個磁碟沒有 BitLocker 加密。</translation></message>
+    <message><source>Shiva does not check other encryption such as VeraCrypt.</source><translation>Shiva 不會檢查 VeraCrypt 等其他加密。</translation></message>
     <message><source>This file is on a removable drive, which is often flash memory: overwriting cannot be guaranteed.</source><translation>這個檔案位於卸除式磁碟（通常是快閃記憶體）：無法保證覆寫有效。</translation></message>
     <message><source>This file is on a network drive: the server and its backups may keep copies that Shiva cannot reach.</source><translation>這個檔案位於網路磁碟：伺服器及其備份可能保留 Shiva 無法觸及的副本。</translation></message>
     <message><source>Shiva could not tell what kind of drive this is; do not rely on overwriting.</source><translation>Shiva 無法判斷這是哪一種磁碟；不要仰賴覆寫。</translation></message>

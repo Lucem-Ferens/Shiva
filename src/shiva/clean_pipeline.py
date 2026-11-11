@@ -125,6 +125,8 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
             if not isinstance(e, agecli.OutputExists):
                 output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
             raise
+        if can_shred:
+            storage.prefetch_encryption(src)    # ask Windows now, before anything is published or shredded
         if not output.intact(dst, ident):
             raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
         rec.done(VERIFY)
@@ -132,7 +134,7 @@ def clean_encrypt_verify_shred(src: Path, passphrase: str, options: dict | None 
         report = None
         if can_shred:
             report = ShredReport()
-            report.caveats = storage.assess(src).warnings() + report.caveats
+            report.caveats = storage.with_encryption(storage.assess(src)).warnings() + report.caveats
             rec.begin(SHRED)
             pipeline.shred_held_original(held, src, report, names)
         return CleanEncryptResult(dst, outcome, status == "supported", report, notes, unchanged)

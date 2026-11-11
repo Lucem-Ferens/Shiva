@@ -420,10 +420,27 @@ _many({
 })
 
 # ------------------------------------------------------------------ storage warnings and shred caveats (engine)
-_s("This file is on an SSD: wear levelling means overwriting cannot be guaranteed. "
-   "Full-disk encryption is the reliable protection.",
-   "這個檔案位於 SSD：由於損耗平均（wear levelling）機制，無法保證覆寫有效。",
-   "全磁碟加密才是可靠的保護。")
+_s("This file is on an SSD: wear levelling means overwriting cannot be guaranteed. Shiva could not tell whether "
+   "this drive is encrypted. Full-disk encryption is the reliable protection. Turn it on before saving sensitive files.",
+   "這個檔案位於 SSD：因損耗平均(wear levelling)，無法保證覆寫有效。",
+   "Shiva 無法判斷這個磁碟是否已加密。",
+   "全磁碟加密才是可靠的保護。",
+   "儲存敏感檔案之前先開啟。")
+_s("This file is on an SSD: wear levelling means overwriting cannot be guaranteed. Windows reports BitLocker on "
+   "for this drive. It protects leftover data only while the drive is locked, such as when the computer is off "
+   "(a locked screen does not count). Data written before BitLocker was turned on may not be covered.",
+   "這個檔案位於 SSD：因損耗平均(wear levelling)，無法保證覆寫有效。",
+   "Windows 回報這個磁碟已開啟 BitLocker 加密。",
+   "它只在磁碟鎖定時（例如電腦關機）保護殘留資料；鎖定螢幕不算。",
+   "開啟 BitLocker 之前寫入的資料可能不在保護範圍內。")
+_s("This file is on an SSD: wear levelling means overwriting cannot be guaranteed. Windows reports no BitLocker "
+   "encryption for this drive. Shiva does not check other encryption such as VeraCrypt. Full-disk encryption is the "
+   "reliable protection. Turn it on before saving sensitive files.",
+   "這個檔案位於 SSD：因損耗平均(wear levelling)，無法保證覆寫有效。",
+   "Windows 回報這個磁碟沒有 BitLocker 加密。",
+   "Shiva 不會檢查 VeraCrypt 等其他加密。",
+   "全磁碟加密才是可靠的保護。",
+   "儲存敏感檔案之前先開啟。")
 _add("This file is on a removable drive, which is often flash memory: overwriting cannot be guaranteed.",
      "這個檔案位於卸除式磁碟（通常是快閃記憶體）：無法保證覆寫有效。")
 _add("This file is on a network drive: the server and its backups may keep copies that Shiva cannot reach.",

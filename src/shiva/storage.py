@@ -23,13 +23,24 @@ class StorageInfo:
     filesystem: str = ""            # e.g. "NTFS", "ReFS", "exFAT", "FAT32"
     cloud_provider: str | None = None  # name or "a cloud-sync folder" when detected
     notes: list[str] = field(default_factory=list)  # how each conclusion was reached / why unknown
+    disk_encryption: str = "unknown"  # "on" | "off" | "unknown": what Windows reports (only asked for with check_encryption)
 
     def warnings(self) -> list[str]:
         """Plain-language, one-line caveats to show before and after shredding."""
         w = []
         if self.drive_kind == "ssd":
-            w.append("This file is on an SSD: wear levelling means overwriting cannot be guaranteed. "
-                     "Full-disk encryption is the reliable protection.")
+            head = "This file is on an SSD: wear levelling means overwriting cannot be guaranteed. "
+            if self.disk_encryption == "on":
+                w.append(head + "Windows reports BitLocker on for this drive. It protects leftover data only while the "
+                         "drive is locked, such as when the computer is off (a locked screen does not count). "
+                         "Data written before BitLocker was turned on may not be covered.")
+            elif self.disk_encryption == "off":
+                w.append(head + "Windows reports no BitLocker encryption for this drive. Shiva does not check other "
+                         "encryption such as VeraCrypt. Full-disk encryption is the reliable protection. "
+                         "Turn it on before saving sensitive files.")
+            else:
+                w.append(head + "Shiva could not tell whether this drive is encrypted. Full-disk encryption is the "
+                         "reliable protection. Turn it on before saving sensitive files.")
         elif self.drive_kind == "removable":
             w.append("This file is on a removable drive, which is often flash memory: "
                      "overwriting cannot be guaranteed.")
@@ -202,3 +213,23 @@ def assess(path: Path) -> StorageInfo:
     except Exception as e:  # detection must never block the job
         info.notes.append(f"detection error: {type(e).__name__}: {e}")
     return info
+
+
+def with_encryption(info: StorageInfo) -> StorageInfo:
+    """Add what Windows reports about drive encryption to an SSD result, for the shredding warnings.
+
+    Separate from `assess` because it starts a helper process (about a third of a second the first time for
+    each drive); lists that refresh as the user types must not pay for it."""
+    if info.drive_kind == "ssd" and info.disk_encryption == "unknown" and info.path.drive[:1].isalpha():
+        from . import diskenc
+        info.disk_encryption = diskenc.status(info.path.drive[0])
+    return info
+
+
+def prefetch_encryption(path: Path) -> None:
+    """Ask Windows about the drive's encryption now, so the later warning does not wait for it in the middle of a
+    shredding run. Never raises: the warning itself is built later, where a failure is handled as before."""
+    try:
+        with_encryption(assess(path))
+    except Exception:
+        pass

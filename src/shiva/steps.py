@@ -195,7 +195,7 @@ def _shred_only(p: Path, rec=NULL) -> JobResult:
         check_target(p)     # protected location: refused before anything is scanned or changed
     except ShredRefused as e:
         return JobResult(p, False, f"Not shredded: {e} Nothing was changed.", error_kind="unsupported")
-    where = storage.assess(p).warnings()
+    where = storage.with_encryption(storage.assess(p)).warnings()
     rec.begin(SHRED)
     try:
         rep = shred_tree(p)  # handles a single file and a folder, refuses links

@@ -79,8 +79,8 @@ def preflight_warnings(paths: list[Path]) -> list[str]:
         p = Path(p)
         if p.suffix.lower() == ".age":
             continue
-        info = storage.assess(p)
-        key = (info.drive_kind, info.filesystem, info.cloud_provider)
+        info = storage.with_encryption(storage.assess(p))
+        key = (info.drive_kind, info.disk_encryption, info.filesystem, info.cloud_provider)
         if key not in seen:
             seen[key] = [f"{p.name}: {w}" for w in info.warnings()]
     return [w for ws in seen.values() for w in ws]

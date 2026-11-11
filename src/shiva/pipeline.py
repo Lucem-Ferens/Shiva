@@ -154,6 +154,8 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
             if not isinstance(e, agecli.OutputExists):  # never clean up a file we did not create
                 output.discard_part(part)       # only age ciphertext: a leftover is harmless, so it is not reported as readable data
             raise
+        if held is not None:
+            storage.prefetch_encryption(src)    # ask Windows now: nothing is shredded or published yet
         if not output.intact(dst, ident):
             raise agecli.AgeError(f"{dst.name} changed after verification; the original was NOT removed", "changed_after_verify")
         if cred.can_verify:
@@ -161,7 +163,7 @@ def encrypt_verify_shred(src: Path, passphrase: str, shred_original: bool = True
         report = None
         if held is not None:
             report = ShredReport()
-            report.caveats = storage.assess(src).warnings() + report.caveats  # location-specific first
+            report.caveats = storage.with_encryption(storage.assess(src)).warnings() + report.caveats  # location-specific first
             rec.begin(SHRED)
             shred_held_original(held, src, report, names)
         return dst, report
