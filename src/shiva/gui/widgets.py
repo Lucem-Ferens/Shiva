@@ -342,6 +342,27 @@ def status_icon(kind: str, size: int = 16, theme: str = "light", high_contrast: 
     return icon
 
 
+def button_icon(kind: str, size: int = 16, theme: str = "light", role: str = "on-error", high_contrast: bool | None = None,
+                palette: QPalette | None = None) -> QIcon:
+    """A status shape for the inside of a filled button, drawn in the text colour the style sheet gives that button
+    (`role`, on-error for the red one; at least 3:1 on its fill, see tests/test_tokens.py) and in the disabled text
+    colour while the button is disabled. In Windows High Contrast the system button text colour is used."""
+    hc = high_contrast_active() if high_contrast is None else high_contrast
+    pal = palette or QApplication.palette()
+    c = tokens.COLORS[theme]
+    on = pal.color(QPalette.ButtonText) if hc else QColor(c[role])
+    off = pal.color(QPalette.Disabled, QPalette.ButtonText) if hc else QColor(c["disabled-text"])
+    icon = QIcon()
+    for mode, color in ((QIcon.Normal, on), (QIcon.Disabled, off)):
+        scale = 2
+        pix = QPixmap(size * scale, size * scale); pix.fill(Qt.transparent); pix.setDevicePixelRatio(scale)
+        p = QPainter(pix); p.setRenderHint(QPainter.Antialiasing)
+        _draw_status(p, kind, size, color)
+        p.end()
+        icon.addPixmap(pix, mode)
+    return icon
+
+
 def status_item(item, status: str, theme: str) -> None:
     """Put the status icon beside the status word of a table item (the word stays the text and the accessible name)."""
     kind = m.STATUS_KIND.get(status)

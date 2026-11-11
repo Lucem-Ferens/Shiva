@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QLabel, QListWidget, QPushButton, QTextBrowser,
-                               QVBoxLayout)
+from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton,
+                               QTextBrowser, QVBoxLayout)
 
 from .. import tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
+from .widgets import button_icon, status_icon
 
 # ------------------------------------------------------------------ dialogs
 class ConfirmDialog(QDialog):
@@ -35,7 +36,13 @@ class ConfirmDialog(QDialog):
         text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
         box.addWidget(text)
         self.itemList = QListWidget(); self.itemList.setObjectName("confirmItems"); self.itemList.setAccessibleName(tr("Items affected"))
-        self.itemList.addItems([("      " + dyn(i[1:])) if i.startswith("\t") else dyn(i) for i in items])
+        theme = tokens.theme_from_palette(self.palette())
+        for i in items:
+            if i.startswith("\t"):      # a per-item Warning: the word is in the text, the triangle beside it
+                it = QListWidgetItem(dyn(i[1:])); it.setIcon(status_icon("warning", 16, theme))
+            else:
+                it = QListWidgetItem(dyn(i))
+            self.itemList.addItem(it)
         for i, tip in enumerate(item_tips or []):      # full path as tooltip and accessible text (the line may be shortened)
             if tip and i < self.itemList.count():
                 it = self.itemList.item(i)
@@ -60,6 +67,7 @@ class ConfirmDialog(QDialog):
         box.addWidget(self.learnLink)
         row = QHBoxLayout(); row.addStretch(1); row.setSpacing(tokens.SPACE[2])
         self.doBtn = QPushButton(do_label); self.doBtn.setAutoDefault(False); self.doBtn.setProperty("danger", True)
+        self.doBtn.setIcon(button_icon("warning", 16, theme))     # the word on the button stays the accessible name
         self.cancelBtn = QPushButton(tr("Cancel")); self.cancelBtn.setDefault(True)
         self.cancelBtn.setProperty("primary", True)
         row.addWidget(self.doBtn); row.addWidget(self.cancelBtn)

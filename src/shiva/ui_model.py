@@ -20,7 +20,7 @@ TITLES = {"clean": ("Clean metadata", "Images, PDF, Office, audio, ZIP"), "encry
           "settings": ("Settings", "Language and saved choices"), "about": ("About", "Version and licence")}
 INFO_KEYS = ("settings", "about")      # sidebar pages that are not functions
 MIN_PW = 8      # encrypting below this only WARNS; decrypting is never length-checked
-SHORT_PW_WARNING = "⚠ Short passphrase: use 8 or more characters"
+SHORT_PW_WARNING = "⚠ Warning: short passphrase. Use 8 or more characters."
 _OFFLINE_ATTRS = 0x1000 | 0x40000 | 0x400000   # OFFLINE, RECALL_ON_OPEN, RECALL_ON_DATA_ACCESS (cloud placeholders)
 _COUNT_CAP = 100_000
 
@@ -57,6 +57,15 @@ RISK_SPECIAL_IN_FOLDER = {
     "compressed": "Warning: contains a file compressed by Windows, so old data may stay on the drive.",
     "sparse": "Warning: contains a sparse file, so old data may stay on the drive.",
     "encrypted": "Warning: contains a file encrypted by Windows (EFS), so old data may stay on the drive.",
+}
+WARNING_PREFIX = "Warning:"
+RISK_CAUSE = {                         # risk sentence -> the short cause the result banner names once
+    RISK_SSD: "on an SSD", RISK_REMOVABLE: "on a removable drive", RISK_NETWORK: "on a network drive",
+    RISK_CLOUD: "in a cloud folder", RISK_UNKNOWN: "on a drive of unknown type",
+    RISK_SPECIAL["compressed"]: "stored compressed by Windows", RISK_SPECIAL_IN_FOLDER["compressed"]: "stored compressed by Windows",
+    RISK_SPECIAL["sparse"]: "stored as a sparse file", RISK_SPECIAL_IN_FOLDER["sparse"]: "stored as a sparse file",
+    RISK_SPECIAL["encrypted"]: "stored encrypted by Windows (EFS)",
+    RISK_SPECIAL_IN_FOLDER["encrypted"]: "stored encrypted by Windows (EFS)",
 }
 LOST_PW = ("If you lose this passphrase, your files cannot be opened. It cannot be recovered. "
            "Store it somewhere safe.")
@@ -164,6 +173,40 @@ def risk_lines(drive_kind: str, cloud_provider: str | None, special: str | None 
     if drive_kind == "unknown":
         out.append(RISK_UNKNOWN)
     return out
+
+
+def risk_causes(lines) -> list[str]:
+    """Each distinct cause named in a set of risk sentences, once, in order of first appearance."""
+    return list(dict.fromkeys(RISK_CAUSE[ln] for ln in lines if ln in RISK_CAUSE))
+
+
+def confirm_item_lines(entries: list[tuple[str, str, list[str]]]) -> tuple[list[str], list[str]]:
+    """(items, tips) for the confirmation list from (shown name, full path, risk sentences) per item.
+    A sentence that applies to one item stays under it as a "\\t" sub-line. A sentence shared by several items is listed
+    once, after the items, so a long list does not repeat it: "All 3 items: Warning: ..." when it covers every item,
+    otherwise it names the items it covers ("In a.txt, c.txt: ...", "In a.txt, c.txt and 3 more: ...")."""
+    count: dict[str, int] = {}
+    who: dict[str, list[str]] = {}
+    for name, _tip, lines in entries:
+        for ln in dict.fromkeys(lines):
+            count[ln] = count.get(ln, 0) + 1
+            who.setdefault(ln, []).append(name)
+    items, tips = [], []
+    for name, tip, lines in entries:
+        items.append(name); tips.append(tip)
+        for ln in dict.fromkeys(lines):
+            if count[ln] == 1:
+                items.append("\t" + ln); tips.append("")
+    for ln, k in count.items():
+        if k > 1:
+            if k == len(entries):
+                lead = f"All {unit(k, 'item')}"
+            elif k > 2:
+                lead = f"In {', '.join(who[ln][:2])} and {k - 2} more"
+            else:
+                lead = f"In {', '.join(who[ln])}"
+            items.append(f"\t{lead}: {ln}"); tips.append("")
+    return items, tips
 
 
 def probe(base: Facts, need_class: bool, need_storage: bool, need_count: bool, cache: dict | None = None) -> Facts:
@@ -521,11 +564,24 @@ class ResultRow:
 
 
 def skipped_row(path: Path, info: RowInfo, size: int | None) -> ResultRow:
-    return ResultRow("Skipped", info.note or "Not supported.", human_size(size),
+    status = "Not found" if info.status == "Not found" else "Skipped"      # the list's word stays when the item is gone
+    return ResultRow(status, info.note or "Not supported.", human_size(size),
                      [f"File: {path}", f"Status: {info.status}", info.note])
 
 
-RISK_ROW = "Old data may stay on the drive."
+RISK_ROW = "Old data of the original may stay on the drive."
+RISK_ROW_ONLINE = "Copies may stay online."
+RISK_ROW_SERVER = "The server may keep copies."
+
+
+def risk_row_text(lines) -> str:
+    """What may remain, named by cause: the drive, online copies, a server's copies. Each sentence once."""
+    out = []
+    for ln in lines:
+        t = RISK_ROW_ONLINE if ln == RISK_CLOUD else RISK_ROW_SERVER if ln == RISK_NETWORK else RISK_ROW
+        if t not in out:
+            out.append(t)
+    return " ".join(out) or RISK_ROW
 
 
 # Failure rows by error_code (errors.py): what happened + the next step. "Original unchanged." is appended by the caller.
@@ -595,11 +651,11 @@ def result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_bef
     rr.details = [x for x in rr.details if x not in tech]
     rr.technical = tech
     if tab == "shred" and r.ok and r.original_removed and risk_lines and rr.status == "Done":
-        rr.status, rr.text = "Warning", "Shredded (best effort). " + RISK_ROW
+        rr.status, rr.text = "Warning", "Shredded (best effort). " + risk_row_text(risk_lines)
     elif tab == "shred" and rr.status == "Done":
         rr.text = "Shredded (best effort)."
     elif tab != "shred" and r.ok and r.original_removed and risk_lines and rr.status == "Done":
-        rr.status, rr.text = "Warning", rr.text + " " + RISK_ROW        # one event, one status (same rule as the Shred tab)
+        rr.status, rr.text = "Warning", rr.text + " " + risk_row_text(risk_lines)      # one event, one status (same rule as the Shred tab)
     _add_cleanup_lines(rr, r)     # last: it turns Done into Warning, which the risk rules above would then skip
     return rr
 
@@ -626,10 +682,19 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
         d.append("Changed: " + ", ".join(changed))
     if r.kept:
         d.append("Not removed: " + ", ".join(r.kept))
-    d += [f"Note: {w}" for w in r.warnings]
+    notes = list(dict.fromkeys(r.warnings))          # an identical caveat is listed once
+    d += [f"Note: {w}" for w in notes]
     if r.shred_attempted:
         d.append("Original shredded (best effort): " + ("yes" if r.original_removed else "not completely"))
-    d.append("Reason: " + re.sub(r"^[A-Za-z_]+(?:Error|Exception|Unsupported): ", "", r.message))
+    reason = re.sub(r"^[A-Za-z_]+(?:Error|Exception|Unsupported): ", "", r.message)
+    if notes:       # the engine's message may only repeat the notes: keep what is left of it
+        left = reason
+        for w in notes:
+            left = left.replace(w, "")
+        left = re.sub(r"\s+", " ", left).strip(" ;.")
+        reason = left + "." if left else ""
+    if reason:
+        d.append("Reason: " + reason)
     where = r.path.parent
 
     if r.partially_shredded or r.error_kind == "partial_shred":
@@ -654,7 +719,8 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
             # the engine never overwrites: say what is in the way and what to do (the Reason line repeats it in full)
             kind = "folder" if r.conflict.is_dir() else "file"
             untouched = "The .age file is unchanged." if r.path.suffix.lower() == ".age" else "Original unchanged."
-            d[-1] = f"Note: The output {kind} {r.conflict.name} already exists in {r.conflict.parent}."
+            d = [x for x in d if not x.startswith("Reason: ")]
+            d.append(f"Note: The output {kind} {r.conflict.name} already exists in {r.conflict.parent}.")
             return ResultRow("Failed", f"Failed. The output {kind} {r.conflict.name} already exists. "
                              f"Rename or move it, or choose another output folder. {untouched}", size_text, d)
         if r.error_code in FAIL_TEXT and tab != "shred":
@@ -719,15 +785,16 @@ def split_warnings(warnings) -> tuple[list[str], list[str]]:
     return specific, [w for w in warnings if w in limits]
 
 
-def summary_text(statuses: list[str]) -> str:
-    order = [("Done", "done"), ("Warning", "warnings"), ("Not fully shredded", "not fully shredded"),
-             ("Failed", "failed"), ("Skipped", "skipped"), ("Cancelled", "cancelled")]
+def summary_text(statuses: list[str], tab: str = "") -> str:
+    """Counts per status. On the Shred tab a finished item is "shredded (best effort)", never a bare "done"."""
+    order = [("Done", "shredded (best effort)" if tab == "shred" else "done"), ("Warning", "warnings"), ("Not fully shredded", "not fully shredded"),
+             ("Failed", "failed"), ("Not found", "not found"), ("Skipped", "skipped"), ("Cancelled", "cancelled")]
     parts = [f"{statuses.count(k)} {'warning' if k == 'Warning' and statuses.count(k) == 1 else w}"
              for k, w in order if statuses.count(k)]
     return ", ".join(parts) + "." if parts else "Nothing was processed."
 
 
-RISK_SUMMARY = "Some items may leave traces."
+RISK_SUMMARY = "Traces of shredded items may remain: %1."    # %1 = the distinct causes (risk_causes), each named once
 
 
 def summary_level(statuses: list[str], location_risk: bool = False) -> str:
@@ -735,7 +802,7 @@ def summary_level(statuses: list[str], location_risk: bool = False) -> str:
     drive or folder that may keep copies is still a warning (the green banner would read like a guarantee)."""
     if any(s in ("Failed", "Not fully shredded") for s in statuses):
         return "error"
-    if location_risk or any(s in ("Warning", "Skipped", "Cancelled") for s in statuses):
+    if location_risk or any(s in ("Warning", "Not found", "Skipped", "Cancelled") for s in statuses):
         return "warning"
     return "success"
 

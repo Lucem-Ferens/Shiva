@@ -161,12 +161,12 @@ def test_passphrase_states_on_encrypt_tab(w, tmp_path):
     assert p.reasonLabel.text() == "Enter a passphrase." and not p.primaryBtn.isEnabled()
     p.pwEdit.setText("short")
     assert p.reasonLabel.text() == "Repeat the passphrase."
-    assert "Short passphrase" in p.pwWarnLabel.text() and p.pwWarnLabel.isVisibleTo(p)
+    assert "short passphrase" in p.pwWarnLabel.text() and p.pwWarnLabel.isVisibleTo(p)
     p.pwConfirmEdit.setText("shor")
     assert "do not match" in p.matchLabel.text() and "do not match" in p.reasonLabel.text()   # inline and by the button
     assert not p.primaryBtn.isEnabled()
     p.pwConfirmEdit.setText("short")                       # short passphrase only warns
-    assert p.primaryBtn.isEnabled() and (not p.reasonLabel.isVisibleTo(p)) and "Short passphrase" in p.pwWarnLabel.text()
+    assert p.primaryBtn.isEnabled() and (not p.reasonLabel.isVisibleTo(p)) and "short passphrase" in p.pwWarnLabel.text()
     p.pwEdit.setText("a much longer passphrase"); p.pwConfirmEdit.setText("a much longer passphrase")
     assert p.primaryBtn.isEnabled() and (not p.pwWarnLabel.isVisibleTo(p)) and p.strengthLabel.text() == "Length: 24 characters"
     assert p.primaryBtn.text() == "Encrypt 1 item" and "Passphrases match" in p.matchLabel.text()
@@ -680,12 +680,13 @@ def test_result_banner_levels_and_risky_shred(w, tmp_path, monkeypatch):
     w.set_tab("shred"); p = w.pages["shred"]; w.add_paths([f]); w.wait_for_probes()
     run_and_wait(w)
     assert p.resultBanner.property("level") == "success" and p.resultBanner.text().startswith("✓")
+    assert "1 shredded (best effort)" in p.resultBanner.text() and "done" not in p.resultBanner.text()
     g = mk(tmp_path, "t.bin")
     p.back_to_list(); w.add_paths([g]); w.wait_for_probes()
     monkeypatch.setattr(w, "_risk_lines", lambda row: ["Warning: on an SSD, so old data may stay on the drive."])
     run_and_wait(w)
     assert p.resultBanner.property("level") == "warning" and "⚠" in p.resultBanner.text()
-    assert "leave traces" in p.resultBanner.text()
+    assert "Traces of shredded items may remain: on an SSD." in p.resultBanner.text()
 
 
 def test_running_state_busy_bar_and_elapsed_seconds(w, tmp_path):

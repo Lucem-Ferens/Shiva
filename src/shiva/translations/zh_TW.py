@@ -49,11 +49,11 @@ _many({
     "Encrypt": "加密", "Files and folders": "檔案與資料夾",
     "Shred": "銷毀", "Overwrite and delete": "覆寫並刪除",
     "Settings": "設定", "Language and saved choices": "語言與已儲存的選擇", "About": "關於", "Version and licence": "版本與授權",
-    "Apply": "套用", "Choose a different language first.": "先選擇其他語言。", "Saved choices": "已儲存的選擇",
+    "Apply": "套用", "Choose another language.": "選擇其他語言。", "Saved choices": "已儲存的選擇",
     "File lists are kept.": "檔案清單會保留。", "Results, options and passphrases are reset.": "結果、選項與密碼會重設。",
     "Version %1": "版本 %1", "(early version)": "（早期版本）", "Show third-party notices": "顯示第三方聲明",
     "Third-party notices couldn't be opened.": "無法開啟第三方聲明。", "See %1 in the program folder.": "請見程式資料夾中的 %1。",
-    "Files can't be added here.": "這裡無法加入檔案。", "Choose Clean metadata, Encrypt or Shred.": "請選擇「清理中繼資料」、「加密」或「銷毀」。",
+    "Files can't be added here.": "這裡無法加入檔案。", "Choose Clean metadata, Encrypt or Shred.": "選擇「清理中繼資料」、「加密」或「銷毀」。",
     "This window keeps its language until you restart.": "重新啟動前，這個視窗會維持目前的語言。",
     "The settings file can't be deleted.": "無法刪除設定檔。",
     "The language is used for this run only.": "語言只在這次執行有效。", "The settings file can't be written.": "無法寫入設定檔。",
@@ -63,7 +63,7 @@ _many({
     "Ready": "就緒",
     "Encrypt files": "加密檔案", "Decrypt .age files": "解密 .age 檔案",
     "&Add files...": "加入檔案(&A)...", "Add files": "加入檔案", "Add folder...": "加入資料夾...",
-    "Add folder": "加入資料夾", "Clear list": "清除清單", "Remove selected": "移除所選", "Show technical details": "顯示技術細節", "Old data may stay on the drive.": "舊資料可能留在磁碟上。", "More": "更多", "Language": "語言", "System default": "系統預設", "Not available yet.": "尚未提供。", "Reset saved choices": "重設已儲存的選擇", "Saved choices were reset.": "已儲存的選擇已重設。", "Saved choices could not be reset.": "無法重設已儲存的選擇。", "Clean file metadata, encrypt and decrypt with age, and shred files (best effort).": "清理檔案中繼資料、用 age 加密與解密，以及銷毀檔案（盡力而為）。", "Free software, licence GPL-3.0-or-later.": "自由軟體，授權為 GPL-3.0-or-later。", "Warning:": "警告：", "Failed:": "失敗：", "Some items may leave traces.": "部分項目可能留下痕跡。", "Result of the run": "執行結果", "Drop files to add them": "拖放檔案即可加入",
+    "Add folder": "加入資料夾", "Clear list": "清除清單", "Remove selected": "移除所選", "Show technical details": "顯示技術細節", "Old data of the original may stay on the drive.": "原始檔的舊資料可能留在磁碟上。", "More": "更多", "Language": "語言", "System default": "系統預設", "Not available yet.": "尚未提供。", "Reset saved choices": "重設已儲存的選擇", "Saved choices were reset.": "已儲存的選擇已重設。", "Saved choices could not be reset.": "無法重設已儲存的選擇。", "Clean file metadata, encrypt and decrypt with age, and shred files (best effort).": "清理檔案中繼資料、用 age 加密與解密，以及銷毀檔案（盡力而為）。", "Free software, licence GPL-3.0-or-later.": "自由軟體，授權為 GPL-3.0-or-later。", "Warning:": "警告：", "Failed:": "失敗：", "Result of the run": "執行結果", "Drop files to add them": "拖放檔案即可加入",
     "Folders can't be cleaned yet.": "目前還不能清理資料夾。",
     "Add files to clean": "加入要清理的檔案",
     "Drop files here.": "把檔案拖放到這裡。",
@@ -223,7 +223,7 @@ _many({
     # passphrase block
     "Enter a passphrase.": "輸入密碼。", "Repeat the passphrase.": "再輸入一次密碼。",
     "Length: %U": "長度：%U",
-    "⚠ Short passphrase: use 8 or more characters": "⚠ 密碼太短：使用 8 個字元以上",
+    "⚠ Warning: short passphrase. Use 8 or more characters.": "⚠ 警告：密碼太短。使用 8 個字元以上。",
     "✓ Passphrases match": "✓ 兩次密碼相符", "✗ Passphrases do not match": "✗ 兩次密碼不相符",
     # button labels
     "Clean %U": "清理 %U", "Encrypt %U": "加密 %U", "Decrypt %U": "解密 %U",
@@ -386,6 +386,18 @@ _many({
     "Nothing was processed.": "沒有處理任何項目。",
     "%N1 done": "完成 %1 個", "%N1 warnings": "警告 %1 個", "%N1 warning": "警告 %1 個", "%N1 not fully shredded": "未完全銷毀 %1 個",
     "%N1 failed": "失敗 %1 個", "%N1 skipped": "已略過 %1 個", "%N1 cancelled": "取消 %1 個",
+    "%N1 not found": "找不到 %1 個", "%U not found": "找不到 %U", "Previous results cleared": "先前的結果已清除",
+    "%U not found and left out of the run.": "找不到 %U，已排除在本次執行之外。",
+    "%N1 shredded (best effort)": "已銷毀 %1 個（盡力而為）",
+    "All %U: %M1": "全部 %U：%1",
+    "In %R1: %M2": "於 %1：%2",
+    "In %R1 and %N2 more: %M3": "於 %1 及另外 %2 個：%3",
+    "Traces of shredded items may remain: %1.": "已銷毀的項目可能留有痕跡：%1。",
+    "on an SSD": "位於 SSD", "on a removable drive": "位於卸除式磁碟", "on a network drive": "位於網路磁碟",
+    "in a cloud folder": "位於雲端資料夾", "on a drive of unknown type": "位於類型不明的磁碟",
+    "stored compressed by Windows": "由 Windows 壓縮儲存", "stored as a sparse file": "以稀疏檔案儲存",
+    "stored encrypted by Windows (EFS)": "由 Windows 加密儲存 (EFS)",
+    "Copies may stay online.": "副本可能留在線上。", "The server may keep copies.": "伺服器可能保留副本。",
     "Nothing was changed.": "沒有任何變更。",
     "Cancelled items were not touched.": "已取消的項目未被更動。",
     "Finished with a problem: not fully shredded.": "已結束，但有問題：未完全銷毀。",
@@ -630,18 +642,18 @@ _many({
     "Warning: compressed by Windows, so old data may stay on the drive.": "警告：已被 Windows 壓縮，舊資料可能留在磁碟上。",
     "Warning: a sparse file, so old data may stay on the drive.": "警告：這是稀疏檔案，舊資料可能留在磁碟上。",
     "Warning: encrypted by Windows (EFS), so old data may stay on the drive.":
-        "警告：已被 Windows 加密（EFS），舊資料可能留在磁碟上。",
+        "警告：已被 Windows 加密 (EFS)，舊資料可能留在磁碟上。",
     "Warning: contains a file compressed by Windows, so old data may stay on the drive.":
         "警告：內含已被 Windows 壓縮的檔案，舊資料可能留在磁碟上。",
     "Warning: contains a sparse file, so old data may stay on the drive.": "警告：內含稀疏檔案，舊資料可能留在磁碟上。",
     "Warning: contains a file encrypted by Windows (EFS), so old data may stay on the drive.":
-        "警告：內含已被 Windows 加密（EFS）的檔案，舊資料可能留在磁碟上。",
+        "警告：內含已被 Windows 加密 (EFS) 的檔案，舊資料可能留在磁碟上。",
     "This file is compressed by Windows: overwriting may leave the old data in other places on the drive.":
         "這個檔案已被 Windows 壓縮：覆寫後，舊資料可能留在磁碟的其他位置。",
     "This file is a sparse file: overwriting may leave the old data in other places on the drive.":
         "這個檔案是稀疏檔案：覆寫後，舊資料可能留在磁碟的其他位置。",
     "This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the drive.":
-        "這個檔案已被 Windows 加密（EFS）：覆寫後，舊資料可能留在磁碟的其他位置。",
+        "這個檔案已被 Windows 加密 (EFS)：覆寫後，舊資料可能留在磁碟的其他位置。",
     # About shredding
     "About shredding": "關於銷毀",
     "What Shred does": "銷毀做了什麼",

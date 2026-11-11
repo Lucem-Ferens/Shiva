@@ -63,7 +63,8 @@ class SettingsPage(QWidget):
         gl.addWidget(self.languageNote)
         self.applyBtn = QPushButton(tr("Apply")); self.applyBtn.setProperty("primary", True)
         self.applyBtn.clicked.connect(self.apply)
-        row = QHBoxLayout(); row.addWidget(self.applyBtn); row.addStretch(1)
+        self.applyReason = QLabel(""); self.applyReason.setObjectName("pageScope")   # why Apply is off, as visible text
+        row = QHBoxLayout(); row.addWidget(self.applyBtn); row.addWidget(self.applyReason); row.addStretch(1)
         gl.addLayout(row)
         outer.addWidget(self.languageGroup)
 
@@ -83,9 +84,16 @@ class SettingsPage(QWidget):
     def _update_apply(self) -> None:
         same = self.selected() == self._saved
         self.applyBtn.setEnabled(not same)
-        hint = tr("Choose a different language first.") if same else ""
+        hint = tr("Choose another language.") if same else ""
         self.applyBtn.setAccessibleDescription(hint)
         self.applyBtn.setToolTip(hint)
+        self.applyReason.setText(hint); self.applyReason.setVisible(bool(hint))
+
+    def saved_reset(self) -> None:
+        """The saved language is gone (back to the system default): the radios show that."""
+        self._saved = "system"
+        self.languageRadios["system"].setChecked(True)
+        self._update_apply()
 
     def apply(self) -> None:
         self.win.switch_language(self.selected())

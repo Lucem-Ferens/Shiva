@@ -130,7 +130,7 @@ def _covered(text: str) -> bool:
 
 
 GUI_FILES = sorted((ROOT / "src" / "shiva" / "gui").glob("*.py"))
-GUI_WRAPPED_LITERALS = 134  # total over the package; a split or a move must not lose a file or a literal
+GUI_WRAPPED_LITERALS = 136  # total over the package; a split or a move must not lose a file or a literal
 
 
 def test_every_literal_wrapped_in_gui_has_an_entry(zh):
@@ -234,6 +234,12 @@ def _scenario_texts() -> list[str]:
             kw.setdefault("path", P("C:/x/a.jpg")); kw.setdefault("ok", True); kw.setdefault("message", "msg")
             rr = m.result_row(jobs.JobResult(**kw), tab, ticked, 1000, 2000, uncleanable=(tab == "clean" and "encrypt" in ticked))
             out += [rr.text, rr.status_cell] + [d for d in rr.details if not d.startswith("Reason:")]
+    out += list(m.RISK_CAUSE.values()) + [m.RISK_ROW_ONLINE, m.RISK_ROW_SERVER, m.RISK_SUMMARY, m.risk_row_text([m.RISK_SSD, m.RISK_CLOUD]),
+                                          "All 3 items: " + m.RISK_SSD, "In a.txt, c.txt: " + m.RISK_SSD,
+                                          "In a.txt, c.txt and 3 more: " + m.RISK_SSD, "1 item not found",
+                                          "2 files not found and left out of the run.", "Previous results cleared",
+                                          m.summary_text(["Done", "Failed"], "shred"),
+                                          m.summary_text(["Done", "Not found"])]
     sk = m.skipped_row(P("a"), m.RowInfo("Not supported", "Folders can't be cleaned yet.", False), 10)
     out += [sk.text] + sk.details
     for sts in (["Done", "Failed"], ["Done"], ["Failed", "Failed"], ["Cancelled", "Done", "Warning"],

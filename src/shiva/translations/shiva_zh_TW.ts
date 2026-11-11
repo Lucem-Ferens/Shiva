@@ -18,7 +18,7 @@
     <message><source>About</source><translation>關於</translation></message>
     <message><source>Version and licence</source><translation>版本與授權</translation></message>
     <message><source>Apply</source><translation>套用</translation></message>
-    <message><source>Choose a different language first.</source><translation>先選擇其他語言。</translation></message>
+    <message><source>Choose another language.</source><translation>選擇其他語言。</translation></message>
     <message><source>Saved choices</source><translation>已儲存的選擇</translation></message>
     <message><source>File lists are kept.</source><translation>檔案清單會保留。</translation></message>
     <message><source>Results, options and passphrases are reset.</source><translation>結果、選項與密碼會重設。</translation></message>
@@ -28,7 +28,7 @@
     <message><source>Third-party notices couldn't be opened.</source><translation>無法開啟第三方聲明。</translation></message>
     <message><source>See %1 in the program folder.</source><translation>請見程式資料夾中的 %1。</translation></message>
     <message><source>Files can't be added here.</source><translation>這裡無法加入檔案。</translation></message>
-    <message><source>Choose Clean metadata, Encrypt or Shred.</source><translation>請選擇「清理中繼資料」、「加密」或「銷毀」。</translation></message>
+    <message><source>Choose Clean metadata, Encrypt or Shred.</source><translation>選擇「清理中繼資料」、「加密」或「銷毀」。</translation></message>
     <message><source>This window keeps its language until you restart.</source><translation>重新啟動前，這個視窗會維持目前的語言。</translation></message>
     <message><source>The settings file can't be deleted.</source><translation>無法刪除設定檔。</translation></message>
     <message><source>The language is used for this run only.</source><translation>語言只在這次執行有效。</translation></message>
@@ -48,7 +48,7 @@
     <message><source>Clear list</source><translation>清除清單</translation></message>
     <message><source>Remove selected</source><translation>移除所選</translation></message>
     <message><source>Show technical details</source><translation>顯示技術細節</translation></message>
-    <message><source>Old data may stay on the drive.</source><translation>舊資料可能留在磁碟上。</translation></message>
+    <message><source>Old data of the original may stay on the drive.</source><translation>原始檔的舊資料可能留在磁碟上。</translation></message>
     <message><source>More</source><translation>更多</translation></message>
     <message><source>Language</source><translation>語言</translation></message>
     <message><source>System default</source><translation>系統預設</translation></message>
@@ -60,7 +60,6 @@
     <message><source>Free software, licence GPL-3.0-or-later.</source><translation>自由軟體，授權為 GPL-3.0-or-later。</translation></message>
     <message><source>Warning:</source><translation>警告：</translation></message>
     <message><source>Failed:</source><translation>失敗：</translation></message>
-    <message><source>Some items may leave traces.</source><translation>部分項目可能留下痕跡。</translation></message>
     <message><source>Result of the run</source><translation>執行結果</translation></message>
     <message><source>Drop files to add them</source><translation>拖放檔案即可加入</translation></message>
     <message><source>Folders can't be cleaned yet.</source><translation>目前還不能清理資料夾。</translation></message>
@@ -253,7 +252,7 @@
     <message><source>Enter a passphrase.</source><translation>輸入密碼。</translation></message>
     <message><source>Repeat the passphrase.</source><translation>再輸入一次密碼。</translation></message>
     <message><source>Length: %U</source><translation>長度：%U</translation></message>
-    <message><source>⚠ Short passphrase: use 8 or more characters</source><translation>⚠ 密碼太短：使用 8 個字元以上</translation></message>
+    <message><source>⚠ Warning: short passphrase. Use 8 or more characters.</source><translation>⚠ 警告：密碼太短。使用 8 個字元以上。</translation></message>
     <message><source>✓ Passphrases match</source><translation>✓ 兩次密碼相符</translation></message>
     <message><source>✗ Passphrases do not match</source><translation>✗ 兩次密碼不相符</translation></message>
     <message><source>Clean %U</source><translation>清理 %U</translation></message>
@@ -406,6 +405,25 @@
     <message><source>%N1 failed</source><translation>失敗 %1 個</translation></message>
     <message><source>%N1 skipped</source><translation>已略過 %1 個</translation></message>
     <message><source>%N1 cancelled</source><translation>取消 %1 個</translation></message>
+    <message><source>%N1 not found</source><translation>找不到 %1 個</translation></message>
+    <message><source>%U not found</source><translation>找不到 %U</translation></message>
+    <message><source>Previous results cleared</source><translation>先前的結果已清除</translation></message>
+    <message><source>%U not found and left out of the run.</source><translation>找不到 %U，已排除在本次執行之外。</translation></message>
+    <message><source>%N1 shredded (best effort)</source><translation>已銷毀 %1 個（盡力而為）</translation></message>
+    <message><source>All %U: %M1</source><translation>全部 %U：%1</translation></message>
+    <message><source>In %R1: %M2</source><translation>於 %1：%2</translation></message>
+    <message><source>In %R1 and %N2 more: %M3</source><translation>於 %1 及另外 %2 個：%3</translation></message>
+    <message><source>Traces of shredded items may remain: %1.</source><translation>已銷毀的項目可能留有痕跡：%1。</translation></message>
+    <message><source>on an SSD</source><translation>位於 SSD</translation></message>
+    <message><source>on a removable drive</source><translation>位於卸除式磁碟</translation></message>
+    <message><source>on a network drive</source><translation>位於網路磁碟</translation></message>
+    <message><source>in a cloud folder</source><translation>位於雲端資料夾</translation></message>
+    <message><source>on a drive of unknown type</source><translation>位於類型不明的磁碟</translation></message>
+    <message><source>stored compressed by Windows</source><translation>由 Windows 壓縮儲存</translation></message>
+    <message><source>stored as a sparse file</source><translation>以稀疏檔案儲存</translation></message>
+    <message><source>stored encrypted by Windows (EFS)</source><translation>由 Windows 加密儲存 (EFS)</translation></message>
+    <message><source>Copies may stay online.</source><translation>副本可能留在線上。</translation></message>
+    <message><source>The server may keep copies.</source><translation>伺服器可能保留副本。</translation></message>
     <message><source>Nothing was changed.</source><translation>沒有任何變更。</translation></message>
     <message><source>Cancelled items were not touched.</source><translation>已取消的項目未被更動。</translation></message>
     <message><source>Finished with a problem: not fully shredded.</source><translation>已結束，但有問題：未完全銷毀。</translation></message>
@@ -645,13 +663,13 @@
     <message><source>Warning: on a drive of unknown type, so old data may stay on it.</source><translation>警告：位於類型不明的磁碟，舊資料可能留在上面。</translation></message>
     <message><source>Warning: compressed by Windows, so old data may stay on the drive.</source><translation>警告：已被 Windows 壓縮，舊資料可能留在磁碟上。</translation></message>
     <message><source>Warning: a sparse file, so old data may stay on the drive.</source><translation>警告：這是稀疏檔案，舊資料可能留在磁碟上。</translation></message>
-    <message><source>Warning: encrypted by Windows (EFS), so old data may stay on the drive.</source><translation>警告：已被 Windows 加密（EFS），舊資料可能留在磁碟上。</translation></message>
+    <message><source>Warning: encrypted by Windows (EFS), so old data may stay on the drive.</source><translation>警告：已被 Windows 加密 (EFS)，舊資料可能留在磁碟上。</translation></message>
     <message><source>Warning: contains a file compressed by Windows, so old data may stay on the drive.</source><translation>警告：內含已被 Windows 壓縮的檔案，舊資料可能留在磁碟上。</translation></message>
     <message><source>Warning: contains a sparse file, so old data may stay on the drive.</source><translation>警告：內含稀疏檔案，舊資料可能留在磁碟上。</translation></message>
-    <message><source>Warning: contains a file encrypted by Windows (EFS), so old data may stay on the drive.</source><translation>警告：內含已被 Windows 加密（EFS）的檔案，舊資料可能留在磁碟上。</translation></message>
+    <message><source>Warning: contains a file encrypted by Windows (EFS), so old data may stay on the drive.</source><translation>警告：內含已被 Windows 加密 (EFS) 的檔案，舊資料可能留在磁碟上。</translation></message>
     <message><source>This file is compressed by Windows: overwriting may leave the old data in other places on the drive.</source><translation>這個檔案已被 Windows 壓縮：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
     <message><source>This file is a sparse file: overwriting may leave the old data in other places on the drive.</source><translation>這個檔案是稀疏檔案：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
-    <message><source>This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the drive.</source><translation>這個檔案已被 Windows 加密（EFS）：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
+    <message><source>This file is encrypted by Windows (EFS): overwriting may leave the old data in other places on the drive.</source><translation>這個檔案已被 Windows 加密 (EFS)：覆寫後，舊資料可能留在磁碟的其他位置。</translation></message>
     <message><source>About shredding</source><translation>關於銷毀</translation></message>
     <message><source>What Shred does</source><translation>銷毀做了什麼</translation></message>
     <message><source>Shred overwrites the contents of an item, then deletes it.</source><translation>銷毀會覆寫項目的內容，然後刪除它。</translation></message>

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, Signal
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
                                QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
-from .. import output, steps, storage, tokens
+from .. import i18n, output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
 from .widgets import WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
@@ -493,16 +494,17 @@ class TabPage(QWidget):
 
     # ---- list management
     def add_paths(self, paths: list[Path]) -> tuple[int, int]:
-        if self.mode == "results":
-            self._leave_results(clear=True)
+        """(added, already listed). Results are left (and cleared) only when something new is added; the window says so."""
         have = {r.key for r in self.rows}
-        added = dups = 0
+        fresh = []
         for p in paths:
             k = m.path_key(p)
-            if k in have:
-                dups += 1
-                continue
-            have.add(k); self.rows.append(_Row(Path(os.path.abspath(p)))); added += 1
+            if k not in have:
+                have.add(k); fresh.append(Path(os.path.abspath(p)))
+        added, dups = len(fresh), len(paths) - len(fresh)
+        if fresh and self.mode == "results":
+            self._leave_results(clear=True)
+        self.rows += [_Row(p) for p in fresh]
         if added:
             self.refresh_rows(); self._ensure_probes()
         return added, dups
@@ -767,6 +769,8 @@ class TabPage(QWidget):
                     it.setForeground(grey)
                 if c == 0:
                     status_item(it, r.info.status, self._theme())
+                elif c == 4 and r.info.note.startswith(m.WARNING_PREFIX):    # a warning is the word and an icon
+                    it.setIcon(status_icon("warning", 16, self._theme()))
                 t.setItem(i, c, it)
             t.setToolTip("")
         t.resizeRowsToContents()
@@ -859,19 +863,35 @@ class TabPage(QWidget):
             out_dir=self.out_dir())
 
     # ---- run
+    def _recheck_exist(self) -> int:
+        """Rows whose item has vanished since it was probed become "Not found" (and so leave the run and the
+        confirmation). Returns how many changed. Only the existence is looked at; nothing else about a row changes."""
+        gone = 0
+        for r in self.rows:
+            if r.facts.probed and r.facts.exists and not os.path.lexists(r.path):
+                r.facts = replace(r.facts, exists=False); gone += 1
+        if gone:
+            self.refresh_rows()
+        return gone
+
     def start(self) -> None:
         if self.mode == "results":
             self.back_to_list()
             return
         if self.mode != "list":
             return
+        gone = self._recheck_exist()      # an item removed since it was listed shows "Not found" and is left out
         self.update_controls()
+        noun = "file" if self.tab == "clean" else "item"
         if not self.primaryBtn.isEnabled():
-            self.win.set_status(self._blocked_text())
+            self.win.set_status((m.unit(gone, noun) + " not found. " if gone else "") + self._blocked_text())
             return
         opts = self.build_options()
         run_rows = self.run_rows()
         self.win.begin_run(self, opts, run_rows)
+        if gone:        # the others run; say how many were left out (begin_run has set its own status line)
+            self.win.set_status(dyn(m.unit(gone, noun) + " not found and left out of the run.") + " "
+                                + self.win.statusLine.text())
 
     def set_running(self, run_rows: list[_Row]) -> None:
         self._set_mode("running"); self._run_rows = list(run_rows); self._cap_view()
@@ -962,9 +982,9 @@ class TabPage(QWidget):
         t.resizeRowsToContents()
         statuses = [d[0].status for d in data]
         self.summaryLabel.setText(dyn(m.summary_text(statuses))); self.summaryLabel.setVisible(False)   # the banner says it
-        risky = any(self.win._risk_lines(row) for rr, jr, row in data if rr.status in ("Done", "Warning")
-                    and (tab == "shred" or (jr is not None and jr.original_removed)))
-        self._set_banner(m.summary_level(statuses, risky), m.summary_text(statuses), risky)
+        risk = [ln for rr, jr, row in data if rr.status in ("Done", "Warning")
+                and (tab == "shred" or (jr is not None and jr.original_removed)) for ln in self.win._risk_lines(row)]
+        self._set_banner(m.summary_level(statuses, bool(risk)), m.summary_text(statuses, tab), m.risk_causes(risk))
         self.statuses = statuses
         self._set_mode("results"); self._cap_view()
         self.view.setCurrentIndex(2)
@@ -980,15 +1000,15 @@ class TabPage(QWidget):
 
     _BANNER = {"success": ("✓", None), "warning": ("⚠", "Warning:"), "error": ("✗", "Failed:")}
 
-    def _set_banner(self, level: str, summary: str, risky: bool) -> None:
+    def _set_banner(self, level: str, summary: str, causes: list[str]) -> None:
         """Icon + word + counts; never colour alone. The bar colour comes from the token style sheet (by the level property)."""
         glyph, word = self._BANNER[level]
         shown = dyn(summary)
         # the level word is added only when the counts do not already carry it ("3 warnings", "1 failed")
         needs_word = word and not any(k in summary.lower() for k in ("warning", "failed", "not fully shredded"))
         text = f"{glyph} " + (f"{tr(word)} " if needs_word else "") + shown
-        if risky:
-            text += " " + dyn(m.RISK_SUMMARY)
+        if causes:      # every distinct cause once, whatever the number of items
+            text += " " + trf(m.RISK_SUMMARY, ("、" if i18n.language() == "zh_TW" else ", ").join(dyn(c) for c in causes))
         self.resultBanner.setText(text)
         _announce(self.resultBanner, text)        # real text for screen readers, announced like the status line
         self.resultBanner.setProperty("level", level)

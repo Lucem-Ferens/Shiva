@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
     def reset_saved_choices(self) -> None:
         ok = settings.reset()
         if ok:
+            self.settingsPage.saved_reset()
             self.set_status(tr("Saved choices were reset.") + " " + tr("This window keeps its language until you restart."))
         else:
             self.set_status(tr("Saved choices could not be reset.") + " " + tr("The settings file can't be deleted."))
@@ -183,8 +184,10 @@ class MainWindow(QMainWindow):
         return False
 
     def _ctrl_tab(self, tab: str) -> None:
-        if not self.busy:
-            self.nav[tab].setChecked(True)
+        if self.busy:
+            self._say_busy()
+            return
+        self.nav[tab].setChecked(True)
 
     def set_tab(self, tab: str) -> None:
         self.nav[tab].setChecked(True)
@@ -194,6 +197,10 @@ class MainWindow(QMainWindow):
         self.statusLine.setText(text)
         _announce(self.statusLine, text)
 
+    def _say_busy(self) -> None:
+        """A shortcut or button that does nothing during a run says why."""
+        self.set_status(tr("Wait for the current run to finish."))
+
     def start(self) -> None:
         """Press the primary button of the current page (does nothing, with the reason in the status line, if disabled)."""
         if self._on_info_page():
@@ -201,6 +208,9 @@ class MainWindow(QMainWindow):
         self.current_page().start()
 
     def _press_primary(self) -> None:
+        if self.busy:
+            self._say_busy()
+            return
         page = self.current_page()
         b = page.primaryBtn
         if b.isEnabled() and b.isVisible():
@@ -223,8 +233,11 @@ class MainWindow(QMainWindow):
         if tab is None and self._on_info_page():
             return 0
         tab = tab or self.current_tab()
+        had_results = self.pages[tab].mode == "results"
         added, dups = self.pages[tab].add_paths([Path(p) for p in paths])
         parts = []
+        if added and had_results:
+            parts.append("Previous results cleared")     # adding to a finished run starts a new list
         if added:
             parts.append(f"{added} added to {m.TITLES[tab][0]}" if via_nav else f"{m.unit(added, 'file')} added"
                          if tab == "clean" else f"{m.unit(added, 'item')} added")
@@ -242,14 +255,23 @@ class MainWindow(QMainWindow):
         self.add_paths(paths, tab, via_nav=True)
 
     def pick_files(self) -> None:
-        if self.busy or self._on_info_page():
+        if self.busy:
+            self._say_busy()
+            return
+        if self._on_info_page():
             return
         files, _ = QFileDialog.getOpenFileNames(self, tr("Add files"))
         if files:
             self.add_paths([Path(f) for f in files])
 
     def pick_folder(self) -> None:
-        if self.busy or self.current_tab() == "clean" or self._on_info_page():
+        if self.busy:
+            self._say_busy()
+            return
+        if self._on_info_page():
+            return
+        if self.current_tab() == "clean":
+            self.set_status(tr("Folders can't be cleaned yet."))
             return
         d = QFileDialog.getExistingDirectory(self, tr("Add folder"))
         if d:
@@ -426,13 +448,9 @@ class MainWindow(QMainWindow):
             unclean = [r for r in run_rows if r.info.can_unclean]
             if opts.shred:
                 shred_rows = [r for r in run_rows if not r.info.can_unclean]
-                items, tips = [], []
-                for r in shred_rows:
-                    items.append(m.display_path(r.path) + (f" ({r.facts.count} items)" if r.facts.is_dir and r.facts.count else ""))
-                    tips.append(str(r.path))
-                    lines = self._risk_lines(r)
-                    items += ["\t" + line for line in lines]
-                    tips += [""] * len(lines)
+                items, tips = m.confirm_item_lines([
+                    (m.display_path(r.path) + (f" ({r.facts.count} items)" if r.facts.is_dir and r.facts.count else ""),
+                     str(r.path), self._risk_lines(r)) for r in shred_rows])
                 changes = dict(self._seen_changes) if opts.clean else {}
                 notes = list(out_notes)
                 holders = [r for r in shred_rows if opts.clean and opts.jpeg_mode == "reencode"
