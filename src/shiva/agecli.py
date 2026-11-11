@@ -406,6 +406,19 @@ def write_new_file(path: Path, data: bytes) -> None:
         raise
 
 
+def _plain_text_bytes(data: bytes) -> bytes:
+    """Key text saved by some editors (UTF-8 with a byte order mark) or by PowerShell redirection (UTF-16)
+    becomes the plain ASCII text age reads."""
+    if data.startswith(b"\xef\xbb\xbf"):
+        return data[3:]
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        try:
+            return data.decode("utf-16").encode("utf-8")
+        except UnicodeError:
+            return data
+    return data
+
+
 def classify_key_file(path: Path) -> str:
     """'plain' (private key text), 'protected' (password-protected key file), 'other', or 'unreadable'."""
     try:
@@ -415,6 +428,7 @@ def classify_key_file(path: Path) -> str:
         return "unreadable"
     if len(head) > _MAX_KEY_FILE:
         return "other"
+    head = _plain_text_bytes(head)
     top = head.lstrip()
     if top.startswith(b"age-encryption.org/v1") or top.startswith(b"-----BEGIN AGE ENCRYPTED FILE-----"):
         return "protected"
@@ -450,7 +464,7 @@ def load_identity(path: Path, password: str | None = None) -> bytes:
     kind = classify_key_file(path)
     if kind == "unreadable" or kind == "other":
         raise AgeError("the file does not hold a private key", "key_unreadable")
-    data = Path(path).read_bytes()
+    data = _plain_text_bytes(Path(path).read_bytes())
     if kind == "protected":
         data = unlock_identity(data, password or "")
     _check_identity(data)

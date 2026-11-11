@@ -73,6 +73,18 @@ def test_plain_key_file_loads_without_password(tmp_path, pq):
     assert agecli.classify_key_file(f) == "plain" and agecli.load_identity(f) == ident
 
 
+@pytest.mark.parametrize("encode", [
+    lambda b: b"\xef\xbb\xbf" + b,                      # UTF-8 with a byte order mark
+    lambda b: b.decode("ascii").encode("utf-16"),       # UTF-16 as PowerShell redirection writes it
+], ids=["utf8-bom", "utf16"])
+def test_key_file_with_a_byte_order_mark_still_loads(tmp_path, encode):
+    ident = agecli.generate_identity(False)
+    f = tmp_path / "k.txt"
+    f.write_bytes(encode(ident))
+    assert agecli.classify_key_file(f) == "plain"
+    assert agecli.identity_recipients(agecli.load_identity(f)) == agecli.identity_recipients(ident)
+
+
 def test_classify_other_and_missing(tmp_path):
     t = tmp_path / "t.txt"; t.write_text("hello")
     assert agecli.classify_key_file(t) == "other" and agecli.classify_key_file(tmp_path / "none") == "unreadable"
