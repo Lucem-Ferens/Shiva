@@ -8,14 +8,14 @@ from shiva.jobs import JobResult
 
 
 @pytest.mark.parametrize("pw,pw2,ok,reason,match,warn", [
-    ("", "", False, "Enter a passphrase.", "", ""),                                     # A
-    ("12345", "", False, "Repeat the passphrase.", "", m.SHORT_PW_WARNING),              # B: warns, no length block
-    ("abcdefghi", "", False, "Repeat the passphrase.", "", ""),                          # C
+    ("", "", False, "Enter a password.", "", ""),                                     # A
+    ("12345", "", False, "Repeat the password.", "", m.SHORT_PW_WARNING),              # B: warns, no length block
+    ("abcdefghi", "", False, "Repeat the password.", "", ""),                          # C
     ("abcdefghijklmn", "abcdefghijkl", False, "",
-     "\u2717 Passphrases do not match", ""),                                             # D
-    ("abcdefghi", "abcdefghi", True, None, "\u2713 Passphrases match", ""),              # E
-    ("correct horse battery", "correct horse battery", True, None, "\u2713 Passphrases match", ""),   # F
-    ("short", "short", True, None, "\u2713 Passphrases match", m.SHORT_PW_WARNING),      # short + same: allowed
+     "\u2717 Passwords do not match", ""),                                             # D
+    ("abcdefghi", "abcdefghi", True, None, "\u2713 Passwords match", ""),              # E
+    ("correct horse battery", "correct horse battery", True, None, "\u2713 Passwords match", ""),   # F
+    ("short", "short", True, None, "\u2713 Passwords match", m.SHORT_PW_WARNING),      # short + same: allowed
 ])
 def test_pw_state_encrypting(pw, pw2, ok, reason, match, warn):
     s = m.pw_state(pw, pw2, encrypting=True)
@@ -99,7 +99,7 @@ def test_disable_reason_order():
     assert d("clean", none, 0, 0, "x") == "Add files to clean."
     assert d("shred", none, 0, 0, None) == "Add files or folders."
     assert d("clean", none, 2, 0, "pw") == "Add at least one file that can be cleaned."
-    assert d("encrypt", none, 2, 2, "Enter a passphrase.") == "Enter a passphrase."
+    assert d("encrypt", none, 2, 2, "Enter a password.") == "Enter a password."
     assert d("encrypt", none, 2, 2, None) is None
     assert d("encrypt", none, 2, 2, None, pending=True) == "Checking the added items..."
 

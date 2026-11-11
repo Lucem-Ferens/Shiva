@@ -15,7 +15,7 @@ def S(**kw):
 
 
 def test_password_mode_reason_is_the_password_blocks():
-    assert K.cred_reason(K.CredState(password_reason="Enter a passphrase."), False) == "Enter a passphrase."
+    assert K.cred_reason(K.CredState(password_reason="Enter a password."), False) == "Enter a password."
     assert K.cred_reason(K.CredState(), False) is None
 
 

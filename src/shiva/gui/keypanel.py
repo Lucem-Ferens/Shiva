@@ -268,8 +268,8 @@ class KeyPanel(QWidget):
         cr.addWidget(self.createKeyLabel); cr.addWidget(self.createKeyLink); cr.addStretch(1)
         self.createKeyRow.setVisible(False)
         self._dialog_factory = lambda parent: CreateKeyDialog(parent, decrypting=self._decrypting)
-        lay.addWidget(self.recipientSection); lay.addWidget(self.keyFile); lay.addWidget(self.createKeyRow)
-        lay.addWidget(self.ownKeyCheck); lay.addWidget(self.ownKeyReason)
+        lay.addWidget(self.keyFile); lay.addWidget(self.createKeyRow)      # the key file comes first: shredding and the own key need it
+        lay.addWidget(self.ownKeyCheck); lay.addWidget(self.ownKeyReason); lay.addWidget(self.recipientSection)
         self.recipientEdit.textChanged.connect(self._pasted)
         self.addKeyBtn.clicked.connect(self.add_pasted)
         self.addKeyFileBtn.clicked.connect(self.add_from_file)
@@ -467,10 +467,10 @@ class KeyPanel(QWidget):
     def tab_widgets(self) -> list:
         """The controls in keyboard order."""
         k = self.keyFile
-        return [self.recipientEdit, self.addKeyBtn, self.addKeyFileBtn, self.createKeyBtn, self.recipientTable,
-                self.removeKeyBtn,
-                k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.showKeyPwCheck, k.unlockBtn, k.copyPubKeyBtn,
-                self.createKeyLink, self.ownKeyCheck]
+        return [k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.showKeyPwCheck, k.unlockBtn, k.copyPubKeyBtn,
+                self.createKeyLink, self.ownKeyCheck,
+                self.recipientEdit, self.addKeyBtn, self.addKeyFileBtn, self.createKeyBtn, self.recipientTable,
+                self.removeKeyBtn]
 
     def set_own_reason(self, text: str) -> None:
         self.ownKeyReason.setText(text); self.ownKeyReason.setVisible(bool(text))

@@ -158,26 +158,26 @@ def test_passphrase_states_on_encrypt_tab(w, tmp_path):
     w.set_tab("encrypt"); p = w.pages["encrypt"]
     w.add_paths([mk(tmp_path, "t.txt")]); w.wait_for_probes()
     assert p.pwBlock.isVisibleTo(p) and p.confirmBox.isVisibleTo(p)
-    assert p.reasonLabel.text() == "Enter a passphrase." and not p.primaryBtn.isEnabled()
+    assert p.reasonLabel.text() == "Enter a password." and not p.primaryBtn.isEnabled()
     p.pwEdit.setText("short")
-    assert p.reasonLabel.text() == "Repeat the passphrase."
-    assert "short passphrase" in p.pwWarnLabel.text() and p.pwWarnLabel.isVisibleTo(p)
+    assert p.reasonLabel.text() == "Repeat the password."
+    assert "short password" in p.pwWarnLabel.text() and p.pwWarnLabel.isVisibleTo(p)
     p.pwConfirmEdit.setText("shor")
     assert "do not match" in p.matchLabel.text() and "do not match" in p.reasonLabel.text()   # inline and by the button
     assert not p.primaryBtn.isEnabled()
     p.pwConfirmEdit.setText("short")                       # short passphrase only warns
-    assert p.primaryBtn.isEnabled() and (not p.reasonLabel.isVisibleTo(p)) and "short passphrase" in p.pwWarnLabel.text()
+    assert p.primaryBtn.isEnabled() and (not p.reasonLabel.isVisibleTo(p)) and "short password" in p.pwWarnLabel.text()
     p.pwEdit.setText("a much longer passphrase"); p.pwConfirmEdit.setText("a much longer passphrase")
     assert p.primaryBtn.isEnabled() and (not p.pwWarnLabel.isVisibleTo(p)) and p.strengthLabel.text() == "Length: 24 characters"
-    assert p.primaryBtn.text() == "Encrypt 1 item" and "Passphrases match" in p.matchLabel.text()
-    assert p.lostPwNotice.text().startswith("If you lose this passphrase")
+    assert p.primaryBtn.text() == "Encrypt 1 item" and "Passwords match" in p.matchLabel.text()
+    assert p.lostPwNotice.text().startswith("If you lose this password")
 
 
 def test_decrypt_only_needs_no_length_and_no_confirm(w, tmp_path):
     w.set_tab("encrypt"); p = w.pages["encrypt"]
     w.add_paths([mk(tmp_path, "old.zip.age")]); w.wait_for_probes()
     assert p.pwBlock.isVisibleTo(p) and (not p.confirmBox.isVisibleTo(p))
-    assert p.reasonLabel.text() == "Enter a passphrase."
+    assert p.reasonLabel.text() == "Enter a password."
     p.pwEdit.setText("ab")
     assert p.primaryBtn.isEnabled() and p.primaryBtn.text() == "Decrypt 1 file" and (not p.pwWarnLabel.isVisibleTo(p))
 
@@ -261,7 +261,7 @@ def test_clean_unclean_checkbox_is_contextual_and_unticked_when_hidden(w, tmp_pa
     assert c.rows[0].info.status == "Can't be cleaned" and c.allowUncleanCheck.isVisibleTo(c)
     assert not c.build_options().allow_unclean and c.reasonLabel.text() == "Add at least one file that can be cleaned."
     c.allowUncleanCheck.setChecked(True)
-    assert c.build_options().allow_unclean and c.reasonLabel.text() == "Enter a passphrase."
+    assert c.build_options().allow_unclean and c.reasonLabel.text() == "Enter a password."
     c.encryptCleanedCheck.setChecked(False)
     assert (not c.allowUncleanCheck.isVisibleTo(c)) and not c.allowUncleanCheck.isChecked() and not c.build_options().allow_unclean
 

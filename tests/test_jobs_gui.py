@@ -91,7 +91,7 @@ def test_gui_delete_originals_without_passphrase_changes_nothing(tmp_path: Path)
     w = _window(); w.set_tab("encrypt"); page = w.pages["encrypt"]
     w.add_paths([f]); page.shredAfterCheck.setChecked(True); w.wait_for_probes()
     assert not page.primaryBtn.isEnabled()
-    assert page.reasonLabel.text() == "Enter a passphrase."
+    assert page.reasonLabel.text() == "Enter a password."
     w.start()
     assert f.read_bytes() == b"data" and not (tmp_path / "keep.bin.age").exists()
 

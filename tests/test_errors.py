@@ -41,7 +41,7 @@ def test_every_coded_failure_row_is_specific_and_says_what_happened_to_the_origi
 
 def test_encrypt_age_failure_has_fallback_not_a_wrong_passphrase_claim(tmp_path):
     r = jobs.JobResult(tmp_path / "a.bin", False, "raw", error_kind="error", error_code="age_failed")
-    assert "passphrase" not in ui_model.result_row(r, "encrypt").text
+    assert "password" not in ui_model.result_row(r, "encrypt").text
 
 
 def test_untouched_original_is_not_called_partly_overwritten(tmp_path):

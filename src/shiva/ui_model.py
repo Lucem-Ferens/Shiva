@@ -20,7 +20,7 @@ TITLES = {"clean": ("Clean metadata", "Images, PDF, Office, audio, ZIP"), "encry
           "settings": ("Settings", "Language and saved choices"), "about": ("About", "Version and licence")}
 INFO_KEYS = ("settings", "about")      # sidebar pages that are not functions
 MIN_PW = 8      # encrypting below this only WARNS; decrypting is never length-checked
-SHORT_PW_WARNING = "⚠ Warning: short passphrase. Use 8 or more characters."
+SHORT_PW_WARNING = "⚠ Warning: short password. Use 8 or more characters."
 _OFFLINE_ATTRS = 0x1000 | 0x40000 | 0x400000   # OFFLINE, RECALL_ON_OPEN, RECALL_ON_DATA_ACCESS (cloud placeholders)
 _COUNT_CAP = 100_000
 
@@ -69,7 +69,7 @@ RISK_CAUSE = {                         # risk sentence -> the short cause the re
     RISK_SPECIAL["encrypted"]: "stored encrypted by Windows (EFS)",
     RISK_SPECIAL_IN_FOLDER["encrypted"]: "stored encrypted by Windows (EFS)",
 }
-LOST_PW = ("If you lose this passphrase, your files cannot be opened. It cannot be recovered. "
+LOST_PW = ("If you lose this password, your files cannot be opened. It cannot be recovered. "
            "Store it somewhere safe.")
 
 
@@ -408,15 +408,15 @@ def pw_state(pw: str, pw2: str, encrypting: bool, decrypting: bool = False) -> P
     if not (encrypting or decrypting):
         return PwState(True, None, "", "", False)
     if not encrypting:
-        return PwState(bool(pw), None if pw else "Enter a passphrase.", "", "", False)
+        return PwState(bool(pw), None if pw else "Enter a password.", "", "", False)
     stext = f"Length: {unit(len(pw), 'character')}" if pw else ""
     match = ""
     if pw2:
-        match = "✓ Passphrases match" if pw == pw2 else "✗ Passphrases do not match"
+        match = "✓ Passwords match" if pw == pw2 else "✗ Passwords do not match"
     if not pw:
-        reason = "Enter a passphrase."
+        reason = "Enter a password."
     elif not pw2:
-        reason = "Repeat the passphrase."
+        reason = "Repeat the password."
     elif pw != pw2:
         reason = ""     # a mismatch has no reason text of its own; the page repeats match_text beside the button
     else:
@@ -599,7 +599,7 @@ def risk_row_text(lines) -> str:
 # Failure rows by error_code (errors.py): what happened + the next step. "Original unchanged." is appended by the caller.
 FAIL_TEXT = {
     "disk_full": "Not enough free space for the output. Free some space or choose another output folder.",
-    "age_failed": "The passphrase doesn't match this file, or the file is damaged. Check the passphrase and run again.",
+    "age_failed": "The password doesn't match this file, or the file is damaged. Check the password and run again.",
     "age_failed_encrypt": "Shiva could not finish this item. Select the row for details.",
     "in_use": "Another program is using the file. Close that program and run again.",
     "permission": "Windows denied access to the file or the output folder. Check the permissions or choose another "

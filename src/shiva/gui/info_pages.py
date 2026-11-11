@@ -58,7 +58,7 @@ class SettingsPage(QWidget):
             r.toggled.connect(self._update_apply)
             self.languageRadios[code] = r
             gl.addWidget(r)
-        self.languageNote = QLabel(tr("File lists are kept.") + " " + tr("Results, options and passphrases are reset."))
+        self.languageNote = QLabel(tr("File lists are kept.") + " " + tr("Results, options and passwords are reset."))
         self.languageNote.setObjectName("pageScope"); self.languageNote.setWordWrap(True)
         gl.addWidget(self.languageNote)
         self.applyBtn = QPushButton(tr("Apply")); self.applyBtn.setProperty("primary", True)

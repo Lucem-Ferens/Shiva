@@ -21,7 +21,7 @@
     <message><source>Choose another language.</source><translation>選擇其他語言。</translation></message>
     <message><source>Saved choices</source><translation>已儲存的選擇</translation></message>
     <message><source>File lists are kept.</source><translation>檔案清單會保留。</translation></message>
-    <message><source>Results, options and passphrases are reset.</source><translation>結果、選項與密碼會重設。</translation></message>
+    <message><source>Results, options and passwords are reset.</source><translation>結果、選項與密碼會重設。</translation></message>
     <message><source>Version %1</source><translation>版本 %1</translation></message>
     <message><source>(early version)</source><translation>（早期版本）</translation></message>
     <message><source>Show third-party notices</source><translation>顯示第三方聲明</translation></message>
@@ -73,7 +73,7 @@
     <message><source>Items are overwritten and deleted. This can't be undone.</source><translation>項目會先覆寫再刪除，無法復原。</translation></message>
     <message><source>Add .age files to decrypt</source><translation>加入要解密的 .age 檔案</translation></message>
     <message><source>Drop files ending in .age here.</source><translation>把副檔名為 .age 的檔案拖放到這裡。</translation></message>
-    <message><source>You need the passphrase they were encrypted with.</source><translation>需要加密時使用的密碼。</translation></message>
+    <message><source>You need the password they were encrypted with.</source><translation>需要加密時使用的密碼。</translation></message>
     <message><source>Status</source><translation>狀態</translation></message>
     <message><source>Name</source><translation>名稱</translation></message>
     <message><source>Type</source><translation>類型</translation></message>
@@ -122,13 +122,13 @@
     <message><source>Choose the folder for the results.</source><translation>選擇存放結果的資料夾。</translation></message>
     <message><source>The output folder does not exist.</source><translation>輸出資料夾不存在。</translation></message>
     <message><source>The output folder is inside a folder in the list. Choose another folder.</source><translation>輸出資料夾位於清單中的某個資料夾內。改選其他資料夾。</translation></message>
-    <message><source>Passphrase</source><translation>密碼</translation></message>
-    <message><source>Sho&amp;w passphrase</source><translation>顯示密碼(&amp;W)</translation></message>
-    <message><source>Show passphrase</source><translation>顯示密碼</translation></message>
-    <message><source>Passphrase warning</source><translation>密碼警告</translation></message>
-    <message><source>Passphrase length</source><translation>密碼長度</translation></message>
-    <message><source>Repeat passphrase</source><translation>再次輸入密碼</translation></message>
-    <message><source>Passphrase match</source><translation>兩次密碼是否相符</translation></message>
+    <message><source>Password</source><translation>密碼</translation></message>
+    <message><source>Sho&amp;w password</source><translation>顯示密碼(&amp;W)</translation></message>
+    <message><source>Show password</source><translation>顯示密碼</translation></message>
+    <message><source>Password warning</source><translation>密碼警告</translation></message>
+    <message><source>Password length</source><translation>密碼長度</translation></message>
+    <message><source>Repeat password</source><translation>再次輸入密碼</translation></message>
+    <message><source>Password match</source><translation>兩次密碼是否相符</translation></message>
     <message><source>Why the button is disabled</source><translation>按鈕無法使用的原因</translation></message>
     <message><source>&amp;Cancel</source><translation>取消(&amp;C)</translation></message>
     <message><source>Cancel</source><translation>取消</translation></message>
@@ -249,12 +249,12 @@
     <message><source>Network drive: copies may stay on the server</source><translation>網路磁碟：副本可能留在伺服器上</translation></message>
     <message><source>Drive type unknown</source><translation>磁碟類型不明</translation></message>
     <message><source>File larger than %1 MB cannot be cleaned yet</source><translation>大於 %1 MB 的檔案目前還不能清理</translation></message>
-    <message><source>Enter a passphrase.</source><translation>輸入密碼。</translation></message>
-    <message><source>Repeat the passphrase.</source><translation>再輸入一次密碼。</translation></message>
+    <message><source>Enter a password.</source><translation>輸入密碼。</translation></message>
+    <message><source>Repeat the password.</source><translation>再輸入一次密碼。</translation></message>
     <message><source>Length: %U</source><translation>長度：%U</translation></message>
-    <message><source>⚠ Warning: short passphrase. Use 8 or more characters.</source><translation>⚠ 警告：密碼太短。使用 8 個字元以上。</translation></message>
-    <message><source>✓ Passphrases match</source><translation>✓ 兩次密碼相符</translation></message>
-    <message><source>✗ Passphrases do not match</source><translation>✗ 兩次密碼不相符</translation></message>
+    <message><source>⚠ Warning: short password. Use 8 or more characters.</source><translation>⚠ 警告：密碼太短。使用 8 個字元以上。</translation></message>
+    <message><source>✓ Passwords match</source><translation>✓ 兩次密碼相符</translation></message>
+    <message><source>✗ Passwords do not match</source><translation>✗ 兩次密碼不相符</translation></message>
     <message><source>Clean %U</source><translation>清理 %U</translation></message>
     <message><source>Encrypt %U</source><translation>加密 %U</translation></message>
     <message><source>Decrypt %U</source><translation>解密 %U</translation></message>
@@ -273,7 +273,7 @@
     <message><source>Shredding overwrites items and deletes them.</source><translation>銷毀會覆寫項目並將其刪除。</translation></message>
     <message><source>Results are best-effort: SSDs, cloud sync, Windows shadow copies and the file system journal can keep traces.</source><translation>結果只能盡力而為：SSD、雲端同步、Windows 陰影複本與檔案系統日誌都可能留下痕跡。</translation></message>
     <message><source>Full-disk encryption is the reliable protection.</source><translation>全磁碟加密才是可靠的保護。</translation></message>
-    <message><source>If you lose this passphrase, your files cannot be opened.</source><translation>如果遺失這個密碼，您的檔案就無法開啟。</translation></message>
+    <message><source>If you lose this password, your files cannot be opened.</source><translation>如果遺失這個密碼，您的檔案就無法開啟。</translation></message>
     <message><source>It cannot be recovered.</source><translation>這個密碼無法找回。</translation></message>
     <message><source>Store it somewhere safe.</source><translation>把它存放在安全的地方。</translation></message>
     <message><source>Each result is encrypted and verified by trial decrypt before its original is shredded.</source><translation>每個結果都會先加密並以試解密驗證，之後才銷毀其原始檔。</translation></message>
@@ -327,8 +327,8 @@
     <message><source>The default name already exists, so a number was added.</source><translation>預設檔名已存在，所以加上了編號。</translation></message>
     <message><source>Not enough free space for the output.</source><translation>可用空間不足，無法寫入輸出。</translation></message>
     <message><source>Free some space or choose another output folder.</source><translation>釋出空間，或改選其他輸出資料夾。</translation></message>
-    <message><source>The passphrase doesn't match this file, or the file is damaged.</source><translation>密碼與此檔案不符，或檔案已損毀。</translation></message>
-    <message><source>Check the passphrase and run again.</source><translation>檢查密碼後再執行一次。</translation></message>
+    <message><source>The password doesn't match this file, or the file is damaged.</source><translation>密碼與此檔案不符，或檔案已損毀。</translation></message>
+    <message><source>Check the password and run again.</source><translation>檢查密碼後再執行一次。</translation></message>
     <message><source>The .age file is unchanged.</source><translation>.age 檔案未更動。</translation></message>
     <message><source>Shiva could not finish this item.</source><translation>Shiva 無法完成這個項目。</translation></message>
     <message><source>Select the row for details.</source><translation>選取此列可查看詳細資料。</translation></message>
@@ -703,7 +703,6 @@
     <message><source>Results are labelled "best effort".</source><translation>結果會標示為「盡力而為」。</translation></message>
     <message><source>Protect with</source><translation>保護方式</translation></message>
     <message><source>Unlock with</source><translation>解鎖方式</translation></message>
-    <message><source>Password</source><translation>密碼</translation></message>
     <message><source>Recipient keys</source><translation>收件人金鑰</translation></message>
     <message><source>Key file</source><translation>金鑰檔</translation></message>
     <message><source>Each recipient opens the files with their own key file.</source><translation>每位收件人用自己的金鑰檔開啟檔案。</translation></message>
@@ -732,7 +731,6 @@
     <message><source>Choose key file...</source><translation>選擇金鑰檔...</translation></message>
     <message><source>Choose key file</source><translation>選擇金鑰檔</translation></message>
     <message><source>Key file password</source><translation>金鑰檔密碼</translation></message>
-    <message><source>Show password</source><translation>顯示密碼</translation></message>
     <message><source>Show key file password</source><translation>顯示金鑰檔密碼</translation></message>
     <message><source>Unlock</source><translation>解鎖</translation></message>
     <message><source>Unlock the key file</source><translation>解鎖金鑰檔</translation></message>
@@ -817,7 +815,6 @@
     <message><source>Choose where to save the key file</source><translation>選擇金鑰檔的儲存位置</translation></message>
     <message><source>Save the key file</source><translation>儲存金鑰檔</translation></message>
     <message><source>Protect the key file with a password</source><translation>用密碼保護金鑰檔</translation></message>
-    <message><source>Repeat password</source><translation>再次輸入密碼</translation></message>
     <message><source>Password check</source><translation>密碼檢查</translation></message>
     <message><source>Length: %1 characters</source><translation>長度：%1 個字元</translation></message>
     <message><source>Passwords match</source><translation>兩次密碼相符</translation></message>
@@ -846,7 +843,6 @@
     <message><source>Error: The backup copy could not be saved.</source><translation>錯誤：無法儲存備份。</translation></message>
     <message><source>Choose where to save the key file.</source><translation>請選擇金鑰檔的儲存位置。</translation></message>
     <message><source>Enter a password, or untick the password box.</source><translation>請輸入密碼，或取消勾選密碼保護。</translation></message>
-    <message><source>Repeat the password.</source><translation>請再輸入一次密碼。</translation></message>
     <message><source>Passwords do not match.</source><translation>兩次密碼不相符。</translation></message>
     <message><source>A file with this name already exists. Choose another name.</source><translation>已有同名檔案。請選擇其他名稱。</translation></message>
     <message><source>Warning: if you lose this key file or forget its password, files encrypted to this key can never be opened. No one can recover them. Keep a backup copy somewhere safe, away from this computer.</source><translation>警告：若遺失這個金鑰檔或忘記它的密碼，加密給這把金鑰的檔案將永遠無法開啟，沒有人能救回。請把備份存放在安全、遠離這台電腦的地方。</translation></message>

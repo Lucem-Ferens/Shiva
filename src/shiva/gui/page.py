@@ -339,23 +339,23 @@ class TabPage(QWidget):
 
         # --- passphrase block
         self.pwBlock = QWidget(); pl = QVBoxLayout(self.pwBlock); pl.setContentsMargins(0, 0, 0, 0)
-        pl.addWidget(QLabel(tr("Passphrase")))
+        pl.addWidget(QLabel(tr("Password")))
         prow = QHBoxLayout()
         self.pwEdit = QLineEdit(); self.pwEdit.setEchoMode(QLineEdit.Password)
-        self.pwEdit.setAccessibleName(tr("Passphrase"))
-        self.showPwCheck = QCheckBox(tr("Sho&w passphrase")); self.showPwCheck.setAccessibleName(tr("Show passphrase"))
+        self.pwEdit.setAccessibleName(tr("Password"))
+        self.showPwCheck = QCheckBox(tr("Sho&w password")); self.showPwCheck.setAccessibleName(tr("Show password"))
         prow.addWidget(self.pwEdit, 1); prow.addWidget(self.showPwCheck)
         pl.addLayout(prow)
         self.strengthLabel = QLabel("")
-        self.pwWarnLabel = QLabel(""); self.pwWarnLabel.setAccessibleName(tr("Passphrase warning"))
+        self.pwWarnLabel = QLabel(""); self.pwWarnLabel.setAccessibleName(tr("Password warning"))
         self.pwWarnLabel.setObjectName("statusWarning")
-        self.strengthLabel.setAccessibleName(tr("Passphrase length"))
+        self.strengthLabel.setAccessibleName(tr("Password length"))
         pl.addWidget(self.strengthLabel); pl.addWidget(self.pwWarnLabel)
         self.confirmBox = QWidget(); cl = QVBoxLayout(self.confirmBox); cl.setContentsMargins(0, 0, 0, 0)
-        cl.addWidget(QLabel(tr("Repeat passphrase")))
+        cl.addWidget(QLabel(tr("Repeat password")))
         self.pwConfirmEdit = QLineEdit(); self.pwConfirmEdit.setEchoMode(QLineEdit.Password)
-        self.pwConfirmEdit.setAccessibleName(tr("Repeat passphrase"))
-        self.matchLabel = QLabel(""); self.matchLabel.setAccessibleName(tr("Passphrase match"))
+        self.pwConfirmEdit.setAccessibleName(tr("Repeat password"))
+        self.matchLabel = QLabel(""); self.matchLabel.setAccessibleName(tr("Password match"))
         self.lostPwNotice = QLabel(dyn(m.LOST_PW)); self.lostPwNotice.setWordWrap(True)
         for w in (self.pwConfirmEdit, self.matchLabel, self.lostPwNotice):
             cl.addWidget(w)
@@ -605,7 +605,7 @@ class TabPage(QWidget):
         if state:
             head, sub = cue, ""
         elif self.tab == "encrypt" and self.cryptMode == "decrypt":
-            head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the passphrase they were encrypted with.")
+            head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the password they were encrypted with.")
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
 
     def _selection_changed(self) -> None:
@@ -743,7 +743,7 @@ class TabPage(QWidget):
         self.modeEncBtn.setChecked(mode == "encrypt"); self.modeDecBtn.setChecked(mode == "decrypt")
         self._credentials_for_mode()
         head, sub = (("Add .age files to decrypt", "Drop files ending in .age here.\n"
-                      "You need the passphrase they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
+                      "You need the password they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
         head, sub = tr(head), tr(sub)
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
         self.emptyState.setAccessibleName(f"{head}. {sub}")
