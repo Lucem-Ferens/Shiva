@@ -653,8 +653,13 @@ def _add_cleanup_lines(rr: ResultRow, r: JobResult) -> None:
 def _encrypt_head(r: JobResult) -> str:
     """"Encrypted and verified." for a password; the key wording (never "verified" without a key file check) for keys."""
     if r.key_mode and r.recipient_count:
-        return key_model.encrypt_head(r.recipient_count, r.recipient_kinds, r.verified_with_key)
+        return key_model.encrypt_head(r.recipient_count, r.recipient_kinds, r.verified_with_key, r.post_quantum_confirmed)
     return "Encrypted and verified."
+
+
+def _pq_unconfirmed(r: JobResult) -> bool:
+    """A key-mode row whose keys are post-quantum but whose file age-inspect did not confirm: a Warning."""
+    return bool(r.key_mode and r.recipient_count and key_model.pq_unconfirmed(r.recipient_kinds, r.post_quantum_confirmed))
 
 
 def result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_before: int | None = None,
@@ -775,7 +780,7 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
         text = (f"Decrypted with your key file to {saved}. The .age file is kept." if r.key_mode
                 else f"Decrypted to {saved}. The .age file is kept.")
     elif tab == "encrypt" and not shred_req:
-        text = f"{_encrypt_head(r)} Saved as {saved}. Original kept."
+        text, warn = f"{_encrypt_head(r)} Saved as {saved}. Original kept.", warn or _pq_unconfirmed(r)
     elif tab == "clean" and "encrypt" not in steps:
         text = unchanged_text(r, False) if r.unchanged else f"Saved as {saved}. Original kept."
     else:       # the pipeline: clean (optional) -> encrypt -> trial decrypt -> shred (optional)
@@ -784,7 +789,7 @@ def _result_row(r: JobResult, tab: str, ticked: frozenset = frozenset(), size_be
             if r.unchanged:
                 head = unchanged_text(r, True)
         else:
-            head = _encrypt_head(r)
+            head, warn = _encrypt_head(r), warn or _pq_unconfirmed(r)
         if r.original_removed:
             tail = " Original shredded (best effort)."
         elif r.shred_attempted and r.original_untouched:

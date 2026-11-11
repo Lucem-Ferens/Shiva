@@ -113,8 +113,8 @@ def test_create_for_real_shows_only_the_public_key(app, tmp_path, pq):
     assert d.stack.currentIndex() == 1 and d.made_path == tmp_path / "k.agekey"
     assert agecli.classify_key_file(d.made_path) == "protected"
     assert d.public_key.startswith("age1pq1" if pq else "age1") and d.publicKeyView.toPlainText() == d.public_key
-    assert f"post-quantum" in d.doneSummary.text() if pq else "standard" in d.doneSummary.text()
-    assert "Protected with a password: yes" in d.doneSummary.text() and not d.noPasswordHint.isVisibleTo(d)
+    assert ("Post-quantum key file" if pq else "Standard key file") in d.doneSummary.text()
+    assert "protected with a password" in d.doneSummary.text() and not d.noPasswordHint.isVisibleTo(d)
     texts = [w.text() for w in d.findChildren(QLabel)] + [w.text() for w in d.findChildren(QLineEdit)] \
         + [w.toPlainText() for w in d.findChildren(QPlainTextEdit)]
     assert not any("AGE-SECRET-KEY" in t for t in texts)
@@ -130,7 +130,7 @@ def test_unprotected_key_shows_the_second_warning_and_backup_and_public_save(app
     d, saves = _dlg(tmp_path)
     d.savePathEdit.setText(str(tmp_path / "k.agekey")); d.protectCheck.setChecked(False)
     d.createBtn.click()
-    assert d.noPasswordHint.isVisibleTo(d) and "Protected with a password: no" in d.doneSummary.text()
+    assert d.noPasswordHint.isVisibleTo(d) and "not protected" in d.doneSummary.text()
     saves["Save a backup copy of the key file"] = str(tmp_path / "backup.agekey")
     saves["Save the public key"] = str(tmp_path / "pub.txt")
     d.backupBtn.click(); d.savePublicBtn.click()
@@ -173,7 +173,7 @@ def test_decrypt_panel_offers_the_create_link(app, tmp_path, monkeypatch):
         assert not p.keyPanel.createKeyRow.isVisibleTo(p)
         p.keyPanel.set_decrypt(True)
         assert p.keyPanel.createKeyRow.isVisibleTo(p.keyPanel) or not p.keyPanel.isVisibleTo(p)
-        assert p.keyPanel.createKeyLink.accessibleName() == "Create a key pair"
+        assert p.keyPanel.createKeyLink.accessibleName() == "Create key pair"
     finally:
         w.close(); i18n.uninstall()
 

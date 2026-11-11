@@ -461,7 +461,7 @@ class MainWindow(QMainWindow):
                 if unclean:
                     notes.append("Files that can't be cleaned are encrypted but their originals are never shredded.")
                 if page.key_mode():
-                    notes.append("Each copy is opened with your key file to check it before its original is shredded.")
+                    notes.append("The trial decrypt uses your key file.")
                 if not self.confirm_shred(items, notes, changes, opts, tips):
                     return self.set_status("Cancelled. Nothing was changed.")
                 opts.confirmed_changes = {p: list(cs) for p, cs in changes.items()}  # exactly what was shown

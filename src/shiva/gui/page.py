@@ -911,7 +911,7 @@ class TabPage(QWidget):
         self.credGroup = QWidget(); self.credGroup.setObjectName("credGroup")
         lay = QVBoxLayout(self.credGroup); lay.setContentsMargins(0, 0, 0, 0); lay.setSpacing(tokens.SPACE[1])
         row = QHBoxLayout()
-        self.credHeading = QLabel(tr("Protect with"))      # one row with the radios: the required input stays compact
+        self.credHeading = QLabel(tr("Encrypt with"))      # one row with the radios: the required input stays compact
         row.addWidget(self.credHeading)
         self.credPasswordRadio = QRadioButton(tr("Password")); self.credKeysRadio = QRadioButton(tr("Recipient keys"))
         for b in (self.credPasswordRadio, self.credKeysRadio):
@@ -936,7 +936,7 @@ class TabPage(QWidget):
         if self.tab != "encrypt":
             return
         dec = self.cryptMode == "decrypt"
-        self.credHeading.setText(tr("Unlock with") if dec else tr("Protect with"))
+        self.credHeading.setText(tr("Decrypt with") if dec else tr("Encrypt with"))
         self.credKeysRadio.setText(tr("Key file") if dec else tr("Recipient keys"))
         self.keyPanel.set_decrypt(dec)
         self._cred_helper()

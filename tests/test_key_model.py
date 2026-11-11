@@ -23,17 +23,17 @@ def test_encrypt_reasons_come_in_the_designed_order():
     assert K.cred_reason(S(paste_text="age1x", recipients=[STD, PQ]), False) == "Press Add key to use the pasted key."
     assert K.cred_reason(S(), False) == "Add at least one recipient key."
     assert K.cred_reason(S(recipients=[STD, PQ]), False) == K.MIXED_REASON
-    assert K.cred_reason(S(recipients=[STD], key_file=K.KF_LOCKED), False) == "Unlock the key file, or remove it."
-    assert K.cred_reason(S(recipients=[STD], key_file=K.KF_WRONG_PASSWORD), False) == "The key file password is wrong."
+    assert K.cred_reason(S(recipients=[STD], key_file=K.KF_LOCKED), False) == "Enter the key file password, then press Unlock."
+    assert K.cred_reason(S(recipients=[STD], key_file=K.KF_WRONG_PASSWORD), False) == "Enter the key file password again."
     assert K.cred_reason(S(recipients=[STD, STD], key_file=K.KF_UNLOCKED), False) is None
     assert K.cred_reason(S(recipients=[PQ]), False) is None             # the key file is optional
 
 
 def test_decrypt_reasons():
     assert K.cred_reason(S(), True) == "Choose a key file."
-    assert K.cred_reason(S(key_file=K.KF_NOT_A_KEY), True) == "This isn't a key file."
-    assert K.cred_reason(S(key_file=K.KF_LOCKED), True) == "Enter the key file password."
-    assert K.cred_reason(S(key_file=K.KF_WRONG_PASSWORD), True) == "The key file password is wrong."
+    assert K.cred_reason(S(key_file=K.KF_NOT_A_KEY), True) == "This isn't a key file. Choose another one."
+    assert K.cred_reason(S(key_file=K.KF_LOCKED), True) == "Enter the key file password, then press Unlock."
+    assert K.cred_reason(S(key_file=K.KF_WRONG_PASSWORD), True) == "Enter the key file password again."
     assert K.cred_reason(S(key_file=K.KF_UNLOCKED), True) is None and K.cred_reason(S(key_file=K.KF_CHOSEN), True) is None
 
 
@@ -47,7 +47,7 @@ def test_shred_after_needs_the_key_file_in_key_mode_only():
 
 def test_summary_line():
     assert K.key_summary([]) == "" and K.key_summary([STD, PQ]) == ""
-    assert K.key_summary([PQ, PQ]) == "2 keys, post-quantum." and K.key_summary([STD]) == "1 key, standard."
+    assert K.key_summary([PQ, PQ]) == "2 post-quantum keys." and K.key_summary([STD]) == "1 standard key."
 
 
 @pytest.mark.parametrize("tab,mode", [("encrypt", "encrypt"), ("encrypt", "decrypt"), ("clean", "encrypt"), ("shred", "encrypt")])
@@ -74,17 +74,33 @@ def _ok(**kw):
 def test_key_results_never_say_verified_without_the_key_file_check():
     r = _ok(key_mode=True, recipient_count=2, recipient_kinds="post-quantum", verified_with_key=False, post_quantum_confirmed=True)
     row = m.result_row(r, "encrypt")
-    assert row.text.startswith("Encrypted for 2 keys (post-quantum). Not opened to check it.") and "verified" not in row.text
-    assert "age-inspect confirms the file uses a post-quantum key." in row.details
+    assert row.text.startswith("Encrypted for 2 keys (post-quantum). Not verified (no key file).")
+    assert row.status == "Done" and "Verified" not in row.text
+    assert "Post-quantum: yes (confirmed by age-inspect)." in row.details
     r2 = _ok(key_mode=True, recipient_count=1, recipient_kinds="standard", verified_with_key=True, post_quantum_confirmed=False)
     row = m.result_row(r2, "encrypt")
-    assert row.text.startswith("Encrypted for 1 key and checked with your key file.") and "post-quantum" not in row.text
-    assert not any("post-quantum key" in d for d in row.details)
+    assert row.text.startswith("Encrypted for 1 key. Verified with your key file.") and "post-quantum" not in row.text
+    assert row.status == "Done" and not any("Post-quantum" in d for d in row.details)   # a standard key is not expected to be
 
 
 def test_unconfirmed_post_quantum_is_worded_as_not_confirmed():
     r = _ok(key_mode=True, recipient_count=1, recipient_kinds="post-quantum", verified_with_key=True, post_quantum_confirmed=None)
-    assert "Not confirmed: age-inspect gave no answer." in m.result_row(r, "encrypt").details
+    row = m.result_row(r, "encrypt")
+    assert "Post-quantum: not confirmed (age-inspect gave no answer)." in row.details
+    assert row.status == "Done" and row.text.startswith("Encrypted for 1 key (post-quantum). Verified with your key file.")
+
+
+@pytest.mark.parametrize("extra,ticked", [({}, frozenset()),
+                                          ({"original_removed": True, "shred_attempted": True}, frozenset({"shred"}))])
+def test_post_quantum_denied_by_age_inspect_is_not_claimed_in_the_row(extra, ticked):
+    r = _ok(key_mode=True, recipient_count=2, recipient_kinds="post-quantum", verified_with_key=True,
+            post_quantum_confirmed=False, **extra)
+    row = m.result_row(r, "encrypt", ticked)
+    assert row.status == "Warning"
+    assert row.text.startswith("Encrypted for 2 keys. Not confirmed as post-quantum: see details. "
+                               "Verified with your key file. Saved as a.txt.age.")
+    assert "(post-quantum)" not in row.text
+    assert "Post-quantum: no (age-inspect says the file does not use a post-quantum key)." in row.details
 
 
 def test_password_results_are_unchanged_and_never_post_quantum():
@@ -97,7 +113,7 @@ def test_key_results_with_shredding_use_the_key_head():
     r = _ok(key_mode=True, recipient_count=1, recipient_kinds="standard", verified_with_key=True, original_removed=True,
             shred_attempted=True)
     row = m.result_row(r, "encrypt", frozenset({"shred"}))
-    assert row.text.startswith("Encrypted for 1 key and checked with your key file. Saved as a.txt.age. Original shredded")
+    assert row.text.startswith("Encrypted for 1 key. Verified with your key file. Saved as a.txt.age. Original shredded")
 
 
 def test_key_decrypt_row():
@@ -117,7 +133,7 @@ def test_every_key_error_has_its_own_text_and_says_what_happened_to_the_original
 def test_mismatch_text_depends_on_direction():
     e = m.result_row(JobResult(Path("a.txt"), False, "x", error_kind="error", error_code="key_mismatch"), "encrypt").text
     d = m.result_row(JobResult(Path("a.txt.age"), False, "x", error_kind="error", error_code="key_mismatch"), "encrypt").text
-    assert "not one of the recipients" in e and "can't open this file" in d
+    assert "isn't one of the recipients" in e and "can't open this file" in d
 
 
 def test_skipped_verify_stage_is_worded_skipped_and_a_single_step_hides_the_list():

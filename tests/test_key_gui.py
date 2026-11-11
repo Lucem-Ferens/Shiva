@@ -67,9 +67,9 @@ def test_credentials_group_default_and_swap(win, tmp_path):
 
 def test_heading_and_second_radio_follow_the_mode(win, tmp_path):
     p, _ = _page(win, tmp_path)
-    assert p.credHeading.text() == "Protect with" and p.credKeysRadio.text() == "Recipient keys"
+    assert p.credHeading.text() == "Encrypt with" and p.credKeysRadio.text() == "Recipient keys"
     p.set_crypt_mode("decrypt")
-    assert p.credHeading.text() == "Unlock with" and p.credKeysRadio.text() == "Key file"
+    assert p.credHeading.text() == "Decrypt with" and p.credKeysRadio.text() == "Key file"
     assert not p.keyPanel.recipientSection.isVisibleTo(p) or not p.credKeysRadio.isChecked()
 
 
@@ -84,7 +84,7 @@ def test_paste_add_and_reason(win, tmp_path):
     assert p.reason() == "Press Add key to use the pasted key."
     kp.addKeyBtn.click()
     assert kp.recipientEdit.toPlainText() == "" and kp.recipientTable.rowCount() == 1
-    assert kp.recipientSummary.text() == "1 key, post-quantum." and p.primaryBtn.isEnabled()
+    assert kp.recipientSummary.text() == "1 post-quantum key." and p.primaryBtn.isEnabled()
     assert pub not in "".join(_texts(p)) and pub not in kp.recipientTable.item(0, 1).text()
     assert pub not in kp.recipientTable.item(0, 1).data(0x0101) if kp.recipientTable.item(0, 1).data(0x0101) else True
 
@@ -178,7 +178,7 @@ def test_own_key_and_shred_follow_the_key_file(win, tmp_path):
     assert not p.shredAfterCheck.isEnabled() and "key file" in p.shredAfterReason.text()
     prot, _, mine = _pair(True, tmp_path, "m.agekey", "pw1")
     kp.keyFile.set_path(prot)
-    assert "Unlock your key file first." in kp.ownKeyReason.text() and p.reason() == "Unlock the key file, or remove it."
+    assert "Unlock your key file first." in kp.ownKeyReason.text() and p.reason() == "Enter the key file password, then press Unlock."
     kp.keyFile.keyPwEdit.setText("pw1"); kp.keyFile.unlockBtn.click()
     assert kp.ownKeyCheck.isEnabled() and p.shredAfterCheck.isEnabled()
     kp.ownKeyCheck.setChecked(True); p.shredAfterCheck.setChecked(True)
@@ -252,7 +252,7 @@ def test_a_chosen_key_file_can_be_removed(win, tmp_path):
     _, _, pub = _pair(False, tmp_path, "o.txt")
     kp.recipientEdit.setPlainText(pub); kp.addKeyBtn.click()
     kp.keyFile.set_path(junk)
-    assert p.reason() == "This isn't a key file." and kp.keyFile.removeKeyFileBtn.isVisibleTo(p)
+    assert p.reason() == "This isn't a key file. Choose another one." and kp.keyFile.removeKeyFileBtn.isVisibleTo(p)
     kp.keyFile.removeKeyFileBtn.click()
     assert kp.keyFile.state == K.KF_NONE and kp.keyFile.keyFileEdit.text() == "" and p.primaryBtn.isEnabled()
     assert not kp.keyFile.removeKeyFileBtn.isVisibleTo(p)

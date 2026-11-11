@@ -361,3 +361,25 @@ def test_dialogs_in_chinese(zh, win):
     assert pd.windowTitle() == "選擇要從 a.pdf 移除的內容"
     assert pd.useOthersCheck.text() == "對所有其他 PDF 套用這些選擇（2 個）"
     assert pd.okBtn.text() == "使用這些選擇"
+
+
+def test_key_mode_texts_are_translated(zh):
+    from pathlib import Path
+    from shiva import key_model as K, recipients as R, ui_model as m
+    from shiva.jobs import JobResult
+    pq = R.Recipient(R.POST_QUANTUM, "age1pq1" + "q" * 50)
+    row = lambda **kw: m.result_row(JobResult(Path("a.txt"), True, "ok", created=Path("a.txt.age"), key_mode=True, **kw), "encrypt")
+    ok = row(recipient_count=2, recipient_kinds="post-quantum", verified_with_key=True, post_quantum_confirmed=True)
+    assert zh.dyn(ok.text).startswith("已加密給 2 把金鑰（後量子）。已用您的金鑰檔驗證。已存為 ")
+    assert zh.dyn("Post-quantum: yes (confirmed by age-inspect).") == "後量子：是（age-inspect 已確認）。"
+    no = row(recipient_count=2, recipient_kinds="post-quantum", verified_with_key=False, post_quantum_confirmed=False)
+    assert zh.dyn(no.text).startswith("已加密給 2 把金鑰。未確認為後量子：請見詳細資料。未驗證（沒有金鑰檔）。")
+    assert zh.dyn(K.key_summary([pq, pq])) == "2 把後量子金鑰。" and zh.dyn(K.key_summary([pq])) == "1 把後量子金鑰。"
+    assert zh.dyn(K.key_summary([R.Recipient(R.STANDARD, "age1" + "q" * 58)])) == "1 把標準金鑰。"
+    assert zh.dyn("Decrypted with your key file to a.txt. The .age file is kept.").startswith("已解密並存為 a.txt（使用您的金鑰檔）。")
+    s = K.CredState(mode=K.MODE_KEYS, key_file=K.KF_LOCKED)
+    assert zh.dyn(K.shred_after_reason(s)) == "先解鎖您的金鑰檔。銷毀需要用它驗證每個加密後的複本。"
+    for text in (K.cred_reason(s, True), K.NOT_RECIPIENT, K.LOSS_WARNING, *K._FAIL.values(),
+                 K.key_fail_text("key_mismatch", True), K.path_problem("a.txt")):
+        out = zh.dyn(text)
+        assert out != text and "你" not in out and "請" not in out.replace("請見", ""), (text, out)

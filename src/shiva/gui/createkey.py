@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFileDialog, QH
 
 from .. import agecli, key_model as K, storage, tokens
 from ..i18n import dyn, tr, trf
+from ..ui_model import unit
 from .widgets import _announce
 
 
@@ -86,12 +87,12 @@ class CreateKeyDialog(QDialog):
         self.typePqRadio.setChecked(True)
         lay.addWidget(self.typePqRadio)
         lay.addWidget(_label(tr("Designed to resist attacks by future quantum computers. The public key is very long (about "
-                                "2,000 characters). Opening files needs age 1.3.0 or later.")))
+                                "2,000 characters). Anyone opening the files needs age 1.3.0 or later.")))
         lay.addWidget(self.typeStdRadio)
         lay.addWidget(_label(tr("A short public key. Works with every version of age.")))
         lay.addWidget(QLabel(tr("Save the key file as")))
         srow = QHBoxLayout()
-        self.savePathEdit = QLineEdit(); self.savePathEdit.setAccessibleName(tr("Key file path"))
+        self.savePathEdit = QLineEdit(); self.savePathEdit.setAccessibleName(tr("Save the key file as"))
         self.chooseSaveBtn = QPushButton(tr("Choose...")); self.chooseSaveBtn.setAccessibleName(tr("Choose where to save the key file"))
         self.chooseSaveBtn.setAutoDefault(False)
         srow.addWidget(self.savePathEdit, 1); srow.addWidget(self.chooseSaveBtn)
@@ -123,9 +124,12 @@ class CreateKeyDialog(QDialog):
         self.doneTitle = _label("✓ " + tr("Key pair created")); lay.addWidget(self.doneTitle)
         self.doneFile = _label(); self.doneFile.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.doneSummary = _label()
+        self.noPasswordHint = _label("⚠ " + tr("Warning: this key file is not protected. Keep it in a private place."))
+        self.noPasswordHint.setObjectName("statusWarning")
         frow = QHBoxLayout(); self.showFolderBtn = QPushButton(tr("Show in folder"))
         frow.addWidget(self.doneFile, 1); frow.addWidget(self.showFolderBtn)
         lay.addLayout(frow); lay.addWidget(self.doneSummary)
+        lay.addWidget(self.noPasswordHint)          # the more urgent fact comes first
         lay.addWidget(QLabel(tr("Public key (safe to share)")))
         self.publicKeyView = QPlainTextEdit(); self.publicKeyView.setReadOnly(True); self.publicKeyView.setMaximumHeight(90)
         self.publicKeyView.setAccessibleName(tr("Public key"))
@@ -137,10 +141,8 @@ class CreateKeyDialog(QDialog):
         self.backupHint = _label("⚠ " + tr("Warning: make a backup copy of the key file now. If it is lost, files encrypted "
                                             "to this key can't be opened.")); self.backupHint.setObjectName("statusWarning")
         self.backupBtn = QPushButton(tr("Save a backup copy..."))
-        self.noPasswordHint = _label("⚠ " + tr("Warning: this key file is not protected. Keep it in a private place."))
-        self.noPasswordHint.setObjectName("statusWarning")
         self.doneError = _label(); self.doneError.setObjectName("statusError")
-        lay.addWidget(self.backupHint); lay.addWidget(self.backupBtn, 0, Qt.AlignLeft); lay.addWidget(self.noPasswordHint)
+        lay.addWidget(self.backupHint); lay.addWidget(self.backupBtn, 0, Qt.AlignLeft)
         lay.addWidget(self.doneError)
         for b in (self.showFolderBtn, self.copyPublicBtn, self.savePublicBtn, self.backupBtn):
             b.setAutoDefault(False)         # Enter on the success page closes the window, whatever has focus
@@ -178,7 +180,7 @@ class CreateKeyDialog(QDialog):
         pw, pw2 = self.kpwEdit.text(), self.kpwConfirmEdit.text()
         hint = ""
         if protect and pw:
-            hint = trf("Length: %1 characters", len(pw))
+            hint = dyn(f"Length: {unit(len(pw), 'character')}")
             if len(pw) < K.MIN_KEY_PASSWORD:
                 hint += "\n⚠ " + tr(K.SHORT_KEY_PASSWORD)
         if protect and pw2:
@@ -201,7 +203,7 @@ class CreateKeyDialog(QDialog):
         self.reasonLabel.setText(dyn(reason) if reason else "")
         self.reasonLabel.setVisible(bool(reason))
         self.createBtn.setEnabled(reason is None)
-        self.createBtn.setAccessibleDescription(reason or "")
+        self.createBtn.setAccessibleDescription(dyn(reason) if reason else "")
 
     def create_now(self) -> None:
         if not self.createBtn.isEnabled():
@@ -241,8 +243,13 @@ class CreateKeyDialog(QDialog):
             w.setText("")
         self.showKpwCheck.setChecked(False)
         self.doneFile.setText(trf("Key file: %1", str(self.made_path)))
-        kind = tr("post-quantum") if self.public_key.startswith("age1pq1") else tr("standard")
-        self.doneSummary.setText(trf("Type: %1. Protected with a password: %2.", kind, tr("yes") if protected else tr("no")))
+        if self.public_key.startswith("age1pq1"):
+            summary = (tr("Post-quantum key file, protected with a password.") if protected
+                       else tr("Post-quantum key file, not protected."))
+        else:
+            summary = (tr("Standard key file, protected with a password.") if protected
+                       else tr("Standard key file, not protected."))
+        self.doneSummary.setText(summary)
         self.publicKeyView.setPlainText(self.public_key)
         self.noPasswordHint.setVisible(not protected)
         self.reasonLabel.setVisible(False)
@@ -299,6 +306,7 @@ class CreateKeyDialog(QDialog):
         except Exception:
             pass
         self.doneNote.setText(note)
+        self.backupHint.setVisible(False)           # the backup was made and read back: the request is answered
 
     def _use(self) -> None:
         self.use_requested = True

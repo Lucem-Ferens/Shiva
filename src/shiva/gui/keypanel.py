@@ -45,7 +45,7 @@ class KeyFileRow(QWidget):
         self._public: list[str] = []
         lay = QVBoxLayout(self); lay.setContentsMargins(0, 0, 0, 0); lay.setSpacing(tokens.SPACE[1])
         self.captionLabel = QLabel(tr("Your key file (optional)"))
-        self.helperLabel = _label(tr("Lets Shiva check the encrypted copy before shredding, and add your own key."))
+        self.helperLabel = _label(tr("Used to verify the encrypted copy (required for shredding) and to encrypt to your own key."))
         row = QHBoxLayout()
         self.keyFileEdit = QLineEdit(); self.keyFileEdit.setReadOnly(True); self.keyFileEdit.setFocusPolicy(Qt.NoFocus)
         self.keyFileEdit.setAccessibleName(tr("Key file path"))
@@ -56,7 +56,7 @@ class KeyFileRow(QWidget):
         self.keyPwLabel = QLabel(tr("Key file password"))
         self.keyPwEdit = QLineEdit(); self.keyPwEdit.setEchoMode(QLineEdit.Password)
         self.keyPwEdit.setAccessibleName(tr("Key file password"))
-        self.showKeyPwCheck = QCheckBox(tr("Show password")); self.showKeyPwCheck.setAccessibleName(tr("Show key file password"))
+        self.showKeyPwCheck = QCheckBox(tr("Show password")); self.showKeyPwCheck.setAccessibleName(tr("Show password (key file)"))
         self.unlockBtn = QPushButton(tr("Unlock")); self.unlockBtn.setAccessibleName(tr("Unlock the key file"))
         for w in (self.keyPwLabel, self.keyPwEdit, self.showKeyPwCheck, self.unlockBtn):
             pl.addWidget(w)
@@ -200,11 +200,11 @@ class KeyFileRow(QWidget):
         self.copyPubKeyBtn.setVisible(s in (K.KF_CHOSEN, K.KF_UNLOCKED) and bool(self._public))
         text = {
             K.KF_NONE: "",
-            K.KF_LOCKED: tr("This key file needs its password."),
+            K.KF_LOCKED: tr("This key file needs its password. Enter it, then press Unlock."),
             K.KF_UNLOCKED: ("✓ " + (tr("Unlocked.") if self.keyPwEdit.text() else tr("Ready.")) + " " + self._kind_word()
                             if self._public else ""),
-            K.KF_WRONG_PASSWORD: "✗ " + tr("Error: The key file password is wrong. Try again."),
-            K.KF_NOT_A_KEY: "✗ " + tr("Error: This isn't a key file. A key file has a line starting AGE-SECRET-KEY-."),
+            K.KF_WRONG_PASSWORD: "✗ " + tr("Error: The key file password is wrong, or the file is damaged. Enter it again."),
+            K.KF_NOT_A_KEY: "✗ " + tr("Error: This isn't a key file (no AGE-SECRET-KEY- line). Choose another one."),
         }.get(s, "")
         self.removeKeyFileBtn.setVisible(self._path is not None)
         self.keyFileStatus.setText(text); self.keyFileStatus.setVisible(bool(text))
@@ -229,7 +229,7 @@ class KeyPanel(QWidget):
         paste = QHBoxLayout()
         self.recipientEdit = QPlainTextEdit(); self.recipientEdit.setTabChangesFocus(True)
         self.recipientEdit.setPlaceholderText(tr("Paste a public key here (starts with age1)"))
-        self.recipientEdit.setAccessibleName(tr("Public keys to add"))
+        self.recipientEdit.setAccessibleName(tr("Public keys of the recipients"))
         self.recipientEdit.setAccessibleDescription(tr("Paste a public key here (starts with age1)")); self.recipientEdit.setMaximumHeight(48)
         self.addKeyBtn = QPushButton(tr("Add key")); self.addKeyBtn.setEnabled(False)
         paste.addWidget(self.recipientEdit, 1); paste.addWidget(self.addKeyBtn, 0, Qt.AlignTop)
@@ -239,8 +239,8 @@ class KeyPanel(QWidget):
         self.createKeyBtn = QPushButton(tr("Create key pair..."))
         files.addWidget(self.addKeyFileBtn); files.addWidget(self.createKeyBtn); files.addStretch(1)
         self.recipientTable = _Table(0, 3)
-        self.recipientTable.setHorizontalHeaderLabels([tr(x) for x in ("Kind", "Key", "Source")])
-        self.recipientTable.setAccessibleName(tr("Recipient keys: kind, key, source"))
+        self.recipientTable.setHorizontalHeaderLabels([tr(x) for x in ("Type", "Key", "Source")])
+        self.recipientTable.setAccessibleName(tr("Recipient keys: type, key, source"))
         self.recipientTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.recipientTable.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.recipientTable.verticalHeader().setVisible(False); self.recipientTable.setShowGrid(False)
@@ -250,7 +250,7 @@ class KeyPanel(QWidget):
         self.recipientTable.setColumnWidth(0, 120); self.recipientTable.setColumnWidth(1, 240)
         self.recipientTable.setMaximumHeight(104)
         self.recipientEmpty = _label(tr("No keys added yet."))
-        self.removeKeyBtn = QPushButton(tr("Remove key")); self.removeKeyBtn.setEnabled(False)
+        self.removeKeyBtn = QPushButton(tr("Remove selected key")); self.removeKeyBtn.setEnabled(False)
         self.recipientSummary = _label(); self.recipientMixLabel = _label(); self.recipientMixLabel.setObjectName("statusError")
         for w in (self.captionLabel,):
             rl.addWidget(w)
@@ -263,8 +263,8 @@ class KeyPanel(QWidget):
         self.ownKeyReason = _label(); self.ownKeyReason.setObjectName("shredAfterReason")
         self.createKeyRow = QWidget(); cr = QHBoxLayout(self.createKeyRow); cr.setContentsMargins(0, 0, 0, 0)
         self.createKeyLabel = QLabel(tr("No key file yet?"))
-        self.createKeyLink = link_button(QPushButton(tr("Create a key pair...")))
-        self.createKeyLink.setAccessibleName(tr("Create a key pair"))
+        self.createKeyLink = link_button(QPushButton(tr("Create key pair...")))
+        self.createKeyLink.setAccessibleName(tr("Create key pair"))
         cr.addWidget(self.createKeyLabel); cr.addWidget(self.createKeyLink); cr.addStretch(1)
         self.createKeyRow.setVisible(False)
         self._dialog_factory = lambda parent: CreateKeyDialog(parent, decrypting=self._decrypting)
@@ -329,8 +329,8 @@ class KeyPanel(QWidget):
         text = self.recipientEdit.toPlainText()
         if rcp.is_secret_key(text):
             self._clear_edit()
-            self._hint("✗ " + tr("Error: That was a secret key. Shiva cleared the box. Never share it. It may still be in "
-                                 "your clipboard history (Win+V): clear it there. Paste a public key (starts with age1)."),
+            self._hint("✗ " + tr("Error: That is a secret key, not a public key. Shiva cleared the box. Never share it. It may "
+                                 "still be in your clipboard history (Win+V): clear it there."),
                        error=True)
             _announce(self.recipientHint, self.recipientHint.text())
             self.addKeyBtn.setEnabled(False)
@@ -361,7 +361,7 @@ class KeyPanel(QWidget):
         return {
             "duplicate": tr("This key is already in the list."),
             "ssh_key": "✗ " + tr("Error: SSH keys aren't supported yet. Use an age key (starts with age1)."),
-            "plugin_key": "✗ " + tr("Error: Keys for plugins or hardware devices aren't supported yet."),
+            "plugin_key": "✗ " + tr("Error: Keys for plugins or hardware devices aren't supported yet. Use an age key (starts with age1)."),
         }.get(code, "✗ " + tr("Error: This isn't a key Shiva can use. Public keys start with age1."))
 
     def _hint(self, text: str, error: bool = False) -> None:
@@ -381,9 +381,9 @@ class KeyPanel(QWidget):
         if keep:
             self.recipientEdit.setPlainText("\n".join(keep))
         n = len(res.keys)
-        msg = trf("%1 key added.", n) if n == 1 else trf("Added %1 keys.", n)
+        msg = tr("Added 1 key.") if n == 1 else trf("Added %1 keys.", n)
         if bad:
-            msg += " " + trf("Line %1 is not a key and was skipped.", min(bad))
+            msg += " " + trf("Line %1 isn't a key and was skipped.", min(bad))
         self._render_table(); self.status.emit(msg); self.changed.emit()
 
     def add_from_file(self) -> None:
@@ -398,18 +398,19 @@ class KeyPanel(QWidget):
         except (OSError, UnicodeDecodeError):
             return self.status.emit(tr("Error: This file can't be read as a list of keys."))
         if rcp.is_secret_key(text):
-            return self.status.emit(tr("Error: This file holds a secret key, not public keys. Choose it under "
-                                       "\"Your key file\"."))
+            return self.status.emit(tr("Error: This file holds a secret key, not public keys. Use \"Choose key file...\" "
+                                       "for it."))
         res = rcp.parse_recipients(text, p.name, tuple(r.text for r in self._recipients))
         if not res.keys:
             dup = any(x.code == "duplicate" for x in res.problems)
             return self.status.emit(tr("This key is already in the list.") if dup
-                                    else tr("No keys found in this file. Keys start with age1, one per line."))
+                                    else tr("Error: No keys found in this file. Keys start with age1, one per line."))
         self._recipients += res.keys
         dups = sum(1 for x in res.problems if x.code == "duplicate")
-        msg = trf("Added %1 keys from %2.", len(res.keys), p.name)
+        msg = (trf("Added 1 key from %1.", p.name) if len(res.keys) == 1
+               else trf("Added %1 keys from %2.", len(res.keys), p.name))
         if dups:
-            msg += " " + trf("%1 was already in the list.", dups)
+            msg += " " + trf("%1 already in the list.", dups)
         self._render_table(); self.status.emit(msg); self.changed.emit()
 
     def remove_selected(self) -> None:
@@ -422,7 +423,7 @@ class KeyPanel(QWidget):
             else:
                 self.status.emit(tr("Untick \"Also encrypt to my own key\" to remove it."))
         if gone:
-            self.status.emit(trf("%1 key removed.", gone))
+            self.status.emit(tr("Removed 1 key.") if gone == 1 else trf("Removed %1 keys.", gone))
         self._render_table(); self.changed.emit()
 
     def clear_recipients(self) -> None:
@@ -450,7 +451,7 @@ class KeyPanel(QWidget):
                     it.setFlags(Qt.ItemIsEnabled)                                 # shown greyed, not removable here
                 t.setItem(i, c, it)
         t.setVisible(bool(rows)); self.recipientEmpty.setVisible(not rows)
-        self.recipientSummary.setText(K.key_summary(rows)); self.recipientSummary.setVisible(bool(K.key_summary(rows)))
+        self.recipientSummary.setText(dyn(K.key_summary(rows))); self.recipientSummary.setVisible(bool(K.key_summary(rows)))
         mixed = rcp.mixed(rows)
         self.recipientMixLabel.setText("✗ " + tr("Error: A file can't use both post-quantum and standard keys. Remove one "
                                                   "kind.") if mixed else "")
@@ -461,7 +462,7 @@ class KeyPanel(QWidget):
         if not self.keyFile.usable() and self.ownKeyCheck.isChecked():
             self.ownKeyCheck.setChecked(False)
             if not self.quiet:
-                self.status.emit(tr("Options that need your key file were turned off. Unlock it again."))
+                self.status.emit(tr("Options that need your key file were turned off. Choose or unlock it again."))
         self._render_table(); self.changed.emit()
 
     def tab_widgets(self) -> list:
