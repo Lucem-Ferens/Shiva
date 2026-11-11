@@ -286,6 +286,15 @@
     <message><source>Cancelled</source><translation>已取消</translation></message>
     <message><source>Not fully shredded</source><translation>未完全銷毀</translation></message>
     <message><source>Not fully shredded.</source><translation>未完全銷毀。</translation></message>
+    <message><source>Verify by trial decrypt</source><translation>以試解密驗證</translation></message>
+    <message><source>Shred original</source><translation>銷毀原始檔</translation></message>
+    <message><source>Not started</source><translation>未開始</translation></message>
+    <message><source>Not shredded</source><translation>未銷毀</translation></message>
+    <message><source>Shredded (best effort)</source><translation>已銷毀（盡力而為）</translation></message>
+    <message><source>Not shredded, original kept</source><translation>未銷毀，已保留原始檔</translation></message>
+    <message><source>Done, some metadata not removed</source><translation>完成，部分中繼資料未移除</translation></message>
+    <message><source>:</source><translation>：</translation></message>
+    <message><source>Steps for %1</source><translation>「%1」的步驟</translation></message>
     <message><source>Some items were already overwritten or deleted.</source><translation>有些項目已經被覆寫或刪除。</translation></message>
     <message><source>Check what is left in %1.</source><translation>檢查 %1 中剩下的內容。</translation></message>
     <message><source>Cancelled while shredding.</source><translation>銷毀途中已取消。</translation></message>

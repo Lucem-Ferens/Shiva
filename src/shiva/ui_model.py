@@ -10,7 +10,7 @@ import stat as _stat
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from . import shred, storage
+from . import shred, stages, storage
 from .jobs import OUTPUT_EXISTS, JobResult
 from .metadata import ARCHIVE_MEMBER, runner
 
@@ -760,3 +760,65 @@ def finish_text(statuses: list[str], n_run: int) -> str:
         return "Finished with a problem: not fully shredded. Check what is left. " + summary_text(statuses)
     s = summary_text(statuses)
     return s + (" Select a row to see why." if "Failed" in statuses else "")
+
+
+# ---------------------------------------------------------------- stage list (display only)
+# The list is shown for a run with two or more steps. While running it names the planned stages and nothing else: no
+# progress is claimed. After the run it shows what was recorded. It never decides a row status or the banner: the
+# shred word comes from the row's own result flags, not from the recorder.
+STAGE_LABEL = {stages.CLEAN: "Clean metadata", stages.ENCRYPT: "Encrypt", stages.VERIFY: "Verify by trial decrypt",
+               stages.SHRED: "Shred original"}
+_BEGAN = (stages.DONE, stages.FAILED, stages.CANCELLED, stages.ATTEMPTED)
+
+
+@dataclass(frozen=True)
+class StageLine:
+    label: str
+    word: str = ""          # empty while running
+    kind: str = ""          # status icon kind, empty = no icon
+
+
+def planned_stage_lines(path, opts, steps: frozenset) -> list[StageLine]:
+    """Planned stages of one item for the running state: names only. Empty unless two or more steps are ticked."""
+    if len(steps) < 2:
+        return []
+    names = stages.planned(path, opts)
+    return [StageLine(STAGE_LABEL[n]) for n in names] if len(names) >= 2 else []
+
+
+def shred_stage_word(r: JobResult, risky: bool = False) -> tuple[str, str]:
+    """(word, icon kind) of an attempted shred stage. The word comes from the row flags only; `risky` (the same
+    risk lines the result row uses) only turns the icon of a removed original into a warning."""
+    if not r.ok and r.error_kind == "unsupported":
+        return "Not shredded", "warning"
+    if r.original_removed:
+        return "Shredded (best effort)", "warning" if risky else "ok"
+    if r.original_untouched:
+        return "Not shredded, original kept", "warning"
+    return "Not fully shredded", "error"
+
+
+def recorded_stage_lines(r: JobResult | None, steps: frozenset, risky: bool = False) -> list[StageLine]:
+    """Recorded stages of one finished item. Empty (list hidden) for fewer than two steps, a missing result, fewer
+    than two recorded stages, or when no stage began."""
+    if r is None or len(steps) < 2 or len(r.stages) < 2 or not any(s in _BEGAN for _n, s in r.stages):
+        return []
+    out = []
+    for name, state in r.stages:
+        label = STAGE_LABEL.get(name)
+        if label is None:
+            return []
+        if state == stages.NOT_STARTED or (state == stages.SKIPPED and not r.ok):
+            word, kind = "Not started", "pending"
+        elif state == stages.SKIPPED:
+            word, kind = "Skipped", "skipped"
+        elif name == stages.SHRED:
+            word, kind = shred_stage_word(r, risky)
+        elif state == stages.DONE:
+            word, kind = ("Done, some metadata not removed", "warning") if name == stages.CLEAN and r.kept else ("Done", "ok")
+        elif state == stages.CANCELLED:
+            word, kind = "Cancelled", "cancelled"
+        else:
+            word, kind = "Failed", "error"
+        out.append(StageLine(label, word, kind))
+    return out

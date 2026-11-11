@@ -8,14 +8,14 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPalette
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QGroupBox, QHBoxLayout, QHeaderView,
-                               QLabel, QLineEdit, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
-                               QRadioButton, QScrollArea, QStackedWidget, QTableWidget, QTableWidgetItem,
+                               QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
+                               QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
 from .. import output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, _Table, high_contrast_active, status_item
+from .widgets import WrapCheckBox, _Table, high_contrast_active, status_icon, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -33,6 +33,43 @@ class _Row:
         self.facts = m.Facts(path)
         self.busy = False
         self.info = m.RowInfo("Checking...", "", False)   # shown through dyn()
+
+
+class StageBox(QWidget):
+    """Title and a read-only list of steps (text on every line, icon beside it). Not a tab stop; hidden when empty."""
+
+    def __init__(self):
+        super().__init__()
+        v = QVBoxLayout(self); v.setContentsMargins(0, 0, 0, 0); v.setSpacing(2)
+        self.title = QLabel(""); self.title.setObjectName("stageTitle")
+        self.list = QListWidget(); self.list.setObjectName("stageList")
+        self.list.setFocusPolicy(Qt.NoFocus); self.list.setSelectionMode(QAbstractItemView.NoSelection)
+        self.list.setFrameShape(QListWidget.NoFrame); self.list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        v.addWidget(self.title); v.addWidget(self.list)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        self.setVisible(False)
+
+    @staticmethod
+    def _colon() -> str:
+        c = tr(":")     # full-width in Chinese (no space after it), ": " in English
+        return c if c != ":" else ": "
+
+    def fill(self, name: str, lines: list, theme: str) -> None:
+        self.list.clear()
+        self.setVisible(bool(lines))
+        if not lines:
+            return
+        for ln in lines:
+            it = QListWidgetItem(dyn(ln.label) + (self._colon() + dyn(ln.word) if ln.word else ""))
+            it.setFlags(Qt.ItemIsEnabled)
+            if ln.kind:
+                it.setIcon(status_icon(ln.kind, 16, theme))
+            self.list.addItem(it)
+        title = trf("Steps for %1", name)
+        self.title.setText(title); self.list.setAccessibleName(title)
+        self.list.setFixedHeight(sum(self.list.sizeHintForRow(i) for i in range(len(lines))) + 4)
+        self.list.setMinimumWidth(max(self.list.sizeHintForColumn(0) + 12, self.title.sizeHint().width()))
 
 
 # ------------------------------------------------------------------ one page
@@ -123,8 +160,11 @@ class TabPage(QWidget):
         self.showFolderBtn = QPushButton(tr("Show in folder")); self.copyBtn = QPushButton(tr("Copy results"))
         rb.addWidget(self.showFolderBtn); rb.addWidget(self.copyBtn); rb.addStretch(1)
         rl.insertWidget(0, self.resultBanner)
-        for w in (self.resultTable, self.showTechCheck, self.detailPane, self.summaryLabel):
+        self.runStages, self.resultStages = StageBox(), StageBox()      # while running / beside the details of a result
+        detail_row = QHBoxLayout(); detail_row.addWidget(self.detailPane, 1); detail_row.addWidget(self.resultStages)
+        for w in (self.resultTable, self.showTechCheck):
             rl.addWidget(w)
+        rl.addLayout(detail_row); rl.addWidget(self.summaryLabel)
         rl.addLayout(rb)
         self.view.addWidget(self.emptyView); self.view.addWidget(self.fileTable); self.view.addWidget(results)
         self.view.setMinimumHeight(self._VIEW_MIN_H)
@@ -280,6 +320,8 @@ class TabPage(QWidget):
         self.primaryBtn.setProperty("primary", True)
         self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setVisible(False)
         self.cancelBtn.setAccessibleName(tr("Cancel the run"))
+        # read-only list of the steps of one item (two or more steps only); not a tab stop
+        outer.addWidget(self.runStages)
         outer.addWidget(self.progressLabel); outer.addWidget(self.progressBar)
         brow = QHBoxLayout(); brow.addWidget(self.reasonLabel, 1)
         brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
@@ -479,6 +521,7 @@ class TabPage(QWidget):
     def back_to_list(self) -> None:
         """After a run: keep the rows whose items still exist (re-checked), drop the rest."""
         self.mode = "list"
+        self._show_stages("", [])
         keep = [r for r in self.rows if os.path.lexists(r.path)]
         self.rows = []
         for r in keep:
@@ -726,6 +769,7 @@ class TabPage(QWidget):
         self.progressBar.setRange(0, len(run_rows) if len(run_rows) > 1 else 0); self.progressBar.setValue(0)
         self.progressBar.setVisible(True); self.progressLabel.setVisible(True)
         self.cancelBtn.setToolTip(tr("Stops after the current item. Finished items are kept."))
+        self._run_opts, self._run_steps = self.build_options(), self.steps()
         self._t0 = self.win.clock()
         self._progress_base = ""
         self._ticker = QTimer(self); self._ticker.setInterval(1000); self._ticker.timeout.connect(self._render_progress)
@@ -741,6 +785,9 @@ class TabPage(QWidget):
                     it = self.fileTable.item(j, 0)
                     it.setText(word)
                     status_item(it, "Processed" if i < done else "Working..." if i == done else "Waiting", self._theme())
+        cur = self._run_rows[done] if done < total else None
+        self._show_stages(cur.path.name if cur else "",
+                          m.planned_stage_lines(cur.path, self._run_opts, self._run_steps) if cur else [])
         if done < total:
             self._progress_base = trf("Working on %N1 of %N2: %3", done + 1, total, self._run_rows[done].path.name)
         else:
@@ -810,6 +857,7 @@ class TabPage(QWidget):
         self.reasonLabel.setVisible(False)
         if data:
             t.selectRow(m.first_problem_index(statuses))
+            self._show_details()        # selectRow sends no signal when the same row stays selected
             t.setFocus()
 
     _BANNER = {"success": ("✓", None), "warning": ("⚠", "Warning:"), "error": ("✗", "Failed:")}
@@ -835,6 +883,17 @@ class TabPage(QWidget):
             rr = self._results[sel[0].row()][0]
             lines = rr.details + (rr.technical if self.showTechCheck.isChecked() else [])
             self.detailPane.setPlainText("\n".join(dyn(d) for d in lines))
+            _rr, jr, row = self._results[sel[0].row()]
+            self._show_stages(row.path.name, m.recorded_stage_lines(jr, self._run_steps, bool(self.win._risk_lines(row))))
+        else:
+            self._show_stages("", [])
+
+    def _show_stages(self, name: str, lines: list) -> None:
+        """Fill the step list (text on every line, icon beside it); hidden when there is nothing to list."""
+        box = self.resultStages if self.mode == "results" else self.runStages
+        for b in (self.runStages, self.resultStages):
+            b.fill("", [], self._theme())
+        box.fill(name, lines, self._theme())
 
     def results_text(self) -> str:
         lines = ["\t".join(tr(x) for x in ("Status", "Name", "Result", "Size"))]
