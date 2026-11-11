@@ -734,8 +734,10 @@ _many({
     "This key file needs its password.": "這個金鑰檔需要密碼。",
     "No keys found in this file. Keys start with age1, one per line.": "這個檔案中找不到金鑰。金鑰以 age1 開頭，每行一把。",
     "Error: This isn't a key Shiva can use. Public keys start with age1.": "錯誤：這不是 Shiva 能使用的金鑰。公開金鑰以 age1 開頭。",
-    "Error: That was a secret key. Shiva cleared the box. Never share it. Paste a public key (starts with age1).":
-        "錯誤：那是私密金鑰。Shiva 已清空輸入框。請勿分享它。請貼上公開金鑰（以 age1 開頭）。",
+    "Error: That was a secret key. Shiva cleared the box. Never share it. It may still be in your clipboard history "
+    "(Win+V): clear it there. Paste a public key (starts with age1).":
+        "錯誤：那是私密金鑰。Shiva 已清空輸入框。請勿分享它。它可能仍留在剪貼簿歷程（Win+V）中，請在那裡清除。"
+        "請貼上公開金鑰（以 age1 開頭）。",
     "Error: This file holds a secret key, not public keys. Choose it under \"Your key file\".":
         "錯誤：這個檔案是私密金鑰，不是公開金鑰。請在「你的金鑰檔」選擇它。",
     "Error: This file can't be read as a list of keys.": "錯誤：無法將這個檔案當作金鑰清單讀取。",

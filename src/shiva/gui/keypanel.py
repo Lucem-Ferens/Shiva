@@ -301,8 +301,9 @@ class KeyPanel(QWidget):
         text = self.recipientEdit.toPlainText()
         if rcp.is_secret_key(text):
             self._clear_edit()
-            self._hint("✗ " + tr("Error: That was a secret key. Shiva cleared the box. Never share it. Paste a public key "
-                                 "(starts with age1)."), error=True)
+            self._hint("✗ " + tr("Error: That was a secret key. Shiva cleared the box. Never share it. It may still be in "
+                                 "your clipboard history (Win+V): clear it there. Paste a public key (starts with age1)."),
+                       error=True)
             _announce(self.recipientHint, self.recipientHint.text())
             self.addKeyBtn.setEnabled(False)
             return self.changed.emit()
