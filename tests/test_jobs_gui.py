@@ -80,7 +80,7 @@ def test_gui_mismatched_passphrase_changes_nothing(tmp_path: Path):
     w.add_paths([f]); w.wait_for_probes()
     page.pwEdit.setText("one-long-pass"); page.pwConfirmEdit.setText("two-long-pass")
     assert not page.primaryBtn.isEnabled()
-    assert "do not match" in page.matchLabel.text() and page.reasonLabel.isHidden()
+    assert "do not match" in page.matchLabel.text() and not page.reasonLabel.isVisibleTo(page)
     w.start()
     assert f.read_bytes() == b"data" and not (tmp_path / "keep.bin.age").exists()
 

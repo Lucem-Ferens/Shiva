@@ -71,6 +71,9 @@
     <message><source>Copy results</source><translation>複製結果</translation></message>
     <message><source>Results copied.</source><translation>已複製結果。</translation></message>
     <message><source>Show more options</source><translation>顯示更多選項</translation></message>
+    <message><source>Optional next steps</source><translation>選用的後續步驟</translation></message>
+    <message><source>Tick "Encrypt the cleaned copies" first.</source><translation>先勾選「加密清理後的副本」。</translation></message>
+    <message><source>Available when you encrypt.</source><translation>加密時才能使用。</translation></message>
     <message><source>JPEG: keep the rotation tag (only rotation is kept)</source><translation>JPEG：保留旋轉標記（只保留旋轉資訊）</translation></message>
     <message><source>Keep the colour profile</source><translation>保留色彩描述檔</translation></message>
     <message><source>padding, compression tables and hidden bytes in the image data</source><translation>影像資料中的填充、壓縮表與隱藏的位元組</translation></message>

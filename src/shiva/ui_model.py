@@ -223,6 +223,67 @@ def tab_steps(tab: str, ticked: frozenset = frozenset()) -> frozenset:
     return frozenset({tab}) | frozenset(ticked)
 
 
+# ---------------------------------------------------------------- which options apply
+# The ticked checkboxes (the 11 below) are only a request. An option counts ("live") only when it is shown AND enabled
+# AND ticked; callers read option values from `live`, never from widget visibility.
+OPTION_NAMES = ("encrypt_cleaned", "shred_after", "more", "keep_quality", "keep_orient", "chroma420", "keep_icc",
+                "omit_parts", "keep_parts", "allow_unclean", "out")
+
+
+@dataclass(frozen=True)
+class OptionFacts:
+    can_unclean: bool = False      # some listed file can be encrypted only without cleaning
+
+
+@dataclass(frozen=True)
+class OptionView:
+    shown: dict      # name -> bool; the 11 options plus the notes that belong to one (keep_quality_hint, ...)
+    enabled: dict    # name -> bool; never True for an option that is not shown
+    live: dict       # name -> bool; the 11 options only: shown and enabled and ticked
+
+
+def option_view(tab: str, crypt_mode: str, ticks, facts: OptionFacts = OptionFacts()) -> OptionView:
+    """Which options are shown, enabled and live for this page. `ticks` maps option name -> ticked (missing = False);
+    crypt_mode is "encrypt" or "decrypt" (Encrypt page switch). An option that is not shown or not enabled is never live."""
+    shown: dict = {}; enabled: dict = {}; live: dict = {}
+
+    def put(name: str, is_shown: bool, is_enabled: bool = True) -> None:
+        shown[name] = is_shown
+        enabled[name] = is_shown and is_enabled
+        live[name] = enabled[name] and bool(ticks.get(name))
+
+    put("encrypt_cleaned", tab == "clean")
+    if tab == "clean":                       # visible from the start, usable once the copies are encrypted
+        put("shred_after", True, live["encrypt_cleaned"])
+    else:
+        put("shred_after", tab == "encrypt", crypt_mode == "encrypt")
+    extra = set()
+    if live["encrypt_cleaned"]:
+        extra.add("encrypt")
+    if live["shred_after"]:
+        extra.add("shred")
+    st = tab_steps(tab, frozenset(extra))
+    put("more", "clean" in st)
+    more = live["more"]
+    for n in ("keep_icc", "omit_parts", "keep_parts", "keep_quality"):
+        put(n, more)
+    lossless = live["keep_quality"]          # the rotation tag matters only when the image data is kept
+    put("keep_orient", lossless)
+    put("chroma420", more and not lossless)  # smaller colour data applies only to re-encoding
+    put("allow_unclean", tab == "clean" and "encrypt" in st and facts.can_unclean)
+    put("out", bool(st & {"clean", "encrypt"}))
+    for note, owner in (("keep_quality_hint", "keep_quality"), ("keep_quality_more", "keep_quality"),
+                        ("keep_parts_hint", "keep_parts"), ("unclean_hint", "allow_unclean")):
+        shown[note] = enabled[note] = live[owner]
+    # why a visible option is greyed out
+    shown["shred_after_reason"] = enabled["shred_after_reason"] = shown["shred_after"] and not enabled["shred_after"]
+    return OptionView(shown, enabled, live)
+
+
+def shred_after_reason(tab: str) -> str:
+    return "Tick \"Encrypt the cleaned copies\" first." if tab == "clean" else "Available when you encrypt."
+
+
 def row_info(f: Facts, tab: str, ticked: frozenset = frozenset(), overlap: bool = False,
              mode: str = "auto") -> RowInfo:
     """mode (Encrypt page only): "encrypt" / "decrypt" from the page switch; "auto" decides by the .age extension."""

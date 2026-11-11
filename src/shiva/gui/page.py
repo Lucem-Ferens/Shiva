@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPalette
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QHBoxLayout, QHeaderView,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QGroupBox, QHBoxLayout, QHeaderView,
                                QLabel, QLineEdit, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
                                QRadioButton, QScrollArea, QStackedWidget, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -138,16 +138,26 @@ class TabPage(QWidget):
         bl.addWidget(self.aboutShredLink, 0, Qt.AlignLeft)
 
         # --- pipeline options (off by default): the steps always run in this order: clean, encrypt, trial decrypt, shred.
-        # Clean page: "Encrypt the cleaned copies" (then "Shred the originals..." appears); Encrypt page (encrypt mode):
-        # "Shred the originals...". A hidden option is un-ticked and never counts (see ticked()).
+        # Clean page: "Encrypt the cleaned copies" with its children under it; Encrypt page: "Shred the originals..." in
+        # the same group. Whether an option counts is decided by ui_model.option_view, never by widget visibility:
+        # an option that is not shown or not enabled is un-ticked and ignored.
+        self.nextStepsGroup = self._group(tr("Optional next steps"), "nextStepsGroup")
         self.encryptCleanedCheck = WrapCheckBox(tr("Encrypt the cleaned copies"))
         self.shredAfterCheck = WrapCheckBox(tr("Shred the originals after a verified encryption"))
+        self.shredAfterReason = QLabel(""); self.shredAfterReason.setObjectName("shredAfterReason")
+        self.shredAfterReason.setWordWrap(True)
         for w in (self.encryptCleanedCheck, self.shredAfterCheck):
-            w.setAccessibleName(w.text()); bl.addWidget(w)
+            w.setAccessibleName(w.text())
+        ng = self.nextStepsGroup.layout()
+        ng.addWidget(self.encryptCleanedCheck)
+        self.encryptChildren, ecl = self._child_box()       # everything that hangs off "Encrypt the cleaned copies"
+        ng.addWidget(self.encryptChildren)
+        self.nextStepsGroup.setVisible(tab != "shred")
         self.encryptCleanedCheck.setVisible(tab == "clean")
-        self.shredAfterCheck.setVisible(False)
+        self.encryptChildren.setVisible(tab == "clean")
+        shred_host = ecl if tab == "clean" else ng           # the Encrypt page has no parent option: it sits in the group
 
-        # --- options (hidden options are un-ticked, so they never stay active invisibly)
+        # --- options (not shown or not enabled means un-ticked, so they never stay active invisibly)
         self.moreOptionsCheck = WrapCheckBox(tr("Show more options"))
         self.keepOrientCheck = WrapCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
         self.keepIccCheck = WrapCheckBox(tr("Keep the colour profile"))
@@ -179,14 +189,34 @@ class TabPage(QWidget):
                                           "may blur."))
         self.keepQualityMore.setStyleSheet(
             "QPushButton { text-decoration: underline; border: none; text-align: left; background: transparent; padding: 0 0 0 24px; }")
-        for w in (self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore,
-                  self.keepOrientCheck,
-                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck,
-                  self.keepPartsCheck, self.keepPartsHint, self.allowUncleanCheck, self.uncleanHint):
-            if isinstance(w, QCheckBox):
-                w.setAccessibleName(w.text().replace("&", ""))
-            bl.addWidget(w)
+        # children of "Encrypt the cleaned copies" (Clean page) or the Encrypt page's group
+        for w in (self.allowUncleanCheck, self.uncleanHint):
+            ecl.addWidget(w)
+        for w in (self.shredAfterCheck, self.shredAfterReason):
+            shred_host.addWidget(w)
+        # "Show more options" and its children, indented under it
+        bl.addWidget(self.moreOptionsCheck)
+        self.moreChildren, mcl = self._child_box()
+        bl.addWidget(self.moreChildren)
+        for w in (self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore, self.keepOrientCheck,
+                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.keepPartsHint):
+            mcl.addWidget(w)
+        for w in (self.moreOptionsCheck, self.keepQualityCheck, self.keepOrientCheck, self.chroma420Check,
+                  self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.allowUncleanCheck):
+            w.setAccessibleName(w.text().replace("&", ""))
+        # option name (ui_model.option_view) -> widget; update_controls sets shown/enabled from the view
+        self._opt = {"encrypt_cleaned":self.encryptCleanedCheck, "shred_after": self.shredAfterCheck,
+                     "more": self.moreOptionsCheck, "keep_quality": self.keepQualityCheck,
+                     "keep_orient": self.keepOrientCheck, "chroma420": self.chroma420Check,
+                     "keep_icc": self.keepIccCheck, "omit_parts": self.omitPartsCheck,
+                     "keep_parts": self.keepPartsCheck, "allow_unclean": self.allowUncleanCheck}
+        self._opt_notes = {"keep_quality_hint": self.keepQualityHint, "keep_quality_more": self.keepQualityMore,
+                           "keep_parts_hint": self.keepPartsHint, "unclean_hint": self.uncleanHint,
+                           "shred_after_reason": self.shredAfterReason}
+        for w in (*self._opt.values(), *self._opt_notes.values(), self.moreChildren):
             w.setVisible(False)
+        self.moreOptionsCheck.setVisible(False)
+        bl.insertWidget(bl.indexOf(self.moreOptionsCheck), self.nextStepsGroup)
 
         # --- optional output folder (off by default; results otherwise go next to the originals)
         self.outCheck = WrapCheckBox(tr("Save results in another folder")); self.outCheck.setAccessibleName(tr("Save results in another folder"))
@@ -199,6 +229,7 @@ class TabPage(QWidget):
         self.outNoteLabel.setAccessibleName(tr("Output folder note"))
         self._out_problem: str | None = None
         self._out_note_cache: dict[str, str] = {}
+        self._opt["out"] = self.outCheck
         for w in (self.outCheck, self.outBox, self.outNoteLabel):
             bl.addWidget(w); w.setVisible(False)
 
@@ -227,7 +258,8 @@ class TabPage(QWidget):
         pl.addWidget(self.confirmBox)
         self.pwBlock.setVisible(False)
         bl.addWidget(self.pwBlock)
-        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QScrollArea.NoFrame)
+        bl.addStretch(1)       # spare height goes below the options, not into the check boxes
+        scroll =QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QScrollArea.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); scroll.setWidget(opts_pane)   # buttons below stay on screen
         scroll.setFocusPolicy(Qt.NoFocus)
         self.optionsScroll = scroll
@@ -250,10 +282,10 @@ class TabPage(QWidget):
 
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.detailPane, self.showFolderBtn, self.copyBtn,
-                 self.aboutShredLink, self.encryptCleanedCheck,
+                 self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
                  self.shredAfterCheck, self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityMore,
                  self.keepOrientCheck,
-                 self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.allowUncleanCheck, self.outCheck, self.outEdit, self.outBtn, self.pwEdit, self.showPwCheck, self.pwConfirmEdit,
+                 self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn, self.pwEdit, self.showPwCheck, self.pwConfirmEdit,
                  self.primaryBtn, self.cancelBtn]
         for a, b in zip(order, order[1:]):
             QWidget.setTabOrder(a, b)
@@ -275,7 +307,7 @@ class TabPage(QWidget):
         self.showPwCheck.toggled.connect(self._echo)
         for cb in (self.encryptCleanedCheck, self.shredAfterCheck):
             cb.toggled.connect(self._steps_changed)
-        self.moreOptionsCheck.toggled.connect(self._more_toggled)
+        self.moreOptionsCheck.toggled.connect(self.update_controls)
         self.outCheck.toggled.connect(self._out_changed)
         self.outEdit.textChanged.connect(self._out_changed)
         self.outBtn.clicked.connect(self.choose_out_dir)
@@ -294,6 +326,27 @@ class TabPage(QWidget):
 
     # ---- helpers
     @staticmethod
+    def _group(title: str, name: str) -> QGroupBox:
+        """A flat, non-checkable section with a heading. Never setCheckable: unticking would disable the children
+        but leave them ticked."""
+        g = QGroupBox(title); g.setObjectName(name); g.setFlat(True)
+        lay = QVBoxLayout(g); lay.setContentsMargins(0, tokens.SPACE[1], 0, 0); lay.setSpacing(tokens.SPACE[1])
+        return g
+
+    @staticmethod
+    def _child_box() -> tuple[QWidget, QVBoxLayout]:
+        """The container for the options that hang off one parent option: indented, with each child's warning
+        directly after it."""
+        box = QWidget(); lay = QVBoxLayout(box)
+        lay.setContentsMargins(tokens.SPACE[5], 0, 0, 0); lay.setSpacing(tokens.SPACE[1])
+        return box, lay
+
+    def _option_view(self) -> m.OptionView:
+        ticks = {n: w.isChecked() for n, w in self._opt.items()}
+        return m.option_view(self.tab, self.cryptMode, ticks,
+                             m.OptionFacts(any(r.info.can_unclean for r in self.rows)))
+
+    @staticmethod
     def _style_table(t: QTableWidget) -> None:
         t.setEditTriggers(QAbstractItemView.NoEditTriggers)
         t.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -306,15 +359,10 @@ class TabPage(QWidget):
         t.setColumnWidth(0, 164); t.setColumnWidth(1, 200)
 
     def ticked(self) -> frozenset:
-        """Extra steps added by the options. Decided from the page state, not from widget visibility, so an option
-        that is hidden (or not yet un-ticked) never counts."""
-        extra = set()
-        encrypt_on = self.tab == "clean" and self.encryptCleanedCheck.isChecked()
-        if encrypt_on:
-            extra.add("encrypt")
-        if self.shredAfterCheck.isChecked() and (encrypt_on or (self.tab == "encrypt" and self.cryptMode == "encrypt")):
-            extra.add("shred")
-        return frozenset(extra)
+        """Extra steps added by the options. Decided by ui_model.option_view, not from widget visibility, so an option
+        that is not shown or not enabled (or not yet un-ticked) never counts."""
+        live = self._option_view().live
+        return frozenset(s for s, name in (("encrypt", "encrypt_cleaned"), ("shred", "shred_after")) if live[name])
 
     def steps(self) -> frozenset:
         return m.tab_steps(self.tab, self.ticked())
@@ -323,8 +371,7 @@ class TabPage(QWidget):
         return any(r.busy for r in self.rows)
 
     def _allow_unclean(self) -> bool:
-        return (self.tab == "clean" and "encrypt" in self.steps() and not self.allowUncleanCheck.isHidden()
-                and self.allowUncleanCheck.isChecked() and any(r.info.can_unclean for r in self.rows))
+        return self._option_view().live["allow_unclean"]
 
     def run_rows(self) -> list[_Row]:
         allow = self._allow_unclean()
@@ -426,9 +473,9 @@ class TabPage(QWidget):
         self.refresh_rows(); self._ensure_probes()
 
     def out_dir(self) -> Path | None:
-        """The chosen output folder, or None when the option is hidden, unticked or empty."""
+        """The chosen output folder, or None when the option is not live (not shown, not enabled or unticked) or empty."""
         text = self.outEdit.text().strip()
-        if self.outCheck.isHidden() or not self.outCheck.isChecked() or not text:
+        if not self._option_view().live["out"] or not text:
             return None
         return Path(text)
 
@@ -439,10 +486,11 @@ class TabPage(QWidget):
             self.outCheck.setChecked(True)
 
     def _out_changed(self, *_) -> None:
-        self.outBox.setVisible(self.outCheck.isChecked() and not self.outCheck.isHidden())
+        out_live = self._option_view().live["out"]
+        self.outBox.setVisible(out_live)
         d = self.out_dir()
         self._out_problem, note = None, ""
-        if self.outCheck.isChecked() and not self.outCheck.isHidden():
+        if out_live:
             if d is None:
                 self._out_problem = tr("Choose the folder for the results.")
             elif not output.folder_exists(d):
@@ -465,13 +513,6 @@ class TabPage(QWidget):
                     note = self._out_note_cache[k]
         # a warning is word + icon, never colour alone; it replaces the confirmation window (the action is not irreversible)
         self.outNoteLabel.setText(f"⚠ {tr('Warning:')} {note}" if note else ""); self.outNoteLabel.setVisible(bool(note))
-        self.update_controls()
-
-    def _more_toggled(self, on: bool) -> None:
-        if not on:
-            for w in (self.keepOrientCheck, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck,
-                      self.keepQualityCheck, self.chroma420Check):
-                w.setChecked(False)
         self.update_controls()
 
     # ---- probing (off the GUI thread)
@@ -570,47 +611,29 @@ class TabPage(QWidget):
     def update_controls(self, *_):
         if self.mode != "list":
             return
+        # options: ui_model.option_view decides what is shown, enabled and live. A ticked option that is not shown or not
+        # enabled is un-ticked first (each un-tick re-enters this method; the view is read again afterwards).
+        for name, w in self._opt.items():
+            v = self._option_view()
+            if w.isChecked() and not v.live[name]:
+                w.setChecked(False)
+        v = self._option_view()
+        for name, w in self._opt.items():
+            w.setVisible(v.shown[name]); w.setEnabled(v.enabled[name])
+        for name, w in self._opt_notes.items():
+            w.setVisible(v.shown[name])
+        self.moreChildren.setVisible(v.live["more"])
+        reason_text = dyn(m.shred_after_reason(self.tab))
+        self.shredAfterReason.setText(reason_text)
+        self.shredAfterCheck.setAccessibleDescription(reason_text if v.shown["shred_after_reason"] else "")
         st = self.steps(); ticked = self.ticked()
         run_rows = self.run_rows(); infos = [r.info for r in run_rows]
-        # options: shown only when they can matter; hidden ones are un-ticked
-        clean_on = "clean" in st
-        self.moreOptionsCheck.setVisible(clean_on)
-        if not clean_on:
-            self.moreOptionsCheck.setChecked(False)
-        more = clean_on and self.moreOptionsCheck.isChecked()
-        for w in (self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.keepQualityCheck):
-            w.setVisible(more)
-            if not more:
-                w.setChecked(False)
-        # the rotation tag is only kept when the image data is kept; smaller colour data only applies to re-encoding
-        lossless = more and self.keepQualityCheck.isChecked()
-        self.keepOrientCheck.setVisible(lossless)
-        self.chroma420Check.setVisible(more and not lossless)
-        for w, shown in ((self.keepOrientCheck, lossless), (self.chroma420Check, more and not lossless)):
-            if not shown:
-                w.setChecked(False)
-        self.keepQualityHint.setVisible(lossless)
-        self.keepQualityMore.setVisible(lossless)
-        self.keepPartsHint.setVisible(more and self.keepPartsCheck.isChecked())
-        show_unclean = self.tab == "clean" and "encrypt" in st and any(r.info.can_unclean for r in self.rows)
-        self.allowUncleanCheck.setVisible(show_unclean)
-        if not show_unclean:
-            self.allowUncleanCheck.setChecked(False)
-        self.uncleanHint.setVisible(show_unclean and self.allowUncleanCheck.isChecked())
-        show_shred_after = ((self.tab == "clean" and self.encryptCleanedCheck.isChecked())
-                            or (self.tab == "encrypt" and self.cryptMode == "encrypt"))
-        self.shredAfterCheck.setVisible(show_shred_after)
-        if not show_shred_after:
-            self.shredAfterCheck.setChecked(False)
         if self.tab != "shred":
             self.noteLabel.setText(dyn(m.options_note(st)))
         # output folder: only where something is written (Clean and Encrypt)
-        out_on = bool(st & {"clean", "encrypt"})
-        self.outCheck.setVisible(out_on)
-        if not out_on:
-            self.outCheck.setChecked(False)
-        self.outBox.setVisible(out_on and self.outCheck.isChecked())
-        out_reason = (self._out_problem if out_on and self.outCheck.isChecked() else None)
+        out_live = v.live["out"]
+        self.outBox.setVisible(out_live)
+        out_reason = (self._out_problem if out_live else None)
         # passphrase block
         encrypting = (self.tab == "encrypt" and any(i.action == "encrypt" for i in infos)) or \
                      (self.tab == "clean" and "encrypt" in st and bool(infos))
@@ -651,16 +674,15 @@ class TabPage(QWidget):
     def build_options(self) -> steps.StepOptions:
         st = self.steps()
         clean = "clean" in st
-        more = clean and not self.moreOptionsCheck.isHidden() and self.moreOptionsCheck.isChecked()
+        live = self._option_view().live
         return steps.StepOptions(
             clean=clean, encrypt="encrypt" in st, shred="shred" in st, decrypt_age=self.tab == "encrypt",
-            allow_unclean=self._allow_unclean(),
-            keep_orientation=more and self.keepOrientCheck.isChecked(),
-            keep_icc=more and self.keepIccCheck.isChecked(),
-            jpeg_mode="lossless" if more and self.keepQualityCheck.isChecked() else "reencode",
-            jpeg_subsampling="420" if more and self.chroma420Check.isChecked() else "source",
-            unknown_members=("keep" if more and self.keepPartsCheck.isChecked()
-                             else "omit" if more and self.omitPartsCheck.isChecked() else "abort"),
+            allow_unclean=live["allow_unclean"],
+            keep_orientation=live["keep_orient"],
+            keep_icc=live["keep_icc"],
+            jpeg_mode="lossless" if live["keep_quality"] else "reencode",
+            jpeg_subsampling="420" if live["chroma420"] else "source",
+            unknown_members=("keep" if live["keep_parts"] else "omit" if live["omit_parts"] else "abort"),
             out_dir=self.out_dir())
 
     # ---- run

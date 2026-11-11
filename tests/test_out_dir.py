@@ -236,10 +236,10 @@ def test_gui_checkbox_reveals_path_field_and_passes_out_dir(w, dirs):
     a = src / "a.jpg"; _jpeg(a)
     p = w.pages["clean"]
     w.add_paths([a]); w.wait_for_probes()
-    assert not p.outCheck.isHidden() and not p.outCheck.isChecked() and p.outBox.isHidden()
+    assert p.outCheck.isVisibleTo(p) and not p.outCheck.isChecked() and (not p.outBox.isVisibleTo(p))
     assert p.build_options().out_dir is None
     p.outCheck.setChecked(True)
-    assert not p.outBox.isHidden() and not p.primaryBtn.isEnabled()
+    assert p.outBox.isVisibleTo(p) and not p.primaryBtn.isEnabled()
     assert p.reasonLabel.text() == "Choose the folder for the results."
     p.outEdit.setText(str(out))
     assert p.primaryBtn.isEnabled() and p.build_options().out_dir == out
@@ -247,7 +247,7 @@ def test_gui_checkbox_reveals_path_field_and_passes_out_dir(w, dirs):
     assert (out / "a.cleaned.jpg").exists() and not (src / "a.cleaned.jpg").exists()
     assert f"in folder {out}" in p.resultTable.item(0, 2).text()
     p.outCheck.setChecked(False)
-    assert p.build_options().out_dir is None and p.outBox.isHidden()
+    assert p.build_options().out_dir is None and (not p.outBox.isVisibleTo(p))
 
 
 def test_gui_missing_folder_blocks_and_option_hidden_where_unused(w, dirs):
@@ -257,9 +257,9 @@ def test_gui_missing_folder_blocks_and_option_hidden_where_unused(w, dirs):
     w.add_paths([x]); w.wait_for_probes()
     p.outCheck.setChecked(True); p.outEdit.setText(str(out / "nope"))
     assert p.reasonLabel.text() == "The output folder does not exist."
-    assert w.pages["shred"].outCheck.isHidden()
-    assert not p.outCheck.isHidden()                               # Clean writes a copy
-    assert not w.pages["encrypt"].outCheck.isHidden()
+    assert not w.pages["shred"].outCheck.isVisibleTo(w.pages["shred"])
+    assert p.outCheck.isVisibleTo(p)                               # Clean writes a copy
+    assert w.pages["encrypt"].outCheck.isVisibleTo(w.pages["encrypt"])
 
 
 def test_gui_out_dir_inside_listed_folder_is_blocked(w, dirs):
@@ -279,8 +279,8 @@ def test_gui_mismatch_text_appears_once(w, tmp_path):
     w.add_paths([f]); w.wait_for_probes()
     p.pwEdit.setText("one-long-pass"); p.pwConfirmEdit.setText("two-long-pass")
     shown = [lab.text() for lab in p.findChildren(type(p.matchLabel))
-             if not lab.isHidden() and "do not match" in lab.text()]
-    assert len(shown) == 1 and p.reasonLabel.isHidden() and not p.primaryBtn.isEnabled()
+             if lab.isVisibleTo(p) and "do not match" in lab.text()]
+    assert len(shown) == 1 and (not p.reasonLabel.isVisibleTo(p)) and not p.primaryBtn.isEnabled()
     assert p.strengthLabel.text() == "Length: 13 characters"
 
 

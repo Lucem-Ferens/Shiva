@@ -113,28 +113,28 @@ def test_build_options_per_tab(w, tmp_path):
     assert key(c.build_options()) == (True, True, False, False)
     c.shredAfterCheck.setChecked(True)
     assert key(c.build_options()) == (True, True, True, False)
-    c.encryptCleanedCheck.setChecked(False)                  # un-ticking encrypt hides and un-ticks "delete originals"
-    assert c.shredAfterCheck.isHidden() and not c.shredAfterCheck.isChecked()
+    c.encryptCleanedCheck.setChecked(False)                  # un-ticking encrypt greys out and un-ticks "delete originals"
+    assert c.shredAfterCheck.isVisibleTo(c) and not c.shredAfterCheck.isEnabled() and not c.shredAfterCheck.isChecked()   # stays shown, greyed out, un-ticked
     assert key(c.build_options()) == (True, False, False, False)
     e.shredAfterCheck.setChecked(True)
     assert key(e.build_options()) == (False, True, True, True)
-    e.set_crypt_mode("decrypt")                              # decrypt mode: the option is hidden, un-ticked and inert
-    assert e.shredAfterCheck.isHidden() and not e.shredAfterCheck.isChecked()
+    e.set_crypt_mode("decrypt")                              # decrypt mode: the option is greyed out, un-ticked and inert
+    assert e.shredAfterCheck.isVisibleTo(e) and not e.shredAfterCheck.isEnabled() and not e.shredAfterCheck.isChecked()
     assert key(e.build_options()) == (False, True, False, True)
 
 
 def test_hidden_options_are_not_active(w, tmp_path):
     p = w.pages["clean"]
-    assert p.moreOptionsCheck.isHidden() is True or True
+    assert p.moreOptionsCheck.isVisibleTo(p)           # Clean always offers it; the shred page never does
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
-    assert not p.moreOptionsCheck.isHidden() and p.keepOrientCheck.isHidden()
+    assert p.moreOptionsCheck.isVisibleTo(p) and (not p.keepOrientCheck.isVisibleTo(p))
     p.moreOptionsCheck.setChecked(True); p.keepQualityCheck.setChecked(True)
     p.keepOrientCheck.setChecked(True); p.keepIccCheck.setChecked(True)
     o = p.build_options(); assert o.keep_orientation and o.keep_icc and o.jpeg_mode == "lossless"
     p.moreOptionsCheck.setChecked(False)
     o = p.build_options(); assert not o.keep_orientation and not o.keep_icc and not p.keepOrientCheck.isChecked()
     assert o.jpeg_mode == "reencode" and o.jpeg_subsampling == "source" and not p.keepQualityCheck.isChecked()
-    assert w.pages["shred"].moreOptionsCheck.isHidden()
+    assert not w.pages["shred"].moreOptionsCheck.isVisibleTo(w.pages["shred"])
 
 
 def test_jpeg_options_follow_each_other(w, tmp_path):
@@ -142,13 +142,13 @@ def test_jpeg_options_follow_each_other(w, tmp_path):
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
     p.moreOptionsCheck.setChecked(True)
     # default: re-encode; the colour-detail choice is offered, the rotation tag and the warning are not
-    assert not p.chroma420Check.isHidden() and p.keepOrientCheck.isHidden() and p.keepQualityHint.isHidden()
+    assert p.chroma420Check.isVisibleTo(p) and (not p.keepOrientCheck.isVisibleTo(p)) and (not p.keepQualityHint.isVisibleTo(p))
     p.chroma420Check.setChecked(True)
     assert p.build_options().jpeg_subsampling == "420"
     p.keepQualityCheck.setChecked(True)   # keeping the image data: no re-encode, so the colour choice goes away
-    assert p.chroma420Check.isHidden() and not p.chroma420Check.isChecked()
-    assert not p.keepOrientCheck.isHidden() and not p.keepQualityHint.isHidden()
-    assert p.keepQualityHint.text().startswith("⚠ Warning:") and p.keepQualityMore.toolTip() and not p.keepQualityMore.isHidden()
+    assert (not p.chroma420Check.isVisibleTo(p)) and not p.chroma420Check.isChecked()
+    assert p.keepOrientCheck.isVisibleTo(p) and p.keepQualityHint.isVisibleTo(p)
+    assert p.keepQualityHint.text().startswith("⚠ Warning:") and p.keepQualityMore.toolTip() and p.keepQualityMore.isVisibleTo(p)
     o = p.build_options(); assert o.jpeg_mode == "lossless" and o.jpeg_subsampling == "source"
 
 
@@ -156,18 +156,18 @@ def test_jpeg_options_follow_each_other(w, tmp_path):
 def test_passphrase_states_on_encrypt_tab(w, tmp_path):
     w.set_tab("encrypt"); p = w.pages["encrypt"]
     w.add_paths([mk(tmp_path, "t.txt")]); w.wait_for_probes()
-    assert not p.pwBlock.isHidden() and not p.confirmBox.isHidden()
+    assert p.pwBlock.isVisibleTo(p) and p.confirmBox.isVisibleTo(p)
     assert p.reasonLabel.text() == "Enter a passphrase." and not p.primaryBtn.isEnabled()
     p.pwEdit.setText("short")
     assert p.reasonLabel.text() == "Repeat the passphrase."
-    assert "Short passphrase" in p.pwWarnLabel.text() and not p.pwWarnLabel.isHidden()
+    assert "Short passphrase" in p.pwWarnLabel.text() and p.pwWarnLabel.isVisibleTo(p)
     p.pwConfirmEdit.setText("shor")
-    assert "do not match" in p.matchLabel.text() and p.reasonLabel.isHidden()   # said once, inline only
+    assert "do not match" in p.matchLabel.text() and (not p.reasonLabel.isVisibleTo(p))   # said once, inline only
     assert not p.primaryBtn.isEnabled()
     p.pwConfirmEdit.setText("short")                       # short passphrase only warns
-    assert p.primaryBtn.isEnabled() and p.reasonLabel.isHidden() and "Short passphrase" in p.pwWarnLabel.text()
+    assert p.primaryBtn.isEnabled() and (not p.reasonLabel.isVisibleTo(p)) and "Short passphrase" in p.pwWarnLabel.text()
     p.pwEdit.setText("a much longer passphrase"); p.pwConfirmEdit.setText("a much longer passphrase")
-    assert p.primaryBtn.isEnabled() and p.pwWarnLabel.isHidden() and p.strengthLabel.text() == "Length: 24 characters"
+    assert p.primaryBtn.isEnabled() and (not p.pwWarnLabel.isVisibleTo(p)) and p.strengthLabel.text() == "Length: 24 characters"
     assert p.primaryBtn.text() == "Encrypt 1 item" and "Passphrases match" in p.matchLabel.text()
     assert p.lostPwNotice.text().startswith("If you lose this passphrase")
 
@@ -175,15 +175,15 @@ def test_passphrase_states_on_encrypt_tab(w, tmp_path):
 def test_decrypt_only_needs_no_length_and_no_confirm(w, tmp_path):
     w.set_tab("encrypt"); p = w.pages["encrypt"]
     w.add_paths([mk(tmp_path, "old.zip.age")]); w.wait_for_probes()
-    assert not p.pwBlock.isHidden() and p.confirmBox.isHidden()
+    assert p.pwBlock.isVisibleTo(p) and (not p.confirmBox.isVisibleTo(p))
     assert p.reasonLabel.text() == "Enter a passphrase."
     p.pwEdit.setText("ab")
-    assert p.primaryBtn.isEnabled() and p.primaryBtn.text() == "Decrypt 1 file" and p.pwWarnLabel.isHidden()
+    assert p.primaryBtn.isEnabled() and p.primaryBtn.text() == "Decrypt 1 file" and (not p.pwWarnLabel.isVisibleTo(p))
 
 
 def test_encrypt_page_decrypt_switch(w, tmp_path):
     w.set_tab("encrypt"); p = w.pages["encrypt"]
-    assert p.modeEncBtn.isChecked() and not p.modeBox.isHidden()
+    assert p.modeEncBtn.isChecked() and p.modeBox.isVisibleTo(p)
     w.add_paths([mk(tmp_path, "a.txt"), mk(tmp_path, "b.zip.age")]); w.wait_for_probes()
     assert p.cryptMode == "encrypt"          # mixed list: no automatic switch
     assert [r.info.run for r in p.rows] == [True, False]
@@ -210,12 +210,13 @@ def test_passphrase_cleared_at_run_start_cannot_be_undone(w, tmp_path):
 # ---------------------------------------------------------------- pipeline options (formerly the Combine page)
 def test_clean_page_encrypt_option_and_honest_notes(w, tmp_path):
     c = w.pages["clean"]
-    assert not c.encryptCleanedCheck.isChecked() and not c.encryptCleanedCheck.isHidden()
-    assert c.shredAfterCheck.isHidden()                       # appears only with "Encrypt the cleaned copies"
+    assert not c.encryptCleanedCheck.isChecked() and c.encryptCleanedCheck.isVisibleTo(c)
+    assert c.shredAfterCheck.isVisibleTo(c) and not c.shredAfterCheck.isEnabled()   # greyed out until "Encrypt the cleaned copies" is ticked
+    assert c.shredAfterReason.isVisibleTo(c) and c.shredAfterReason.text().startswith("Tick")
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
     assert "trial decrypt" not in c.noteLabel.text()
     c.encryptCleanedCheck.setChecked(True); w.wait_for_probes()
-    assert not c.shredAfterCheck.isHidden() and not c.shredAfterCheck.isChecked()
+    assert c.shredAfterCheck.isEnabled() and not c.shredAfterReason.isVisibleTo(c) and not c.shredAfterCheck.isChecked()
     assert "trial decrypt" in c.noteLabel.text() and "before its original is shredded" not in c.noteLabel.text()
     assert c.rows[0].info.can_unclean                          # a.bin cannot be cleaned: needs the explicit tick
     c.shredAfterCheck.setChecked(True); w.wait_for_probes()
@@ -226,7 +227,7 @@ def test_clean_page_encrypt_option_and_honest_notes(w, tmp_path):
 def test_encrypt_page_delete_originals_option(w, tmp_path):
     e = w.pages["encrypt"]
     w.set_tab("encrypt")
-    assert not e.shredAfterCheck.isHidden() and not e.shredAfterCheck.isChecked()
+    assert e.shredAfterCheck.isVisibleTo(e) and not e.shredAfterCheck.isChecked()
     assert e.noteLabel.text() == "" and e.primaryBtn.text() == "Encrypt"
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
     assert e.primaryBtn.text() == "Encrypt 1 item"
@@ -235,7 +236,7 @@ def test_encrypt_page_delete_originals_option(w, tmp_path):
     e.pwEdit.setText("long enough pw"); e.pwConfirmEdit.setText("long enough pw")
     assert e.primaryBtn.isEnabled()
     e.set_crypt_mode("decrypt")
-    assert e.shredAfterCheck.isHidden() and not e.shredAfterCheck.isChecked() and e.noteLabel.text() == ""
+    assert (not e.shredAfterCheck.isEnabled()) and not e.shredAfterCheck.isChecked() and e.noteLabel.text() == ""
 
 
 def test_encrypt_page_delete_originals_declined_changes_nothing(w, tmp_path, monkeypatch):
@@ -256,36 +257,36 @@ def test_clean_unclean_checkbox_is_contextual_and_unticked_when_hidden(w, tmp_pa
     c = w.pages["clean"]
     w.add_paths([mk(tmp_path, "n.bin")])
     c.encryptCleanedCheck.setChecked(True); w.wait_for_probes()
-    assert c.rows[0].info.status == "Can't be cleaned" and not c.allowUncleanCheck.isHidden()
+    assert c.rows[0].info.status == "Can't be cleaned" and c.allowUncleanCheck.isVisibleTo(c)
     assert not c.build_options().allow_unclean and c.reasonLabel.text() == "Add at least one file that can be cleaned."
     c.allowUncleanCheck.setChecked(True)
     assert c.build_options().allow_unclean and c.reasonLabel.text() == "Enter a passphrase."
     c.encryptCleanedCheck.setChecked(False)
-    assert c.allowUncleanCheck.isHidden() and not c.allowUncleanCheck.isChecked() and not c.build_options().allow_unclean
+    assert (not c.allowUncleanCheck.isVisibleTo(c)) and not c.allowUncleanCheck.isChecked() and not c.build_options().allow_unclean
 
 
 def test_unclean_option_has_an_inline_warning_and_no_confirmation_window(w, tmp_path):
     f = mk(tmp_path, "n.bin")
     c = w.pages["clean"]
     w.add_paths([f]); c.encryptCleanedCheck.setChecked(True); w.wait_for_probes()
-    assert c.uncleanHint.isHidden()
+    assert (not c.uncleanHint.isVisibleTo(c))
     c.allowUncleanCheck.setChecked(True)
-    assert not c.uncleanHint.isHidden() and c.uncleanHint.text().startswith("⚠ Warning:")
+    assert c.uncleanHint.isVisibleTo(c) and c.uncleanHint.text().startswith("⚠ Warning:")
     assert "metadata" in c.uncleanHint.text() and "not deleted" in c.uncleanHint.text()
     assert not hasattr(w, "confirm_unclean") and not hasattr(w, "confirm_keep_parts")   # only irreversible actions confirm
     c.allowUncleanCheck.setChecked(False)
-    assert c.uncleanHint.isHidden()
+    assert (not c.uncleanHint.isVisibleTo(c))
 
 
 def test_keep_parts_option_has_an_inline_warning(w, tmp_path):
     c = w.pages["clean"]
     w.add_paths([mk(tmp_path, "a.zip")]); w.wait_for_probes()
     c.moreOptionsCheck.setChecked(True)
-    assert c.keepPartsHint.isHidden()
+    assert (not c.keepPartsHint.isVisibleTo(c))
     c.keepPartsCheck.setChecked(True)
-    assert not c.keepPartsHint.isHidden() and c.keepPartsHint.text().startswith("⚠ Warning:")
+    assert c.keepPartsHint.isVisibleTo(c) and c.keepPartsHint.text().startswith("⚠ Warning:")
     c.keepPartsCheck.setChecked(False)
-    assert c.keepPartsHint.isHidden()
+    assert (not c.keepPartsHint.isVisibleTo(c))
 
 
 # ---------------------------------------------------------------- dialogs
@@ -297,7 +298,7 @@ def test_confirm_dialog_destructive_button_is_delayed_and_has_one_primary(w):
     QTest.qWait(300)
     assert d.doBtn.isEnabled()
     assert [b.text() for b in d.findChildren(QPushButton) if b.property("primary")] == [d.cancelBtn.text()]
-    assert d.trailerLabel.isHidden() and d.learnLink.isHidden()      # shown only when asked for
+    assert (not d.trailerLabel.isVisibleTo(d)) and (not d.learnLink.isVisibleTo(d))      # shown only when asked for
 
 
 def test_confirm_dialog_item_tips_hold_the_full_path(w):
@@ -335,7 +336,7 @@ def test_confirm_dialog_warning_lines_trailer_and_help_link(w):
     d.show(); QApplication.processEvents()
     texts = [d.itemList.item(i).text().strip() for i in range(d.itemList.count())]
     assert texts == ["a.bin", m.RISK_CLOUD, "b.bin"]
-    assert not d.trailerLabel.isHidden() and d.trailerLabel.text() == m.TRAILER
+    assert d.trailerLabel.isVisibleTo(d) and d.trailerLabel.text() == m.TRAILER
     got = []
     d.learnRequested.connect(lambda: got.append(1)); d.learnLink.click()
     assert got == [1]
@@ -370,8 +371,8 @@ def test_about_shredding_dialog_and_links(w):
     assert "securely deleted" not in html and "wear levelling" in html
     assert d.closeBtn.property("primary") and d.closeBtn.isDefault()
     w.set_tab("shred"); p = w.pages["shred"]
-    assert not p.aboutShredLink.isHidden() and p.noteLabel.text() == m.SHRED_LINE
-    assert w.pages["clean"].aboutShredLink.isHidden()
+    assert p.aboutShredLink.isVisibleTo(p) and p.noteLabel.text() == m.SHRED_LINE
+    assert not w.pages["clean"].aboutShredLink.isVisibleTo(w.pages["clean"])
     opened = []
     w.show_about_shredding = lambda: opened.append(1)
     p.aboutShredLink.click()
@@ -447,8 +448,9 @@ def test_pdf_use_for_others_only_when_categories_were_all_shown(w, tmp_path, mon
 
 def test_pdf_dialog_defaults(w):
     d = PdfDialog(w, "r.pdf", [{"key": "info", "label": "Info", "detail": "x", "content_changing": False}], remaining=2)
-    assert d.chosen() == ["info"] and d.okBtn.isDefault() and not d.useOthersCheck.isHidden()
-    assert PdfDialog(w, "r.pdf", [], remaining=0).useOthersCheck.isHidden()
+    assert d.chosen() == ["info"] and d.okBtn.isDefault() and d.useOthersCheck.isVisibleTo(d)
+    d0 = PdfDialog(w, "r.pdf", [], remaining=0)
+    assert not d0.useOthersCheck.isVisibleTo(d0)
 
 
 # ---------------------------------------------------------------- runs and results
@@ -541,10 +543,10 @@ def _docx_unknown(tmp_path):
 def test_archive_part_options_exclusive_hidden_and_mapped(w, tmp_path):
     p = w.pages["clean"]
     w.add_paths([_docx_unknown(tmp_path)]); w.wait_for_probes()
-    assert p.omitPartsCheck.isHidden() and p.keepPartsCheck.isHidden()
+    assert (not p.omitPartsCheck.isVisibleTo(p)) and (not p.keepPartsCheck.isVisibleTo(p))
     assert p.build_options().unknown_members == "abort"
     p.moreOptionsCheck.setChecked(True)
-    assert not p.omitPartsCheck.isHidden() and not p.keepPartsCheck.isHidden()
+    assert p.omitPartsCheck.isVisibleTo(p) and p.keepPartsCheck.isVisibleTo(p)
     p.omitPartsCheck.setChecked(True); assert p.build_options().unknown_members == "omit"
     p.keepPartsCheck.setChecked(True)
     assert not p.omitPartsCheck.isChecked() and p.build_options().unknown_members == "keep"
@@ -558,7 +560,7 @@ def test_keep_parts_runs_without_a_confirmation_window_and_is_marked(w, tmp_path
     src = _docx_unknown(tmp_path); p = w.pages["clean"]
     w.add_paths([src]); w.wait_for_probes()
     p.moreOptionsCheck.setChecked(True); p.keepPartsCheck.setChecked(True)
-    assert not p.keepPartsHint.isHidden()               # the warning sits next to the option
+    assert p.keepPartsHint.isVisibleTo(p)               # the warning sits next to the option
     asked = []
     monkeypatch.setattr(ConfirmDialog, "exec", lambda self: asked.append(1) or 1)
     run_and_wait(w)
@@ -595,11 +597,11 @@ def test_office_dialog_defaults_disabled_rows_and_inline_warning(w):
     assert any(l.text() == "Always kept: no personal data." for l in d.findChildren(QLabel))
     assert not any("Limits:" in l.text() for l in d.findChildren(QLabel))
     assert "other documents" in d.useOthersCheck.text()
-    assert d.warnLabel.isHidden()                    # nothing content-changing ticked: no warning
+    assert (not d.warnLabel.isVisibleTo(d))                    # nothing content-changing ticked: no warning
     d.okBtn.click(); assert d.result() == 1
     d = PdfDialog(w, "r.docx", _office_cats(), kind="office")
     [cb for k, cb in d.boxes if k == "comments"][0].setChecked(True)
-    assert not d.warnLabel.isHidden() and d.warnLabel.text().startswith("⚠ Warning:") and "comments" in d.warnLabel.text()
+    assert d.warnLabel.isVisibleTo(d) and d.warnLabel.text().startswith("⚠ Warning:") and "comments" in d.warnLabel.text()
     d.okBtn.click()                                  # no second window: the warning above is the notice
     assert d.result() == 1 and d.chosen() == ["props", "comments"]
 

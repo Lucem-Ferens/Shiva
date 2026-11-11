@@ -101,8 +101,10 @@ QLineEdit:focus, QPlainTextEdit:focus { border: ${f_width}px solid $accent; }
 QTableWidget { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; gridline-color: $line; selection-background-color: $selected; selection-color: $text; }
 QHeaderView::section { background: $surface_strong; color: $text_secondary; border: 0; border-bottom: 1px solid $line; padding: ${s1}px ${s2}px; font-weight: 600; }
 QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
+QGroupBox { border: 0; margin-top: ${s4}px; padding: 0; font-weight: 600; }
+QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 0; padding: 0; }
 QLabel#pageTitle { font-size: ${t_title}px; font-weight: 600; }
-QLabel#pageScope { color: $text_secondary; }
+QLabel#pageScope, QLabel#shredAfterReason { color: $text_secondary; }
 QLabel#statusWarning { color: $warning; }
 QLabel#statusError { color: $error; font-weight: 600; }
 """)
