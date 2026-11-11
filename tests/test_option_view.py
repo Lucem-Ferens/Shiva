@@ -11,7 +11,8 @@ def _states():
         for mode in ("encrypt", "decrypt"):
             for can in (False, True):
                 for bits in itertools.product((False, True), repeat=len(NAMES)):
-                    yield tab, mode, dict(zip(NAMES, bits)), m.OptionFacts(can)
+                    for reenc in (False, True):
+                        yield tab, mode, dict(zip(NAMES, bits)), m.OptionFacts(can, reenc)
 
 
 def _previous(tab, mode, ticks, can):
@@ -47,6 +48,9 @@ def test_not_shown_or_not_enabled_is_never_live_and_decisions_match():
         for note, owner in (("keep_quality_hint", "keep_quality"), ("keep_quality_more", "keep_quality"),
                             ("keep_parts_hint", "keep_parts"), ("unclean_hint", "allow_unclean")):
             assert v.shown[note] == v.live[owner]
+        # the re-encode warning: shown iff cleaning runs, a listed file may hold such an image, and the data is not kept as is
+        assert v.shown["reencode_hint"] == (tab == "clean" and facts.reencodes and not v.live["keep_quality"])
+        assert v.enabled["reencode_hint"] == v.shown["reencode_hint"]
         old = _previous(tab, mode, ticks, facts.can_unclean)
         live = v.live
         assert live["shred_after"] == old["shred"]
@@ -57,7 +61,7 @@ def test_not_shown_or_not_enabled_is_never_live_and_decisions_match():
         assert live["keep_orient"] == old["orient"] and live["chroma420"] == old["chroma"]
         assert live["keep_icc"] == old["icc"]
         n += 1
-    assert n == 3 * 2 * 2 * 2 ** len(NAMES)
+    assert n == 3 * 2 * 2 * 2 * 2 ** len(NAMES)
 
 
 def test_shred_page_has_no_options():

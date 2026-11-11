@@ -40,6 +40,8 @@ NOTE_CONTENT = ("If cleaning changes content in another way, that original is ke
 JPEG_HOLDERS = ("jpeg", "webp", "docx", "xlsx", "pptx", "odt", "ods", "odp", "zip")
 NOTE_JPEG = ("JPEG and lossy WebP images, including those inside documents and archives, are saved again with a small loss of quality. "
              "Shiva keeps no copy of the original images.")
+WARN_REENCODE = ("Warning: JPEG and lossy WebP images, including those inside documents and archives, are saved "
+                 "again with a small loss of quality.")
 NOTE_ARCHIVE = "Archives with parts left out lose those parts. Their originals are kept."
 # Per-item risks: only locations worse than the NTFS baseline (SSD, removable, network, cloud, unknown drive).
 # The universal journal / shadow-copy fact lives on the "About shredding" page, not on every item.
@@ -278,6 +280,7 @@ OPTION_NAMES = ("encrypt_cleaned", "shred_after", "more", "keep_quality", "keep_
 @dataclass(frozen=True)
 class OptionFacts:
     can_unclean: bool = False      # some listed file can be encrypted only without cleaning
+    reencodes: bool = False        # some listed file may hold a JPEG or WebP that cleaning saves again
 
 
 @dataclass(frozen=True)
@@ -320,6 +323,8 @@ def option_view(tab: str, crypt_mode: str, ticks, facts: OptionFacts = OptionFac
     for note, owner in (("keep_quality_hint", "keep_quality"), ("keep_quality_more", "keep_quality"),
                         ("keep_parts_hint", "keep_parts"), ("unclean_hint", "allow_unclean")):
         shown[note] = enabled[note] = live[owner]
+    # saved again (lossy) is the default; ticking "keep the image data as it is" removes the reason for the warning
+    shown["reencode_hint"] = enabled["reencode_hint"] = "clean" in st and facts.reencodes and not live["keep_quality"]
     # why a visible option is greyed out
     shown["shred_after_reason"] = enabled["shred_after_reason"] = shown["shred_after"] and not enabled["shred_after"]
     return OptionView(shown, enabled, live)

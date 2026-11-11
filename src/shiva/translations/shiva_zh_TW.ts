@@ -643,6 +643,7 @@
     <message><source>Warning: every page becomes a picture.</source><translation>警告：每一頁都會變成圖片。</translation></message>
     <message><source>Text can't be selected or searched, and links, bookmarks, form fields and attachments are lost.</source><translation>文字將無法選取或搜尋，連結、書籤、表單欄位與附件都會消失。</translation></message>
     <message><source>Warning: the cleaned copy will not contain %1.</source><translation>警告：清理後的副本不會包含 %1。</translation></message>
+    <message><source>Warning: JPEG and lossy WebP images, including those inside documents and archives, are saved again with a small loss of quality.</source><translation>警告：JPEG 與有損 WebP 圖片（包含文件與壓縮檔內的圖片）會重新儲存，畫質會有些微損失。</translation></message>
     <message><source>Warning: parts that can't be cleaned are copied as they are and may still hold personal metadata.</source><translation>警告：無法清理的部分會原封不動地複製，可能仍含有個人的中繼資料。</translation></message>
     <message><source>Warning: these files keep their metadata inside the encrypted copy, and their originals are not deleted.</source><translation>警告：這些檔案的中繼資料會留在加密後的副本裡，它們的原始檔也不會被刪除。</translation></message>
     <message><source>Learn about shredding</source><translation>了解銷毀</translation></message>

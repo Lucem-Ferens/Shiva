@@ -610,6 +610,8 @@ _many({
     "Text can't be selected or searched, and links, bookmarks, form fields and attachments are lost.":
         "文字將無法選取或搜尋，連結、書籤、表單欄位與附件都會消失。",
     "Warning: the cleaned copy will not contain %1.": "警告：清理後的副本不會包含 %1。",
+    "Warning: JPEG and lossy WebP images, including those inside documents and archives, are saved again with a small loss of quality.":
+        "警告：JPEG 與有損 WebP 圖片（包含文件與壓縮檔內的圖片）會重新儲存，畫質會有些微損失。",
     "Warning: parts that can't be cleaned are copied as they are and may still hold personal metadata.":
         "警告：無法清理的部分會原封不動地複製，可能仍含有個人的中繼資料。",
     "Warning: these files keep their metadata inside the encrypted copy, and their originals are not deleted.":

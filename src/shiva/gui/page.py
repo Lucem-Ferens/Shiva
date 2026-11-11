@@ -228,6 +228,8 @@ class TabPage(QWidget):
 
         self.noteLabel = QLabel(dyn(m.CLEAN_LIMITS if tab == "clean" else m.SHRED_LINE if tab == "shred" else ""))
         self.noteLabel.setWordWrap(True); bl.addWidget(self.noteLabel)
+        self.reencodeHint = QLabel("⚠ " + dyn(m.WARN_REENCODE)); self.reencodeHint.setObjectName("reencodeHint")
+        self.reencodeHint.setWordWrap(True); self.reencodeHint.setVisible(False); bl.addWidget(self.reencodeHint)
         self.aboutShredLink = QPushButton(dyn(m.ABOUT_LINK)); self.aboutShredLink.setFlat(True)
         link_button(self.aboutShredLink)
         self.aboutShredLink.setAccessibleName(dyn(m.ABOUT_LINK))
@@ -307,7 +309,7 @@ class TabPage(QWidget):
                      "keep_parts": self.keepPartsCheck, "allow_unclean": self.allowUncleanCheck}
         self._opt_notes = {"keep_quality_hint": self.keepQualityHint, "keep_quality_more": self.keepQualityMore,
                            "keep_parts_hint": self.keepPartsHint, "unclean_hint": self.uncleanHint,
-                           "shred_after_reason": self.shredAfterReason}
+                           "shred_after_reason": self.shredAfterReason, "reencode_hint": self.reencodeHint}
         for w in (*self._opt.values(), *self._opt_notes.values(), self.moreChildren):
             w.setVisible(False)
         self.moreOptionsCheck.setVisible(False)
@@ -447,7 +449,8 @@ class TabPage(QWidget):
     def _option_view(self) -> m.OptionView:
         ticks = {n: w.isChecked() for n, w in self._opt.items()}
         return m.option_view(self.tab, self.cryptMode, ticks,
-                             m.OptionFacts(any(r.info.can_unclean for r in self.rows)))
+                             m.OptionFacts(any(r.info.can_unclean for r in self.rows),
+                                           any(r.info.run and r.facts.fmt in m.JPEG_HOLDERS for r in self.rows)))
 
     @staticmethod
     def _style_table(t: QTableWidget) -> None:

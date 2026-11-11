@@ -171,7 +171,8 @@ def _scenario_texts() -> list[str]:
     F = m.Facts
     base = dict(probed=True, exists=True, classified=True, storage_done=True, counted=True)
     out: list[str] = [m.CLEAN_LIMITS, m.SHRED_LINE, m.LOST_PW, m.SHORT_PW_WARNING, m.RISK_SSD, m.RISK_REMOVABLE,
-                      m.RISK_NETWORK, m.RISK_CLOUD, m.RISK_UNKNOWN, m.NOTE_CONTENT, m.NOTE_ARCHIVE]
+                      m.RISK_NETWORK, m.RISK_CLOUD, m.RISK_UNKNOWN, m.NOTE_CONTENT, m.NOTE_ARCHIVE,
+                      m.WARN_REENCODE]
     out += [t for _k, t in m.ABOUT_SHREDDING] + [m.ABOUT_TITLE]
     out += list(m.shred.REFUSAL_TEXT.values()) + [f"Not shredded: {t} Nothing was changed." for t in m.shred.REFUSAL_TEXT.values()]
     for t in m.TITLES.values():
