@@ -29,4 +29,9 @@ jobs:
       - name: Fetch the pinned age binaries (SHA-256 checked)
         run: python tools/fetch_third_party.py
       - name: Run the tests
-        run: python -m pytest -q
+        shell: bash
+        run: |
+          code=0
+          python -X faulthandler -m pytest -q || code=$?
+          echo "pytest exit code: $code"
+          exit $code
