@@ -698,24 +698,24 @@ _many({
 # ------------------------------------------------------------------ recipient keys and key files
 _many({
     "Encrypt with": "加密方式", "Decrypt with": "解密方式", "Password": "密碼", "Recipient keys": "收件人金鑰",
-    "Key file": "金鑰檔",
-    "Each recipient opens the files with their own key file.": "每位收件人用自己的金鑰檔開啟檔案。",
+    "Key file": "私鑰檔",
+    "Each recipient opens the files with their own key file.": "每位收件人用自己的私鑰檔開啟檔案。",
     "You type the same password to open the files.": "開啟檔案時輸入相同的密碼。",
     "You type the password the files were encrypted with.": "輸入加密這些檔案時使用的密碼。",
-    "Choose the key file that matches the key the files were encrypted for.": "選擇與加密這些檔案時所用金鑰相符的金鑰檔。",
+    "Choose the key file that matches the key the files were encrypted for.": "選擇與加密這些檔案時所用金鑰相符的私鑰檔。",
     "Public keys of the recipients": "收件人的公開金鑰",
     "Paste a public key here (starts with age1)": "在這裡貼上公開金鑰（以 age1 開頭）",
     "Public key check": "公開金鑰檢查",
     "Add key": "加入金鑰", "Add from file...": "從檔案加入...", "Remove selected key": "移除所選金鑰",
     "Recipient keys: type, key, source": "收件人金鑰：類型、金鑰、來源",
     "Key": "金鑰", "Source": "來源", "No keys added yet.": "尚未加入任何金鑰。",
-    "Post-quantum": "後量子", "Standard": "標準", "Pasted": "貼上", "Your key file": "您的金鑰檔",
-    "Your key file (optional)": "您的金鑰檔（選填）",
+    "Post-quantum": "後量子", "Standard": "標準", "Pasted": "貼上", "Your key file": "您的私鑰檔",
+    "Your key file (optional)": "您的私鑰檔（選填）",
     "Used to verify the encrypted copy (required for shredding) and to encrypt to your own key.":
         "用來驗證加密後的複本（銷毀時必須有），以及加密給您自己的金鑰。",
-    "Key file path": "金鑰檔路徑", "Choose key file...": "選擇金鑰檔...", "Choose key file": "選擇金鑰檔",
-    "Key file password": "金鑰檔密碼", "Show password": "顯示密碼", "Show password (key file)": "顯示密碼（金鑰檔）",
-    "Unlock": "解鎖", "Unlock the key file": "解鎖金鑰檔", "Key file status": "金鑰檔狀態",
+    "Key file path": "私鑰檔路徑", "Choose key file...": "選擇私鑰檔...", "Choose key file": "選擇私鑰檔",
+    "Key file password": "私鑰檔密碼", "Show password": "顯示密碼", "Show password (key file)": "顯示密碼（私鑰檔）",
+    "Unlock": "解鎖", "Unlock the key file": "解鎖私鑰檔", "Key file status": "私鑰檔狀態",
     "Copy public key": "複製公開金鑰", "Public key copied.": "已複製公開金鑰。",
     "Post-quantum key.": "後量子金鑰。", "Standard key.": "標準金鑰。", "Unlocked.": "已解鎖。", "Ready.": "已就緒。",
     "Also encrypt to my own key": "同時加密給我自己的金鑰",
@@ -732,8 +732,8 @@ _many({
     "Removed 1 key.": "已移除 1 把金鑰。", "Removed %1 keys.": "已移除 %1 把金鑰。",
     "Untick \"Also encrypt to my own key\" to remove it.": "取消勾選「同時加密給我自己的金鑰」才能移除它。",
     "Options that need your key file were turned off. Choose or unlock it again.":
-        "需要您金鑰檔的選項已關閉。重新選擇或解鎖金鑰檔。",
-    "This key file needs its password.": "這個金鑰檔需要密碼。", "Enter it, then press Unlock.": "輸入後按「解鎖」。",
+        "需要您私鑰檔的選項已關閉。重新選擇或解鎖私鑰檔。",
+    "This key file needs its password.": "這個私鑰檔需要密碼。", "Enter it, then press Unlock.": "輸入後按「解鎖」。",
     "Error: No keys found in this file. Keys start with age1, one per line.":
         "錯誤：這個檔案中找不到金鑰。金鑰以 age1 開頭，每行一把。",
     "Error: This isn't a key Shiva can use. Public keys start with age1.": "錯誤：這不是 Shiva 能使用的金鑰。公開金鑰以 age1 開頭。",
@@ -741,30 +741,30 @@ _many({
     "clipboard history (Win+V): clear it there.":
         "錯誤：那是私密金鑰，不是公開金鑰。Shiva 已清空輸入框。切勿分享它。它可能仍留在剪貼簿歷程（Win+V）中，到那裡清除。",
     "Error: This file holds a secret key, not public keys. Use \"Choose key file...\" for it.":
-        "錯誤：這個檔案是私密金鑰，不是公開金鑰。改用「選擇金鑰檔...」。",
+        "錯誤：這個檔案是私密金鑰，不是公開金鑰。改用「選擇私鑰檔...」。",
     "Error: This file can't be read as a list of keys.": "錯誤：無法將這個檔案當作金鑰清單讀取。",
     "Error: A file can't use both post-quantum and standard keys. Remove one kind.":
         "錯誤：同一個檔案不能同時使用後量子與標準金鑰。移除其中一種。",
     "Error: The key file password is wrong, or the file is damaged. Enter it again.":
-        "錯誤：金鑰檔密碼不正確，或檔案已損毀。重新輸入密碼。",
+        "錯誤：私鑰檔密碼不正確，或檔案已損毀。重新輸入密碼。",
     "Error: This isn't a key file (no AGE-SECRET-KEY- line). Choose another one.":
-        "錯誤：這不是金鑰檔（沒有 AGE-SECRET-KEY- 開頭的行）。選擇另一個。",
+        "錯誤：這不是私鑰檔（沒有 AGE-SECRET-KEY- 開頭的行）。選擇另一個。",
     "Error: SSH keys aren't supported yet. Use an age key (starts with age1).":
         "錯誤：尚不支援 SSH 金鑰。使用 age 金鑰（以 age1 開頭）。",
     "Error: Keys for plugins or hardware devices aren't supported yet. Use an age key (starts with age1).":
         "錯誤：尚不支援外掛或硬體裝置的金鑰。使用 age 金鑰（以 age1 開頭）。",
-    "Choose your key file": "選擇您的金鑰檔", "Key files (*.agekey *.txt);;All files (*)": "金鑰檔 (*.agekey *.txt);;所有檔案 (*)",
+    "Choose your key file": "選擇您的私鑰檔", "Key files (*.agekey *.txt);;All files (*)": "私鑰檔 (*.agekey *.txt);;所有檔案 (*)",
     "Add public keys from a file": "從檔案加入公開金鑰", "Text files (*.txt);;All files (*)": "文字檔 (*.txt);;所有檔案 (*)",
     # reasons and results (key_model)
     "Press Add key to use the pasted key.": "按「加入金鑰」使用貼上的金鑰。",
     "Add at least one recipient key.": "至少加入一把收件人金鑰。",
     "A file can't use both post-quantum and standard keys. Remove one kind.": "同一個檔案不能同時使用後量子與標準金鑰。移除其中一種。",
-    "Choose a key file.": "選擇金鑰檔。", "This isn't a key file. Choose another one.": "這不是金鑰檔。選擇另一個。",
-    "Enter the key file password, then press Unlock.": "輸入金鑰檔密碼，再按「解鎖」。",
-    "Enter the key file password again.": "再輸入一次金鑰檔密碼。",
+    "Choose a key file.": "選擇私鑰檔。", "This isn't a key file. Choose another one.": "這不是私鑰檔。選擇另一個。",
+    "Enter the key file password, then press Unlock.": "輸入私鑰檔密碼，再按「解鎖」。",
+    "Enter the key file password again.": "再輸入一次私鑰檔密碼。",
     "Shredding needs it to verify each encrypted copy.": "銷毀需要用它驗證每個加密後的複本。",
-    "Choose your key file first.": "先選擇您的金鑰檔。", "Unlock your key file first.": "先解鎖您的金鑰檔。",
-    "The trial decrypt uses your key file.": "試解密會使用您的金鑰檔。",
+    "Choose your key file first.": "先選擇您的私鑰檔。", "Unlock your key file first.": "先解鎖您的私鑰檔。",
+    "The trial decrypt uses your key file.": "試解密會使用您的私鑰檔。",
     "Post-quantum: yes (confirmed by age-inspect).": "後量子：是（age-inspect 已確認）。",
     "Post-quantum: no (age-inspect says the file does not use a post-quantum key).":
         "後量子：否（age-inspect 表示這個檔案未使用後量子金鑰）。",
@@ -773,75 +773,75 @@ _many({
     "Encrypted for 1 key (post-quantum).": "已加密給 1 把金鑰（後量子）。",
     "Encrypted for %N1 keys (post-quantum).": "已加密給 %1 把金鑰（後量子）。",
     "Not confirmed as post-quantum: see details.": "未確認為後量子：請見詳細資料。",
-    "Verified with your key file.": "已用您的金鑰檔驗證。", "Not verified (no key file).": "未驗證（沒有金鑰檔）。",
-    "Decrypted with your key file to %T1.": "已解密並存為 %1（使用您的金鑰檔）。",
+    "Verified with your key file.": "已用您的私鑰檔驗證。", "Not verified (no key file).": "未驗證（沒有私鑰檔）。",
+    "Decrypted with your key file to %T1.": "已解密並存為 %1（使用您的私鑰檔）。",
     "1 post-quantum key.": "1 把後量子金鑰。", "%N1 post-quantum keys.": "%1 把後量子金鑰。",
     "1 standard key.": "1 把標準金鑰。", "%N1 standard keys.": "%1 把標準金鑰。",
-    "A key file is needed to open this file. Choose one and run again.": "開啟這個檔案需要金鑰檔。選擇一個，再執行。",
+    "A key file is needed to open this file. Choose one and run again.": "開啟這個檔案需要私鑰檔。選擇一個，再執行。",
     "Shredding needs your key file to verify the encrypted copy first. Choose it, or turn off shredding.":
-        "銷毀需要您的金鑰檔，才能先驗證加密後的複本。選擇金鑰檔，或關閉銷毀。",
-    "Enter the key file password and run again.": "輸入金鑰檔密碼，再執行。",
+        "銷毀需要您的私鑰檔，才能先驗證加密後的複本。選擇私鑰檔，或關閉銷毀。",
+    "Enter the key file password and run again.": "輸入私鑰檔密碼，再執行。",
     "The key file password is wrong, or the key file is damaged. Check the password and run again.":
-        "金鑰檔密碼不正確，或金鑰檔已損毀。檢查密碼後再執行。",
-    "The key file is damaged. Use a backup copy of it.": "金鑰檔已損毀。改用它的備份。",
+        "私鑰檔密碼不正確，或私鑰檔已損毀。檢查密碼後再執行。",
+    "The key file is damaged. Use a backup copy of it.": "私鑰檔已損毀。改用它的備份。",
     "A key in the list was rejected. Remove it and run again.": "清單中有一把金鑰被拒絕。移除它，再執行。",
     "This key file can't open this file. It may be for another key, use a password, or be damaged. Try another key file, or choose Password.":
-        "這個金鑰檔無法開啟這個檔案。檔案可能是給另一把金鑰、使用密碼，或已損毀。試試其他金鑰檔，或選擇「密碼」。",
+        "這個私鑰檔無法開啟這個檔案。檔案可能是給另一把金鑰、使用密碼，或已損毀。試試其他私鑰檔，或選擇「密碼」。",
     "Your key file isn't one of the recipients. Tick \"Also encrypt to my own key\", or remove the key file.":
-        "您的金鑰檔不在收件人之中。勾選「同時加密給我自己的金鑰」，或移除金鑰檔。",
+        "您的私鑰檔不在收件人之中。勾選「同時加密給我自己的金鑰」，或移除私鑰檔。",
 })
 
 _many({
-    "Remove key file": "移除金鑰檔",
+    "Remove key file": "移除私鑰檔",
     "%1, %2 characters, %3": "%1，%2 個字元，%3",
     "%1 key, %2 characters, starts %3, ends %4, from %5": "%1金鑰，%2 個字元，開頭 %3，結尾 %4，來源 %5",
-    "Error: Shiva could not read the key file. Nothing was changed.": "錯誤：Shiva 無法讀取這個金鑰檔。沒有變更任何東西。",
+    "Error: Shiva could not read the key file. Nothing was changed.": "錯誤：Shiva 無法讀取這個私鑰檔。沒有變更任何東西。",
 })
 
 # ------------------------------------------------------------------ Create a key pair
 _many({
     "Create a key pair": "建立金鑰組", "Create key pair": "建立金鑰組",
-    "Create key pair...": "建立金鑰組...", "No key file yet?": "還沒有金鑰檔？",
-    "Use as my key file": "設為我的金鑰檔", "Use this key file": "使用這個金鑰檔",
+    "Create key pair...": "建立金鑰組...", "No key file yet?": "還沒有私鑰檔？",
+    "Use as my key file": "設為我的私鑰檔", "Use this key file": "使用這個私鑰檔",
     "A key pair has a public key that you share and a key file that you keep. People encrypt files with your public key. Only your key file opens them.":
-        "金鑰組包含您要分享的公開金鑰，以及您要保管的金鑰檔。別人用您的公開金鑰加密檔案，只有您的金鑰檔能開啟。",
+        "金鑰組包含您要分享的公開金鑰，以及您要保管的私鑰檔。別人用您的公開金鑰加密檔案，只有您的私鑰檔能開啟。",
     "Key type": "金鑰類型", "Post-quantum (recommended)": "後量子（建議）",
     "Designed to resist attacks by future quantum computers. The public key is very long (about 2,000 characters). Anyone opening the files needs age 1.3.0 or later.":
         "設計用來抵抗未來量子電腦的攻擊。公開金鑰很長（約 2,000 個字元）。開啟檔案的人需要 age 1.3.0 或更新版本。",
     "A short public key. Works with every version of age.": "公開金鑰很短。適用於所有版本的 age。",
-    "Save the key file as": "金鑰檔儲存為", "Choose...": "選擇...", "Choose where to save the key file": "選擇金鑰檔的儲存位置",
-    "Save the key file": "儲存金鑰檔",
-    "Protect the key file with a password": "用密碼保護金鑰檔", "Repeat password": "再次輸入密碼",
+    "Save the key file as": "私鑰檔儲存為", "Choose...": "選擇...", "Choose where to save the key file": "選擇私鑰檔的儲存位置",
+    "Save the key file": "儲存私鑰檔",
+    "Protect the key file with a password": "用密碼保護私鑰檔", "Repeat password": "再次輸入密碼",
     "Password check": "密碼檢查",
     "Passwords match": "兩次密碼相符", "Passwords do not match": "兩次密碼不相符",
     "Creating...": "建立中...",
-    "Key pair created": "已建立金鑰組", "Key file: %1": "金鑰檔：%1",
-    "Post-quantum key file, protected with a password.": "後量子金鑰檔，以密碼保護。",
-    "Post-quantum key file, not protected.": "後量子金鑰檔，沒有密碼保護。",
-    "Standard key file, protected with a password.": "標準金鑰檔，以密碼保護。",
-    "Standard key file, not protected.": "標準金鑰檔，沒有密碼保護。",
+    "Key pair created": "已建立金鑰組", "Key file: %1": "私鑰檔：%1",
+    "Post-quantum key file, protected with a password.": "後量子私鑰檔，以密碼保護。",
+    "Post-quantum key file, not protected.": "後量子私鑰檔，沒有密碼保護。",
+    "Standard key file, protected with a password.": "標準私鑰檔，以密碼保護。",
+    "Standard key file, not protected.": "標準私鑰檔，沒有密碼保護。",
     "yes": "是", "no": "否",
     "Public key": "公開金鑰", "Public key (safe to share)": "公開金鑰（可安全分享）",
     "Save public key...": "儲存公開金鑰...", "Save the public key": "儲存公開金鑰",
-    "Save a backup copy...": "儲存備份...", "Save a backup copy of the key file": "儲存金鑰檔的備份",
+    "Save a backup copy...": "儲存備份...", "Save a backup copy of the key file": "儲存私鑰檔的備份",
     "Warning: make a backup copy of the key file now. If it is lost, files encrypted to this key can't be opened.":
-        "警告：現在就備份金鑰檔。遺失後，加密給這把金鑰的檔案將無法開啟。",
-    "Warning: this key file is not protected. Keep it in a private place.": "警告：這個金鑰檔沒有密碼保護。存放在只有您能讀取的地方。",
+        "警告：現在就備份私鑰檔。遺失後，加密給這把金鑰的檔案將無法開啟。",
+    "Warning: this key file is not protected. Keep it in a private place.": "警告：這個私鑰檔沒有密碼保護。存放在只有您能讀取的地方。",
     "Warning: this folder is cloud-synced (%1). A copy of the key file will be uploaded.":
-        "警告：這個資料夾由雲端同步（%1）。金鑰檔的副本會被上傳。",
+        "警告：這個資料夾由雲端同步（%1）。私鑰檔的副本會被上傳。",
     "Warning: this folder is on a network drive. The server may keep copies.": "警告：這個資料夾位於網路磁碟。伺服器可能保留副本。",
     "Error: A file with this name already exists. Nothing was created.": "錯誤：已有同名檔案。沒有建立任何東西。",
     "Error: The key file could not be saved. Nothing was created. (The folder may be read-only or full.)":
-        "錯誤：無法儲存金鑰檔。沒有建立任何東西。（資料夾可能唯讀或已滿。）",
+        "錯誤：無法儲存私鑰檔。沒有建立任何東西。（資料夾可能唯讀或已滿。）",
     "Error: The public key could not be saved.": "錯誤：無法儲存公開金鑰。",
     "Error: The backup copy could not be saved.": "錯誤：無法儲存備份。",
     # key_model
-    "Choose where to save the key file.": "選擇金鑰檔的儲存位置。",
+    "Choose where to save the key file.": "選擇私鑰檔的儲存位置。",
     "Enter a password, or untick the password box.": "輸入密碼，或取消勾選密碼保護。",
     "Passwords do not match.": "兩次密碼不相符。",
     "A file with this name already exists. Choose another name.": "已有同名檔案。選擇其他名稱。",
     "Warning: if you lose this key file, or forget its password, files encrypted only to this key can't be opened. No one can recover them. Keep a backup copy somewhere safe, away from this computer.":
-        "警告：若遺失這個金鑰檔或忘記它的密碼，只加密給這把金鑰的檔案將無法開啟，沒有人能救回。把備份存放在安全、遠離這台電腦的地方。",
+        "警告：若遺失這個私鑰檔或忘記它的密碼，只加密給這把金鑰的檔案將無法開啟，沒有人能救回。把備份存放在安全、遠離這台電腦的地方。",
     "Warning: without a password, anyone who can read this file can open your files. Shiva can't limit who can read it.":
         "警告：沒有密碼時，任何能讀取這個檔案的人都能開啟您的檔案。Shiva 無法限制誰能讀取它。",
     "Warning: short password. Use 8 or more characters.": "警告：密碼太短。使用 8 個字元以上。",
