@@ -204,9 +204,12 @@ class MainWindow(QMainWindow):
         self.current_page().start()
 
     def _press_primary(self) -> None:
-        b = self.current_page().primaryBtn
+        page = self.current_page()
+        b = page.primaryBtn
         if b.isEnabled() and b.isVisible():
             b.click()
+        elif b.isVisible():
+            page.start()      # disabled: puts the reason in the status line
 
     def _set_busy(self, on: bool) -> None:
         self.busy = on

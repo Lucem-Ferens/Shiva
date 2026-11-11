@@ -12,6 +12,7 @@ RADIUS = {"control": 8, "card": 8}
 TARGET = {"button_h": 32, "check_h": 24, "menu_btn": 32, "nav_h": 36}
 FOCUS = {"width": 2, "gap": 2}
 SIDEBAR_W = 184
+NARROW_W = 640          # content width below which the Type and Size columns are hidden
 
 # name: (px, line px, weight)
 TYPE = {
@@ -100,6 +101,8 @@ QLineEdit:focus, QPlainTextEdit:focus { border: ${f_width}px solid $accent; }
 QTableWidget { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; gridline-color: $line; selection-background-color: $selected; selection-color: $text; }
 QHeaderView::section { background: $surface_strong; color: $text_secondary; border: 0; border-bottom: 1px solid $line; padding: ${s1}px ${s2}px; font-weight: 600; }
 QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
+QLabel#pageTitle { font-size: ${t_title}px; font-weight: 600; }
+QLabel#pageScope { color: $text_secondary; }
 QLabel#statusWarning { color: $warning; }
 QLabel#statusError { color: $error; font-weight: 600; }
 """)
@@ -118,4 +121,4 @@ def stylesheet(theme: str) -> str:
     """Style sheet text for one theme, built only from the tokens above."""
     c = {k.replace("-", "_"): v for k, v in COLORS[theme].items()}
     return _QSS.substitute(c, r_control=RADIUS["control"], r_card=RADIUS["card"], s1=SPACE[1], s2=SPACE[2], s3=SPACE[3],
-                           s4=SPACE[4], f_width=FOCUS["width"], t_section=TYPE["section"][0])
+                           s4=SPACE[4], f_width=FOCUS["width"], t_section=TYPE["section"][0], t_title=TYPE["title"][0])

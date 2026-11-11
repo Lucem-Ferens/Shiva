@@ -5,10 +5,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal, QPointF, QRectF
+from PySide6.QtCore import Qt, QRect, QSize, Signal, QPointF, QRectF
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPalette, QPen
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QProxyStyle, QStyle, QSizePolicy, QTableWidget,
-                               QToolButton, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QProxyStyle, QStyle, QStyleOptionButton,
+                               QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QWidget)
 
 from .. import tokens
 from .. import ui_model as m
@@ -89,6 +89,56 @@ class NavButton(QToolButton):
     def dropEvent(self, e):
         self.dropped.emit(_urls(e.mimeData()))
         e.acceptProposedAction()
+
+
+class WrapCheckBox(QCheckBox):
+    """A check box whose label wraps onto several lines when the width is short (a plain QCheckBox clips it).
+    The text, accessible name and signals are those of QCheckBox."""
+    _FLAGS = Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap
+
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(text, parent)
+        pol = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        pol.setHeightForWidth(True)
+        self.setSizePolicy(pol)
+
+    def setText(self, text: str) -> None:
+        super().setText(text)
+        self.updateGeometry()
+
+    def _label_left(self) -> int:
+        st = self.style()
+        return st.pixelMetric(QStyle.PM_IndicatorWidth) + st.pixelMetric(QStyle.PM_CheckBoxLabelSpacing)
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, w: int) -> int:
+        r = self.fontMetrics().boundingRect(QRect(0, 0, max(1, w - self._label_left()), 10000), int(self._FLAGS), self.text())
+        return max(tokens.TARGET["check_h"], r.height() + tokens.SPACE[1])
+
+    def sizeHint(self) -> QSize:
+        w = self._label_left() + self.fontMetrics().horizontalAdvance(self.text())
+        return QSize(w, self.heightForWidth(w))
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(self._label_left() + self.fontMetrics().horizontalAdvance("W") * 8, tokens.TARGET["check_h"])
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        opt = QStyleOptionButton(); self.initStyleOption(opt)
+        st = self.style()
+        text = opt.text
+        opt.text = ""
+        opt.rect = st.subElementRect(QStyle.SE_CheckBoxIndicator, opt, self)
+        st.drawPrimitive(QStyle.PE_IndicatorCheckBox, opt, p, self)
+        left = self._label_left()
+        trect = QRect(left, 0, self.width() - left, self.height())
+        st.drawItemText(p, trect, int(self._FLAGS), opt.palette, bool(opt.state & QStyle.State_Enabled), text, QPalette.WindowText)
+        if self.hasFocus():
+            f = QStyleOptionFocusRect(); f.initFrom(self); f.rect = trect
+            st.drawPrimitive(QStyle.PE_FrameFocusRect, f, p, self)
+        p.end()
 
 
 class _Table(QTableWidget):

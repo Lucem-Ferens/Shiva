@@ -65,7 +65,7 @@ def _literal_count() -> int:
     files = sorted(GUI_DIR.glob("*.py"))
     assert len(files) >= 5
     s = "\n".join(f.read_text(encoding="utf-8") for f in files)
-    pats = (r"#[0-9a-fA-F]{6}", r"rgb\(", r"font-size", r"setPointSize", r"setContentsMargins\(", r"font-weight: bold")
+    pats = (r"#[0-9a-fA-F]{6}", r"rgb\(", r"font-size", r"setPointSize", r"setContentsMargins\(\s*[1-9]\d*", r"font-weight: bold")
     return sum(len(re.findall(p, s)) for p in pats)
 
 

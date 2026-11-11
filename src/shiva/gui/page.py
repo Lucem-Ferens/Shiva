@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import _Table
+from .widgets import WrapCheckBox, _Table
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -50,6 +50,11 @@ class TabPage(QWidget):
         outer = QVBoxLayout(self)
 
         # --- body: everything that is disabled while a run is active
+        title, scope = m.TITLES[tab]
+        self.pageTitle = QLabel(dyn(title)); self.pageTitle.setObjectName("pageTitle")
+        self.pageScope = QLabel(dyn(scope)); self.pageScope.setObjectName("pageScope")
+        outer.addWidget(self.pageTitle); outer.addWidget(self.pageScope)
+        # body: toolbar and file table keep their height; only the options below them scroll
         self.body = QWidget(); bl = QVBoxLayout(self.body); bl.setContentsMargins(0, 0, 0, 0)
         tools = QHBoxLayout()
         self.addFilesBtn = QPushButton(tr("&Add files...")); self.addFilesBtn.setAccessibleName(tr("Add files"))
@@ -118,7 +123,9 @@ class TabPage(QWidget):
             rl.addWidget(w)
         rl.addLayout(rb)
         self.view.addWidget(self.emptyView); self.view.addWidget(self.fileTable); self.view.addWidget(results)
+        self.view.setMinimumHeight(self._VIEW_MIN_H)
         bl.addWidget(self.view, 1)
+        opts_pane = QWidget(); bl = QVBoxLayout(opts_pane); bl.setContentsMargins(0, 0, 0, 0)   # options and passphrase scroll
 
         self.noteLabel = QLabel(dyn(m.CLEAN_LIMITS if tab == "clean" else m.SHRED_LINE if tab == "shred" else ""))
         self.noteLabel.setWordWrap(True); bl.addWidget(self.noteLabel)
@@ -133,19 +140,19 @@ class TabPage(QWidget):
         # --- pipeline options (off by default): the steps always run in this order: clean, encrypt, trial decrypt, shred.
         # Clean page: "Encrypt the cleaned copies" (then "Shred the originals..." appears); Encrypt page (encrypt mode):
         # "Shred the originals...". A hidden option is un-ticked and never counts (see ticked()).
-        self.encryptCleanedCheck = QCheckBox(tr("Encrypt the cleaned copies"))
-        self.shredAfterCheck = QCheckBox(tr("Shred the originals after a verified encryption"))
+        self.encryptCleanedCheck = WrapCheckBox(tr("Encrypt the cleaned copies"))
+        self.shredAfterCheck = WrapCheckBox(tr("Shred the originals after a verified encryption"))
         for w in (self.encryptCleanedCheck, self.shredAfterCheck):
             w.setAccessibleName(w.text()); bl.addWidget(w)
         self.encryptCleanedCheck.setVisible(tab == "clean")
         self.shredAfterCheck.setVisible(False)
 
         # --- options (hidden options are un-ticked, so they never stay active invisibly)
-        self.moreOptionsCheck = QCheckBox(tr("Show more options"))
-        self.keepOrientCheck = QCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
-        self.keepIccCheck = QCheckBox(tr("Keep the colour profile"))
-        self.keepQualityCheck = QCheckBox(tr("JPEG and WebP: keep the image data as it is (no re-encoding)"))
-        self.chroma420Check = QCheckBox(tr("JPEG: reduce colour detail (smaller files)"))
+        self.moreOptionsCheck = WrapCheckBox(tr("Show more options"))
+        self.keepOrientCheck = WrapCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
+        self.keepIccCheck = WrapCheckBox(tr("Keep the colour profile"))
+        self.keepQualityCheck = WrapCheckBox(tr("JPEG and WebP: keep the image data as it is (no re-encoding)"))
+        self.chroma420Check = WrapCheckBox(tr("JPEG: reduce colour detail (smaller files)"))
         self.keepQualityHint = QLabel("⚠ " + tr("Warning: hidden bytes and compression tables in the image data stay."))
         self.keepQualityHint.setObjectName("keepQualityHint")
         self._keep_quality_help = tr("The picture itself is not touched, but the image data is copied as it is. It can "
@@ -157,9 +164,9 @@ class TabPage(QWidget):
         self.keepQualityMore.setToolTip(self._keep_quality_help)
         self.keepQualityMore.clicked.connect(
             lambda: QMessageBox.information(self, tr("Learn more"), self._keep_quality_help))
-        self.omitPartsCheck = QCheckBox(tr("Archives: leave out parts that can't be cleaned (they are missing from the copy)"))
-        self.keepPartsCheck = QCheckBox(tr("Archives: keep parts that cannot be cleaned (may leak metadata)"))
-        self.allowUncleanCheck = QCheckBox(tr("Encrypt files that can't be cleaned (their metadata stays)"))
+        self.omitPartsCheck = WrapCheckBox(tr("Archives: leave out parts that can't be cleaned (they are missing from the copy)"))
+        self.keepPartsCheck = WrapCheckBox(tr("Archives: keep parts that cannot be cleaned (may leak metadata)"))
+        self.allowUncleanCheck = WrapCheckBox(tr("Encrypt files that can't be cleaned (their metadata stays)"))
         self.keepPartsHint = QLabel("⚠ " + tr("Warning: parts that can't be cleaned are copied as they are and may still "
                                               "hold personal metadata."))
         self.uncleanHint = QLabel("⚠ " + tr("Warning: these files keep their metadata inside the encrypted copy, and their "
@@ -182,7 +189,7 @@ class TabPage(QWidget):
             w.setVisible(False)
 
         # --- optional output folder (off by default; results otherwise go next to the originals)
-        self.outCheck = QCheckBox(tr("Save results in another folder")); self.outCheck.setAccessibleName(tr("Save results in another folder"))
+        self.outCheck = WrapCheckBox(tr("Save results in another folder")); self.outCheck.setAccessibleName(tr("Save results in another folder"))
         self.outEdit = QLineEdit(); self.outEdit.setPlaceholderText(tr("Folder for the results"))
         self.outEdit.setAccessibleName(tr("Output folder"))
         self.outBtn = QPushButton(tr("Choose folder...")); self.outBtn.setAccessibleName(tr("Choose output folder"))
@@ -221,9 +228,11 @@ class TabPage(QWidget):
         self.pwBlock.setVisible(False)
         bl.addWidget(self.pwBlock)
         scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QScrollArea.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); scroll.setWidget(self.body)   # buttons below stay on screen
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); scroll.setWidget(opts_pane)   # buttons below stay on screen
         scroll.setFocusPolicy(Qt.NoFocus)
-        outer.addWidget(scroll, 1)
+        self.optionsScroll = scroll
+        self.body.layout().addWidget(scroll, 1)
+        outer.addWidget(self.body, 1)
 
         # --- reason line, progress, buttons
         self.reasonLabel = QLabel(""); self.reasonLabel.setWordWrap(True)
@@ -234,8 +243,9 @@ class TabPage(QWidget):
         self.primaryBtn.setProperty("primary", True)
         self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setVisible(False)
         self.cancelBtn.setAccessibleName(tr("Cancel the run"))
-        outer.addWidget(self.reasonLabel); outer.addWidget(self.progressLabel); outer.addWidget(self.progressBar)
-        brow = QHBoxLayout(); brow.addStretch(1); brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
+        outer.addWidget(self.progressLabel); outer.addWidget(self.progressBar)
+        brow = QHBoxLayout(); brow.addWidget(self.reasonLabel, 1)
+        brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
         outer.addLayout(brow)
 
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.modeEncBtn, self.modeDecBtn,
@@ -347,6 +357,18 @@ class TabPage(QWidget):
         if added:
             self.refresh_rows(); self._ensure_probes()
         return added, dups
+
+    _VIEW_MIN_H = 140
+
+    def resizeEvent(self, e) -> None:
+        super().resizeEvent(e)
+        self._apply_narrow()
+
+    def _apply_narrow(self) -> None:
+        """Narrow content: the Type and Size columns (Size of the results) are hidden; the data stays."""
+        narrow = self.width() < tokens.NARROW_W
+        self.fileTable.setColumnHidden(2, narrow); self.fileTable.setColumnHidden(3, narrow)
+        self.resultTable.setColumnHidden(3, narrow)
 
     _EMPTY_CSS = "QLabel { border: 1px dashed palette(mid); padding: 24px; }"
     _EMPTY_DROP_CSS = "QLabel { border: 2px solid palette(link); padding: 24px; }"
