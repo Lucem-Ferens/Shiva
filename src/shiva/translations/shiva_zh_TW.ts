@@ -13,6 +13,26 @@
     <message><source>Files and folders</source><translation>檔案與資料夾</translation></message>
     <message><source>Shred</source><translation>銷毀</translation></message>
     <message><source>Overwrite and delete</source><translation>覆寫並刪除</translation></message>
+    <message><source>Settings</source><translation>設定</translation></message>
+    <message><source>Language and saved choices</source><translation>語言與已儲存的選擇</translation></message>
+    <message><source>About</source><translation>關於</translation></message>
+    <message><source>Version and licence</source><translation>版本與授權</translation></message>
+    <message><source>Apply</source><translation>套用</translation></message>
+    <message><source>Choose a different language first.</source><translation>先選擇其他語言。</translation></message>
+    <message><source>Saved choices</source><translation>已儲存的選擇</translation></message>
+    <message><source>File lists are kept.</source><translation>檔案清單會保留。</translation></message>
+    <message><source>Results, options and passphrases are reset.</source><translation>結果、選項與密碼會重設。</translation></message>
+    <message><source>Version %1</source><translation>版本 %1</translation></message>
+    <message><source>(early version)</source><translation>（早期版本）</translation></message>
+    <message><source>Show third-party notices</source><translation>顯示第三方聲明</translation></message>
+    <message><source>Third-party notices couldn't be opened.</source><translation>無法開啟第三方聲明。</translation></message>
+    <message><source>See %1 in the program folder.</source><translation>請見程式資料夾中的 %1。</translation></message>
+    <message><source>Files can't be added here.</source><translation>這裡無法加入檔案。</translation></message>
+    <message><source>Choose Clean metadata, Encrypt or Shred.</source><translation>請選擇「清理中繼資料」、「加密」或「銷毀」。</translation></message>
+    <message><source>This window keeps its language until you restart.</source><translation>重新啟動前，這個視窗會維持目前的語言。</translation></message>
+    <message><source>The settings file can't be deleted.</source><translation>無法刪除設定檔。</translation></message>
+    <message><source>The language is used for this run only.</source><translation>語言只在這次執行有效。</translation></message>
+    <message><source>The settings file can't be written.</source><translation>無法寫入設定檔。</translation></message>
     <message><source>Clean</source><translation>清理</translation></message>
     <message><source>Decrypt</source><translation>解密</translation></message>
     <message><source>Shred originals</source><translation>銷毀原始檔</translation></message>
@@ -34,10 +54,9 @@
     <message><source>System default</source><translation>系統預設</translation></message>
     <message><source>Not available yet.</source><translation>尚未提供。</translation></message>
     <message><source>Reset saved choices</source><translation>重設已儲存的選擇</translation></message>
-    <message><source>About Shiva</source><translation>關於 Shiva</translation></message>
-    <message><source>Saved choices were reset.</source><translation>已重設儲存的選擇。</translation></message>
-    <message><source>Saved choices could not be reset.</source><translation>無法重設儲存的選擇。</translation></message>
-    <message><source>Clean file metadata, encrypt and decrypt with age, and shred files.</source><translation>清理檔案中繼資料、用 age 加密與解密，以及銷毀檔案。</translation></message>
+    <message><source>Saved choices were reset.</source><translation>已儲存的選擇已重設。</translation></message>
+    <message><source>Saved choices could not be reset.</source><translation>無法重設已儲存的選擇。</translation></message>
+    <message><source>Clean file metadata, encrypt and decrypt with age, and shred files (best effort).</source><translation>清理檔案中繼資料、用 age 加密與解密，以及銷毀檔案（盡力而為）。</translation></message>
     <message><source>Free software, licence GPL-3.0-or-later.</source><translation>自由軟體，授權為 GPL-3.0-or-later。</translation></message>
     <message><source>Warning:</source><translation>警告：</translation></message>
     <message><source>Failed:</source><translation>失敗：</translation></message>
@@ -47,7 +66,6 @@
     <message><source>Folders can't be cleaned yet.</source><translation>目前還不能清理資料夾。</translation></message>
     <message><source>Add files to clean</source><translation>加入要清理的檔案</translation></message>
     <message><source>Drop files here.</source><translation>把檔案拖放到這裡。</translation></message>
-    <message><source>Language, help and about</source><translation>語言、說明與關於</translation></message>
     <message><source>Images, PDF, Office/ODF documents, audio and ZIP are supported.</source><translation>支援圖片、PDF、Office/ODF 文件、音訊與 ZIP。</translation></message>
     <message><source>Cleaned copies are saved next to the originals.</source><translation>清理後的副本會存放在原始檔旁邊。</translation></message>
     <message><source>Add files or folders to encrypt</source><translation>加入要加密的檔案或資料夾</translation></message>
@@ -609,7 +627,7 @@
     <message><source>Learn why shredding can fail</source><translation>了解為什麼銷毀可能失敗</translation></message>
     <message><source>Shredding is best effort: traces can remain.</source><translation>銷毀只能盡力而為：痕跡可能殘留。</translation></message>
     <message><source>They will be overwritten and deleted as far as the drive allows.</source><translation>它們會在磁碟允許的範圍內被覆寫並刪除。</translation></message>
-    <message><source>No copy is kept and you can't undo this.</source><translation>不會留下副本，也無法復原。</translation></message>
+    <message><source>Shiva keeps no copy and you can't undo this.</source><translation>Shiva 不會保留副本，也無法復原。</translation></message>
     <message><source>After each encrypted copy passes a trial decrypt, its original is overwritten and deleted as far as the drive allows.</source><translation>每個加密副本通過試解密後，其原始檔會在磁碟允許的範圍內被覆寫並刪除。</translation></message>
     <message><source>If a check fails, the original is kept.</source><translation>如果檢查失敗，就會保留原始檔。</translation></message>
     <message><source>Each original is overwritten and deleted as far as the drive allows, once its copy passes a trial decrypt. A failed check keeps it. You can't undo this.</source><translation>每個原始檔會在磁碟允許的範圍內被覆寫並刪除，但只在其副本通過試解密之後。檢查失敗就會保留。這無法復原。</translation></message>
@@ -633,9 +651,9 @@
     <message><source>About shredding</source><translation>關於銷毀</translation></message>
     <message><source>What Shred does</source><translation>銷毀做了什麼</translation></message>
     <message><source>Shred overwrites the contents of an item, then deletes it.</source><translation>銷毀會覆寫項目的內容，然後刪除它。</translation></message>
-    <message><source>No copy is kept.</source><translation>不會留下副本。</translation></message>
+    <message><source>Shiva keeps no copy.</source><translation>Shiva 不會保留副本。</translation></message>
     <message><source>Why it can fail</source><translation>為什麼可能失敗</translation></message>
-    <message><source>Overwriting changes the place the drive was told to write to.</source><translation>覆寫改變的是磁碟被指示寫入的那個位置。</translation></message>
+    <message><source>Overwriting writes to the file's own place on the drive.</source><translation>覆寫只會寫入檔案在磁碟上原本的位置。</translation></message>
     <message><source>Some storage keeps older data elsewhere.</source><translation>有些儲存裝置會把較舊的資料保留在別的地方。</translation></message>
     <message><source>SSDs and USB sticks: wear levelling (spreading writes over the chip) can leave old data in place.</source><translation>SSD 與隨身碟：損耗平均（把寫入分散到整個晶片）可能讓舊資料留在原處。</translation></message>
     <message><source>File system journal: Windows can keep a log of recent changes, and very small files can live in the file index.</source><translation>檔案系統日誌：Windows 可能保留最近變更的紀錄，很小的檔案也可能存放在檔案索引裡。</translation></message>
@@ -643,14 +661,14 @@
     <message><source>Cloud folders and network drives: the provider or server can keep copies and old versions.</source><translation>雲端資料夾與網路磁碟：服務商或伺服器可能保留副本與舊版本。</translation></message>
     <message><source>What helps</source><translation>有什麼幫助</translation></message>
     <message><source>Turn on full-disk encryption before you store sensitive files.</source><translation>存放敏感檔案之前，先開啟全磁碟加密。</translation></message>
-    <message><source>Recovered data is then unreadable without your passphrase.</source><translation>這樣即使資料被還原，沒有您的密碼也無法讀取。</translation></message>
+    <message><source>Recovered data is then unreadable without the disk's key.</source><translation>這樣即使資料被還原，沒有磁碟的金鑰也無法讀取。</translation></message>
     <message><source>Keep sensitive files in encrypted form (use the Encrypt page) instead of leaving readable copies.</source><translation>敏感檔案以加密形式保存（使用「加密」頁面），不要留下可讀的副本。</translation></message>
-    <message><source>Before you give away or sell a drive, overwrite the whole drive or destroy it.</source><translation>送人或賣掉磁碟之前，覆寫整顆磁碟或將它銷毀。</translation></message>
+    <message><source>Before you give away or sell a drive, erase the whole drive with the maker's tool, or destroy it physically.</source><translation>送人或賣掉磁碟之前，用製造商的工具清除整顆磁碟，或將它實體破壞。</translation></message>
     <message><source>What Shiva checks</source><translation>Shiva 會檢查什麼</translation></message>
     <message><source>Shiva checks the drive type and cloud folders and shows a Warning on items that are worse than usual.</source><translation>Shiva 會檢查磁碟類型與雲端資料夾，並對風險比平常高的項目顯示警告。</translation></message>
-    <message><source>It cannot see shadow copies or backups.</source><translation>它看不到陰影複本或備份。</translation></message>
-    <message><source>What Shiva does not claim</source><translation>Shiva 不會宣稱什麼</translation></message>
-    <message><source>Shiva never promises that deleted data cannot be recovered.</source><translation>Shiva 不會保證已刪除的資料一定無法復原。</translation></message>
+    <message><source>It can't see shadow copies or backups.</source><translation>它看不到陰影複本或備份。</translation></message>
+    <message><source>What Shiva can't promise</source><translation>Shiva 無法保證什麼</translation></message>
+    <message><source>Shiva can't promise that deleted data stays unrecoverable.</source><translation>Shiva 無法保證已刪除的資料不可復原。</translation></message>
     <message><source>Results are labelled "best effort".</source><translation>結果會標示為「盡力而為」。</translation></message>
 </context>
 </TS>

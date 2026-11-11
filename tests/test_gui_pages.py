@@ -48,7 +48,8 @@ def run_and_wait(win, timeout=30.0):
 # ---------------------------------------------------------------- shell
 def test_navigation_and_accessible_names(w):
     assert [b.accessibleName() for b in w.nav.values()] == [
-        "Clean metadata, Images, PDF, Office, audio, ZIP", "Encrypt, Files and folders", "Shred, Overwrite and delete"]
+        "Clean metadata, Images, PDF, Office, audio, ZIP", "Encrypt, Files and folders", "Shred, Overwrite and delete",
+        "Settings, Language and saved choices", "About, Version and licence"]
     assert w.current_tab() == "clean"
     for sc in [s for s in w.findChildren(QShortcut) if s.key().toString() == "Ctrl+3"]:
         sc.activated.emit()
@@ -366,7 +367,7 @@ def test_about_shredding_dialog_and_links(w):
     from shiva.gui import AboutShreddingDialog
     d = AboutShreddingDialog(w); d.show(); QApplication.processEvents()
     html = d.aboutText.toPlainText()
-    for head in ("What Shred does", "Why it can fail", "What helps", "What Shiva checks", "What Shiva does not claim"):
+    for head in ("What Shred does", "Why it can fail", "What helps", "What Shiva checks", "What Shiva can't promise"):
         assert head in html
     assert "securely deleted" not in html and "wear levelling" in html
     assert d.closeBtn.property("primary") and d.closeBtn.isDefault()

@@ -16,7 +16,9 @@ from .metadata import ARCHIVE_MEMBER, runner
 
 TABS = ("clean", "encrypt", "shred")
 TITLES = {"clean": ("Clean metadata", "Images, PDF, Office, audio, ZIP"), "encrypt": ("Encrypt", "Files and folders"),
-          "shred": ("Shred", "Overwrite and delete")}
+          "shred": ("Shred", "Overwrite and delete"),
+          "settings": ("Settings", "Language and saved choices"), "about": ("About", "Version and licence")}
+INFO_KEYS = ("settings", "about")      # sidebar pages that are not functions
 MIN_PW = 8      # encrypting below this only WARNS; decrypting is never length-checked
 SHORT_PW_WARNING = "⚠ Short passphrase: use 8 or more characters"
 _OFFLINE_ATTRS = 0x1000 | 0x40000 | 0x400000   # OFFLINE, RECALL_ON_OPEN, RECALL_ON_DATA_ACCESS (cloud placeholders)
@@ -29,7 +31,7 @@ ABOUT_LINK = "Learn about shredding"
 WHY_LINK = "Learn why shredding can fail"
 TRAILER = "Full-disk encryption is the reliable protection."
 SHRED_TITLE = "Shred %1?"
-SHRED_BODY = ("They will be overwritten and deleted as far as the drive allows. No copy is kept and you can't "
+SHRED_BODY = ("They will be overwritten and deleted as far as the drive allows. Shiva keeps no copy and you can't "
               "undo this.")
 PIPE_BODY = ("Each original is overwritten and deleted as far as the drive allows, once its copy passes a trial "
              "decrypt. A failed check keeps it. You can't undo this.")
@@ -458,22 +460,22 @@ ABOUT_TITLE = "About shredding"
 # allowed on this help page only; the main window stays in plain words.
 ABOUT_SHREDDING = [
     ("h", "What Shred does"),
-    ("p", "Shred overwrites the contents of an item, then deletes it. No copy is kept."),
+    ("p", "Shred overwrites the contents of an item, then deletes it. Shiva keeps no copy."),
     ("h", "Why it can fail"),
-    ("p", "Overwriting changes the place the drive was told to write to. Some storage keeps older data elsewhere."),
+    ("p", "Overwriting writes to the file's own place on the drive. Some storage keeps older data elsewhere."),
     ("b", "SSDs and USB sticks: wear levelling (spreading writes over the chip) can leave old data in place."),
     ("b", "File system journal: Windows can keep a log of recent changes, and very small files can live in the file index."),
     ("b", "Shadow copies and backups: restore points or backups can hold earlier versions of a file."),
     ("b", "Cloud folders and network drives: the provider or server can keep copies and old versions."),
     ("h", "What helps"),
-    ("p", "Turn on full-disk encryption before you store sensitive files. Recovered data is then unreadable without your passphrase."),
+    ("p", "Turn on full-disk encryption before you store sensitive files. Recovered data is then unreadable without the disk's key."),
     ("p", "Keep sensitive files in encrypted form (use the Encrypt page) instead of leaving readable copies."),
-    ("p", "Before you give away or sell a drive, overwrite the whole drive or destroy it."),
+    ("p", "Before you give away or sell a drive, erase the whole drive with the maker's tool, or destroy it physically."),
     ("h", "What Shiva checks"),
     ("p", "Shiva checks the drive type and cloud folders and shows a Warning on items that are worse than usual."),
-    ("p", "It cannot see shadow copies or backups."),
-    ("h", "What Shiva does not claim"),
-    ("p", 'Shiva never promises that deleted data cannot be recovered. Results are labelled "best effort".'),
+    ("p", "It can't see shadow copies or backups."),
+    ("h", "What Shiva can't promise"),
+    ("p", 'Shiva can\'t promise that deleted data stays unrecoverable. Results are labelled "best effort".'),
 ]
 
 

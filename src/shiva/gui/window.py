@@ -12,8 +12,8 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
-                               QMessageBox, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import output, settings, shred, steps, storage, tokens
 from ..metadata import CleanError, runner
@@ -21,6 +21,7 @@ from ..clean_pipeline import JPEG_CHANGES
 from .. import ui_model as m
 from ..i18n import dyn, tr
 from .dialogs import AboutShreddingDialog, ConfirmDialog, PdfDialog
+from .info_pages import AboutPage, SettingsPage
 from .page import _Row, TabPage
 from .widgets import NavButton, _announce, _urls, apply_theme
 
@@ -89,11 +90,18 @@ class MainWindow(QMainWindow):
             b.toggled.connect(lambda on, tab=t: on and self._select(tab))
             b.dropped.connect(lambda paths, tab=t: self.nav_drop(tab, paths))
         nl.addStretch(1)
-        self._build_menu(nl)
+        for t in m.INFO_KEYS:       # Settings and About: same exclusive group, so the sidebar stays one tab stop
+            b = NavButton(t); self.nav[t] = b
+            nl.addWidget(b)
+            b.toggled.connect(lambda on, tab=t: on and self._select(tab))
+            b.dropped.connect(lambda _paths: self._on_info_page())
+        self._last_tab = "clean"     # the function page that file actions refer to
         self.stack = QStackedWidget()
         self.pages: dict[str, TabPage] = {}
         for t in m.TABS:
             self.pages[t] = TabPage(t, self); self.stack.addWidget(self.pages[t])
+        self.settingsPage = SettingsPage(self); self.stack.addWidget(self.settingsPage)
+        self.aboutPage = AboutPage(self); self.stack.addWidget(self.aboutPage)
         root = QWidget(); rl = QHBoxLayout(root); rl.setContentsMargins(0, 0, 0, 0); rl.setSpacing(0)
         rl.addWidget(self.tabBar); rl.addWidget(self.stack, 1)
         self.setCentralWidget(root)
@@ -101,8 +109,9 @@ class MainWindow(QMainWindow):
         self.statusBar().addWidget(self.statusLine, 1)
         QWidget.setTabOrder(self.nav["clean"], self.nav["encrypt"])
         QWidget.setTabOrder(self.nav["encrypt"], self.nav["shred"])
-        QWidget.setTabOrder(self.nav["shred"], self.menuBtn)
-        QWidget.setTabOrder(self.menuBtn, self.pages["clean"].addFilesBtn)
+        QWidget.setTabOrder(self.nav["shred"], self.nav["settings"])
+        QWidget.setTabOrder(self.nav["settings"], self.nav["about"])
+        QWidget.setTabOrder(self.nav["about"], self.pages["clean"].addFilesBtn)
 
         for i, t in enumerate(m.TABS, 1):
             QShortcut(QKeySequence(f"Ctrl+{i}"), self, activated=lambda tab=t: self._ctrl_tab(tab))
@@ -112,46 +121,15 @@ class MainWindow(QMainWindow):
             QShortcut(QKeySequence(k), self, activated=self._press_primary)
         self.nav["clean"].setChecked(True)
 
-    # ---- menu: language, help, about
-    LANGUAGES = (("system", "System default"), ("en", "English"), ("zh_TW", "繁體中文"))
-
-    def _build_menu(self, layout) -> None:
-        self.menuBtn = QToolButton(); self.menuBtn.setObjectName("menu"); self.menuBtn.setText(tr("More"))
-        self.menuBtn.setAccessibleName(tr("More")); self.menuBtn.setToolTip(tr("Language, help and about"))
-        self.menuBtn.setPopupMode(QToolButton.InstantPopup)
-        self.menuBtn.setFixedHeight(tokens.TARGET["nav_h"])
-        self.menuBtn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.menuBtn.setFocusPolicy(Qt.TabFocus)
-        self.appMenu = QMenu(self.menuBtn)
-        lang = self.appMenu.addMenu(tr("Language"))
-        self.languageActions: dict[str, object] = {}
-        saved = settings.load().get("language", "system")
-        for code, label in self.LANGUAGES:
-            a = lang.addAction(tr(label) if code == "system" else label)
-            a.setCheckable(True); a.setChecked(code == saved)
-            a.triggered.connect(lambda _c=False, c=code: self.switch_language(c))
-            self.languageActions[code] = a
-        de = lang.addAction("Deutsch"); de.setEnabled(False); de.setToolTip(tr("Not available yet."))
-        self.aboutShreddingAction = self.appMenu.addAction(tr("About shredding"))
-        self.aboutShreddingAction.triggered.connect(self.show_about_shredding)
-        self.resetSettingsAction = self.appMenu.addAction(tr("Reset saved choices"))
-        self.resetSettingsAction.triggered.connect(self.reset_saved_choices)
-        self.appMenu.addSeparator()
-        self.aboutAction = self.appMenu.addAction(tr("About Shiva"))
-        self.aboutAction.triggered.connect(self.show_about)
-        self.menuBtn.setMenu(self.appMenu)
-        layout.addWidget(self.menuBtn)
-        self.pageStateChanged.connect(self._menu_enabled)
-
-    def _menu_enabled(self) -> None:
-        for a in self.languageActions.values():
-            a.setEnabled(not self.busy)
-
+    # ---- language, saved choices
     def switch_language(self, code: str) -> None:
         """Rebuild the window in the chosen language: file lists are kept, options and passphrases are reset."""
-        if self.busy or code not in settings.ALLOWED["language"]:
+        if self.busy:
+            self.set_status(tr("Wait for the current run to finish."))
             return
-        settings.save("language", code)
+        if code not in settings.ALLOWED["language"]:
+            return
+        saved = settings.save("language", code)
         from .. import i18n
         i18n.install(None if code == "system" else code)
         new = MainWindow()
@@ -160,32 +138,49 @@ class MainWindow(QMainWindow):
             page.take_passphrase()
             if page.rows:
                 new.pages[tab].add_paths([r.path for r in page.rows])
-        new.nav[self.current_tab()].setChecked(True)
+        new.nav[self._last_tab].setChecked(True)
+        view = self.view()
+        new.nav[view].setChecked(True)
+        if view == "settings":
+            new.settingsPage.focus_language()
         _KEEP.append(new)
         new.show()
+        if not saved and settings.settings_path() is not None:
+            new.set_status(tr("The language is used for this run only.") + " "
+                           + tr("The settings file can't be written."))
         self._closing = False
         self.close()
 
     def reset_saved_choices(self) -> None:
         ok = settings.reset()
-        self.set_status(tr("Saved choices were reset.") if ok else tr("Saved choices could not be reset."))
-
-    def show_about(self) -> None:
-        from .. import __version__
-        QMessageBox.about(self, tr("About Shiva"), f"<b>Shiva {__version__}</b><br>" +
-                          tr("Clean file metadata, encrypt and decrypt with age, and shred files.") + "<br>" +
-                          tr("Free software, licence GPL-3.0-or-later."))
+        if ok:
+            self.set_status(tr("Saved choices were reset.") + " " + tr("This window keeps its language until you restart."))
+        else:
+            self.set_status(tr("Saved choices could not be reset.") + " " + tr("The settings file can't be deleted."))
 
     # ---- navigation and status
+    def view(self) -> str:
+        """The page shown: a function tab, "settings" or "about"."""
+        return (m.TABS + m.INFO_KEYS)[self.stack.currentIndex()]
+
     def current_tab(self) -> str:
-        return m.TABS[self.stack.currentIndex()]
+        """The function page that file actions refer to (the last one shown while Settings or About is open)."""
+        return self._last_tab
 
     def current_page(self) -> TabPage:
         return self.pages[self.current_tab()]
 
     def _select(self, tab: str) -> None:
-        self.stack.setCurrentIndex(m.TABS.index(tab))
-        self.pages[tab].update_controls()
+        self.stack.setCurrentIndex((m.TABS + m.INFO_KEYS).index(tab))
+        if tab in self.pages:
+            self._last_tab = tab
+            self.pages[tab].update_controls()
+
+    def _on_info_page(self) -> bool:
+        if self.view() in m.INFO_KEYS:
+            self.set_status(tr("Files can't be added here.") + " " + tr("Choose Clean metadata, Encrypt or Shred."))
+            return True
+        return False
 
     def _ctrl_tab(self, tab: str) -> None:
         if not self.busy:
@@ -201,6 +196,8 @@ class MainWindow(QMainWindow):
 
     def start(self) -> None:
         """Press the primary button of the current page (does nothing, with the reason in the status line, if disabled)."""
+        if self._on_info_page():
+            return
         self.current_page().start()
 
     def _press_primary(self) -> None:
@@ -223,6 +220,8 @@ class MainWindow(QMainWindow):
         if self.busy:
             self.set_status(tr("Wait for the current run to finish."))
             return 0
+        if tab is None and self._on_info_page():
+            return 0
         tab = tab or self.current_tab()
         added, dups = self.pages[tab].add_paths([Path(p) for p in paths])
         parts = []
@@ -243,14 +242,14 @@ class MainWindow(QMainWindow):
         self.add_paths(paths, tab, via_nav=True)
 
     def pick_files(self) -> None:
-        if self.busy:
+        if self.busy or self._on_info_page():
             return
         files, _ = QFileDialog.getOpenFileNames(self, tr("Add files"))
         if files:
             self.add_paths([Path(f) for f in files])
 
     def pick_folder(self) -> None:
-        if self.busy or self.current_tab() == "clean":
+        if self.busy or self.current_tab() == "clean" or self._on_info_page():
             return
         d = QFileDialog.getExistingDirectory(self, tr("Add folder"))
         if d:
@@ -258,7 +257,8 @@ class MainWindow(QMainWindow):
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
-            self.pages[self.current_tab()].set_drop_active(True, refused=self.busy)
+            if self.view() in self.pages:
+                self.pages[self.current_tab()].set_drop_active(True, refused=self.busy)
             e.acceptProposedAction()
 
     dragMoveEvent = dragEnterEvent

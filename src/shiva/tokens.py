@@ -80,10 +80,6 @@ QToolButton#nav QLabel { color: $text_secondary; background: transparent; }
 QToolButton#nav:checked QLabel { color: $text; font-weight: 600; }
 QToolButton#nav:focus { border: ${f_width}px solid $accent; }
 QLabel#brand { font-size: ${t_section}px; font-weight: 600; padding: ${s1}px ${s3}px ${s4}px ${s3}px; }
-QToolButton#menu { border: 2px solid transparent; border-radius: ${r_control}px; padding: 0 ${s3}px; color: $text_secondary; }
-QToolButton#menu:hover { background: $surface_strong; }
-QToolButton#menu:focus { border: ${f_width}px solid $accent; }
-QToolButton#menu::menu-indicator { image: none; }
 QPushButton { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s4}px; background: $surface; color: $text; }
 QPushButton:hover { background: $surface_strong; }
 QPushButton:focus { border: ${f_width}px solid $accent; }

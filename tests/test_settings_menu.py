@@ -1,4 +1,4 @@
-"""Settings file (allow-list, never destructive options) and the More menu / language switch."""
+"""Settings file (allow-list, never destructive options) and the Settings and About pages."""
 import os
 
 import pytest
@@ -50,28 +50,76 @@ def win(sdir):
     w.close(); i18n.uninstall()
 
 
-def test_menu_entries_and_language_switch_keeps_lists(win, sdir, tmp_path):
-    for t in ("More",):
-        assert win.menuBtn.accessibleName() == t
-    assert set(win.languageActions) == {"system", "en", "zh_TW"}
+def _settings(win):
+    win.nav["settings"].setChecked(True)
+    return win.settingsPage
+
+
+def test_radio_change_alone_does_not_apply(win, sdir):
+    from shiva import gui
+    n = len(gui._KEEP)
+    pg = _settings(win)
+    assert pg.selected() == "system" and not pg.applyBtn.isEnabled()
+    pg.languageRadios["zh_TW"].setChecked(True)
+    assert pg.applyBtn.isEnabled() and settings.load() == {} and len(gui._KEEP) == n
+    pg.languageRadios["system"].setChecked(True)
+    assert not pg.applyBtn.isEnabled()
+
+
+def test_apply_persists_rebuilds_and_returns_to_settings(win, sdir, tmp_path):
+    from shiva import gui
     f = tmp_path / "a.txt"; f.write_bytes(b"x")
     win.add_paths([f], "shred"); win.wait_for_probes()
     win.pages["shred"].pwEdit.setText("secret")
-    win.switch_language("zh_TW")
-    from shiva import gui
+    win.set_tab("shred")
+    pg = _settings(win)
+    pg.languageRadios["zh_TW"].setChecked(True)
+    pg.applyBtn.click()
     new = gui._KEEP[-1]
     assert new is not win and settings.load()["language"] == "zh_TW"
+    assert new.view() == "settings" and new.current_tab() == "shred"
+    assert new.settingsPage.selected() == "zh_TW" and not new.settingsPage.applyBtn.isEnabled()
     assert [r.path for r in new.pages["shred"].rows] == [f]
     assert new.pages["shred"].pwEdit.text() == ""
-    assert new.nav["clean"].text() == "" or new.nav["clean"].accessibleName().startswith("清理")
+    assert new.nav["clean"].accessibleName().startswith("清理")
     new.close()
 
 
-def test_language_switch_refused_while_busy(win):
+def test_apply_refused_while_busy(win):
+    pg = _settings(win)
+    pg.languageRadios["zh_TW"].setChecked(True)
     win.busy = True
-    win.switch_language("zh_TW")
+    pg.applyBtn.click()
     assert settings.load() == {}
 
 
-def test_menu_button_is_right_after_navigation_in_tab_order(win):
-    assert win.menuBtn.focusPolicy() != 0
+def test_reset_saved_choices_button(win, sdir):
+    settings.save("language", "en")
+    pg = _settings(win)
+    pg.resetBtn.click()
+    assert settings.load() == {} and "reset" in win.statusLine.text()
+
+
+def test_sidebar_pages_and_nav_lock(win):
+    assert [win.nav[k].accessibleName().split(",")[0] for k in ("settings", "about")] == ["Settings", "About"]
+    win.nav["about"].setChecked(True)
+    assert win.view() == "about" and win.current_tab() == "clean"
+    assert win.aboutPage.versionLabel.text().startswith("Version ")
+    from PySide6.QtWidgets import QLabel
+    assert any("GPL-3.0-or-later" in c.text() for c in win.aboutPage.findChildren(QLabel))
+    win.busy = True; win._set_busy(True)
+    assert not win.nav["settings"].isEnabled() and not win.nav["about"].isEnabled()
+    win._set_busy(False)
+
+
+def test_files_are_not_added_from_settings_or_about(win, tmp_path):
+    f = tmp_path / "a.txt"; f.write_bytes(b"x")
+    _settings(win)
+    assert win.add_paths([f]) == 0 and not win.pages["clean"].rows
+    assert "Files can't be added here" in win.statusLine.text()
+    assert win.add_paths([f], "shred") == 1      # an explicit function page still works
+
+
+def test_sidebar_is_one_tab_stop_group(win):
+    assert all(win.nav[k].autoExclusive() for k in ("clean", "encrypt", "shred", "settings", "about"))
+    assert not hasattr(win, "menuBtn")

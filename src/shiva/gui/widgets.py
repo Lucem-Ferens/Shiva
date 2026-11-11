@@ -54,6 +54,11 @@ class _NavIcon(QWidget):
             p.drawLine(pt(3, 4), pt(13, 4)); p.drawLine(pt(6, 4), pt(6, 2)); p.drawLine(pt(6, 2), pt(10, 2))
             p.drawLine(pt(10, 2), pt(10, 4)); p.drawLine(pt(4.5, 4), pt(5.2, 14)); p.drawLine(pt(5.2, 14), pt(10.8, 14))
             p.drawLine(pt(10.8, 14), pt(11.5, 4))
+        elif self.tab == "settings":
+            for y, x in ((4, 5), (12, 11)):
+                p.drawLine(pt(2, y), pt(14, y)); p.drawEllipse(pt(x, y), 2, 2)
+        elif self.tab == "about":
+            p.drawEllipse(pt(8, 8), 6, 6); p.drawLine(pt(8, 7), pt(8, 11.5)); p.drawPoint(pt(8, 4.6))
         p.end()
 
 
