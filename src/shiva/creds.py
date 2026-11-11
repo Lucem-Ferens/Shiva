@@ -65,6 +65,8 @@ class Keys:
             raise agecli.AgeError("a recipient key is not usable", "recipient_rejected")
         if len(kinds) > 1:
             raise agecli.AgeError("post-quantum and standard keys cannot be mixed in one file", "recipient_rejected")
+        if rcp.too_long(self.recipients):
+            raise agecli.AgeError("too many recipient keys for one file", "recipients_too_many")
 
     def preflight(self) -> None:
         """Refuse before any work: unusable recipients, or a key file that opens none of the files this

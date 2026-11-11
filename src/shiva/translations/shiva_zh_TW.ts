@@ -803,6 +803,9 @@
     <message><source>The key file password is wrong, or the key file is damaged. Check the password and run again.</source><translation>私鑰檔密碼不正確，或私鑰檔已損毀。檢查密碼後再執行。</translation></message>
     <message><source>The key file is damaged. Use a backup copy of it.</source><translation>私鑰檔已損毀。改用它的備份。</translation></message>
     <message><source>A key in the list was rejected. Remove it and run again.</source><translation>清單中有一把金鑰被拒絕。移除它，再執行。</translation></message>
+    <message><source>Too many keys for one file. Remove some and run again.</source><translation>同一個檔案的金鑰太多。移除一些，再執行。</translation></message>
+    <message><source>Too many keys for one file. Remove some.</source><translation>同一個檔案的金鑰太多。移除一些。</translation></message>
+    <message><source>Error: Too many keys for one file. Remove some.</source><translation>錯誤：同一個檔案的金鑰太多。移除一些。</translation></message>
     <message><source>This key file can't open this file. It may be for another key, use a password, or be damaged. Try another key file, or choose Password.</source><translation>這個私鑰檔無法開啟這個檔案。檔案可能是給另一把金鑰、使用密碼，或已損毀。試試其他私鑰檔，或選擇「密碼」。</translation></message>
     <message><source>Your key file isn't one of the recipients. Tick "Also encrypt to my own key", or remove the key file.</source><translation>您的私鑰檔不在收件人之中。勾選「同時加密給我自己的金鑰」，或移除私鑰檔。</translation></message>
     <message><source>Remove key file</source><translation>移除私鑰檔</translation></message>

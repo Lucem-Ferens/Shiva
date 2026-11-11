@@ -178,3 +178,12 @@ def test_run_jobs_marks_key_runs_and_only_key_runs(tmp_path):
     assert jobs.run_jobs([enc.created], creds.Keys([], None), False)[0].key_mode is True          # a failed key run
     g = tmp_path / "b.txt"; g.write_bytes(b"y")
     assert jobs.run_jobs([g], "pw", False)[0].key_mode is False
+
+
+def test_too_many_post_quantum_keys_are_refused_up_front(tmp_path):
+    keys = [agecli.identity_recipients(agecli.generate_identity(True))[0] for _ in range(16)]
+    f = tmp_path / "a.txt"; f.write_bytes(b"x")
+    r = jobs.run_jobs([f], creds.Keys(keys), False)[0]
+    assert not r.ok and r.error_code == "recipients_too_many", r.message
+    assert [p.name for p in tmp_path.iterdir()] == ["a.txt"]
+    assert creds.Keys(keys[:14]).check_recipients() is None

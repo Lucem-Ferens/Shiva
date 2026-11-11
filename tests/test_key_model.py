@@ -142,3 +142,9 @@ def test_skipped_verify_stage_is_worded_skipped_and_a_single_step_hides_the_list
     assert m.recorded_stage_lines(r, frozenset({"encrypt"})) == []          # one step: no list
     lines = m.recorded_stage_lines(r, frozenset({"encrypt", "shred"}))
     assert any(l.word == "Skipped" for l in lines)
+
+
+def test_too_many_keys_for_one_command_line_is_a_reason():
+    big = [R.Recipient(R.POST_QUANTUM, "age1pq1" + "q" * 1950 + str(i)) for i in range(16)]
+    assert K.cred_reason(S(recipients=big[:14]), False) is None
+    assert K.cred_reason(S(recipients=big), False) == K.TOO_MANY_REASON

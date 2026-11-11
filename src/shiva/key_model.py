@@ -44,6 +44,8 @@ def cred_reason(c: CredState, decrypting: bool) -> str | None:
         return "Add at least one recipient key."
     if rcp.mixed(c.recipients):
         return MIXED_REASON
+    if rcp.too_long(c.recipients):
+        return TOO_MANY_REASON
     if c.key_file_public and c.key_file in (KF_CHOSEN, KF_UNLOCKED) \
             and not set(c.key_file_public) & {r.text for r in c.recipients}:
         return NOT_RECIPIENT
@@ -62,6 +64,7 @@ def _key_file_reason(state: str) -> str | None:
 
 
 MIXED_REASON = "A file can't use both post-quantum and standard keys. Remove one kind."
+TOO_MANY_REASON = "Too many keys for one file. Remove some."
 NOT_RECIPIENT = ("Your key file isn't one of the recipients. Tick \"Also encrypt to my own key\", or remove the key "
                  "file.")
 
@@ -139,6 +142,7 @@ _FAIL = {
     "key_damaged": "The key file is damaged. Use a backup copy of it.",
     "key_unreadable": "This isn't a key file. Choose another one.",
     "recipient_rejected": "A key in the list was rejected. Remove it and run again.",
+    "recipients_too_many": "Too many keys for one file. Remove some and run again.",
 }
 
 KEY_FAIL_CODES = frozenset(_FAIL) | {"key_mismatch"}

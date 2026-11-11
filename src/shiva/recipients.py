@@ -90,6 +90,15 @@ def parse_recipients(text: str, source: str = "pasted", existing: tuple[str, ...
     return out
 
 
+# Every recipient goes on age's command line as "-r <key>"; Windows allows about 32,767 characters in all.
+MAX_RECIPIENT_CHARS = 30000
+
+
+def too_long(keys) -> bool:
+    """True when the keys (Recipient objects or key text) cannot fit on one command line."""
+    return sum(len(getattr(k, "text", k)) + 4 for k in keys) > MAX_RECIPIENT_CHARS
+
+
 def mixed(keys: list[Recipient]) -> bool:
     """age cannot encrypt one file to both standard and post-quantum recipients."""
     return len({k.kind for k in keys}) > 1

@@ -785,6 +785,9 @@ _many({
         "私鑰檔密碼不正確，或私鑰檔已損毀。檢查密碼後再執行。",
     "The key file is damaged. Use a backup copy of it.": "私鑰檔已損毀。改用它的備份。",
     "A key in the list was rejected. Remove it and run again.": "清單中有一把金鑰被拒絕。移除它，再執行。",
+    "Too many keys for one file. Remove some and run again.": "同一個檔案的金鑰太多。移除一些，再執行。",
+    "Too many keys for one file. Remove some.": "同一個檔案的金鑰太多。移除一些。",
+    "Error: Too many keys for one file. Remove some.": "錯誤：同一個檔案的金鑰太多。移除一些。",
     "This key file can't open this file. It may be for another key, use a password, or be damaged. Try another key file, or choose Password.":
         "這個私鑰檔無法開啟這個檔案。檔案可能是給另一把金鑰、使用密碼，或已損毀。試試其他私鑰檔，或選擇「密碼」。",
     "Your key file isn't one of the recipients. Tick \"Also encrypt to my own key\", or remove the key file.":
