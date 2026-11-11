@@ -92,7 +92,7 @@ def shred_held_original(held: HeldFile, src: Path, report: ShredReport, names: l
         report.warning = f"the original was NOT deleted and was not changed: {e}"
         report.untouched = True
     except Exception as e:
-        report.warning = f"the original could not be fully deleted: {e}. It may be partly overwritten or empty; check it."
+        report.warning = f"the original could not be fully shredded: {e}. It may be partly overwritten or empty; check it."
 
 
 def decrypt_file(src: Path, passphrase: str, cancel: threading.Event | None = None,

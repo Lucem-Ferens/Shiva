@@ -345,7 +345,7 @@ class TabPage(QWidget):
         pl.addLayout(prow)
         self.strengthLabel = QLabel("")
         self.pwWarnLabel = QLabel(""); self.pwWarnLabel.setAccessibleName(tr("Passphrase warning"))
-        self.pwWarnLabel.setObjectName("statusError")
+        self.pwWarnLabel.setObjectName("statusWarning")
         self.strengthLabel.setAccessibleName(tr("Passphrase length"))
         pl.addWidget(self.strengthLabel); pl.addWidget(self.pwWarnLabel)
         self.confirmBox = QWidget(); cl = QVBoxLayout(self.confirmBox); cl.setContentsMargins(0, 0, 0, 0)

@@ -400,7 +400,7 @@
     <message><source>Encrypted without cleaning (its metadata stays).</source><translation>未經清理就加密（其中繼資料會保留）。</translation></message>
     <message><source>Cleaned, encrypted and verified.</source><translation>已清理、加密並驗證。</translation></message>
     <message><source>Original shredded (best effort).</source><translation>已銷毀原始檔（盡力而為）。</translation></message>
-    <message><source>The original could not be fully deleted.</source><translation>原始檔無法完全刪除。</translation></message>
+    <message><source>The original could not be fully shredded.</source><translation>原始檔無法完全銷毀。</translation></message>
     <message><source>Original kept (not shredded; see details).</source><translation>已保留原始檔（未銷毀；請見詳細資料）。</translation></message>
     <message><source>Not removed: %T1.</source><translation>未移除：%1。</translation></message>
     <message><source>Warning in details.</source><translation>警告請見詳細資料。</translation></message>

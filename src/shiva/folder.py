@@ -259,7 +259,7 @@ def encrypt_folder_verify_shred(src: Path, passphrase: str, shred_original: bool
             left = _shred_manifest(plan, report, digests)
         except Exception as e:    # files may already be shredded: never report this as a failure with the original unchanged
             left = 0
-            report.warning = f"the original could not be fully deleted: {e}. It may be partly overwritten or empty; check it."
+            report.warning = f"the original could not be fully shredded: {e}. It may be partly overwritten or empty; check it."
         if left:
             shown = ", ".join(report.left[:5]) + (f" and {len(report.left) - 5} more" if len(report.left) > 5 else "")
             report.warning = (f"Left in the folder ({left} item(s)){': ' + shown if shown else ''}. Each one changed after "

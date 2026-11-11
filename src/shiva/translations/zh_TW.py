@@ -386,7 +386,7 @@ _many({
     "Encrypted without cleaning (its metadata stays).": "未經清理就加密（其中繼資料會保留）。",
     "Cleaned, encrypted and verified.": "已清理、加密並驗證。",
     "Original shredded (best effort).": "已銷毀原始檔（盡力而為）。",
-    "The original could not be fully deleted.": "原始檔無法完全刪除。",
+    "The original could not be fully shredded.": "原始檔無法完全銷毀。",
     "Original kept (not shredded; see details).": "已保留原始檔（未銷毀；請見詳細資料）。",
     "Not removed: %T1.": "未移除：%1。",
     "Warning in details.": "警告請見詳細資料。",
