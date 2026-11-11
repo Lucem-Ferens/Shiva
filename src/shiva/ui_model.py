@@ -363,7 +363,7 @@ def pw_state(pw: str, pw2: str, encrypting: bool, decrypting: bool = False) -> P
     elif not pw2:
         reason = "Repeat the passphrase."
     elif pw != pw2:
-        reason = ""     # the mismatch is said once, inline next to the repeat field (match_text); no second line
+        reason = ""     # a mismatch has no reason text of its own; the page repeats match_text beside the button
     else:
         reason = None
     warn = SHORT_PW_WARNING if 0 < len(pw) < MIN_PW else ""

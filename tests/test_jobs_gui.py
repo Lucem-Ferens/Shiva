@@ -64,7 +64,7 @@ def test_tab_order_follows_the_screen_and_includes_every_control():
         pos = {id(x): i for i, x in enumerate(chain)}
         want = [page.addFilesBtn, page.addFolderBtn, page.removeSelectedBtn, page.clearBtn, page.modeEncBtn,
                 page.fileTable, page.resultTable, page.showFolderBtn, page.copyBtn, page.shredAfterCheck,
-                page.outCheck, page.pwEdit, page.primaryBtn, page.cancelBtn]
+                page.pwEdit, page.outCheck, page.primaryBtn, page.cancelBtn]
         idx = [pos[id(x)] for x in want]
         assert idx == sorted(idx), [x.objectName() or type(x).__name__ for x in want]
 
@@ -80,7 +80,7 @@ def test_gui_mismatched_passphrase_changes_nothing(tmp_path: Path):
     w.add_paths([f]); w.wait_for_probes()
     page.pwEdit.setText("one-long-pass"); page.pwConfirmEdit.setText("two-long-pass")
     assert not page.primaryBtn.isEnabled()
-    assert "do not match" in page.matchLabel.text() and not page.reasonLabel.isVisibleTo(page)
+    assert "do not match" in page.matchLabel.text() and "do not match" in page.reasonLabel.text()
     w.start()
     assert f.read_bytes() == b"data" and not (tmp_path / "keep.bin.age").exists()
 

@@ -163,7 +163,7 @@ def test_passphrase_states_on_encrypt_tab(w, tmp_path):
     assert p.reasonLabel.text() == "Repeat the passphrase."
     assert "Short passphrase" in p.pwWarnLabel.text() and p.pwWarnLabel.isVisibleTo(p)
     p.pwConfirmEdit.setText("shor")
-    assert "do not match" in p.matchLabel.text() and (not p.reasonLabel.isVisibleTo(p))   # said once, inline only
+    assert "do not match" in p.matchLabel.text() and "do not match" in p.reasonLabel.text()   # inline and by the button
     assert not p.primaryBtn.isEnabled()
     p.pwConfirmEdit.setText("short")                       # short passphrase only warns
     assert p.primaryBtn.isEnabled() and (not p.reasonLabel.isVisibleTo(p)) and "Short passphrase" in p.pwWarnLabel.text()

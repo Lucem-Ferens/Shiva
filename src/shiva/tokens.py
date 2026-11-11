@@ -13,6 +13,7 @@ TARGET = {"button_h": 32, "check_h": 24, "menu_btn": 32, "nav_h": 36}
 FOCUS = {"width": 2, "gap": 2}
 SIDEBAR_W = 184
 NARROW_W = 640          # content width below which the Type and Size columns are hidden
+COMPACT_H = 520         # content height below which the scope line and the step lists are left out
 
 # name: (px, line px, weight)
 TYPE = {
@@ -34,7 +35,7 @@ COLORS = {
         "text": "#020617", "text-secondary": "#475569", "accent": "#0369A1", "success": "#166534",
         "warning": "#92400E", "error": "#B91C1C", "border": "#64748B", "bg": "#F8FAFC", "surface": "#FFFFFF",
         "on-accent": "#FFFFFF", "on-error": "#FFFFFF",
-        "side": "#F1F5F9", "surface-strong": "#EEF2F7", "selected": "#E0F2FE", "line": "#DBE3EC", "warning-bg": "#FFFBEB",
+        "side": "#F1F5F9", "surface-strong": "#EEF2F7", "selected": "#D4E9FA", "line": "#DBE3EC", "warning-bg": "#FFFBEB",
         # decoration only (never for text that carries meaning)
         "disabled-text": "#5F6672",
     },
@@ -42,7 +43,7 @@ COLORS = {
         "text": "#F1F5F9", "text-secondary": "#A3B1C6", "accent": "#38BDF8", "success": "#4ADE80",
         "warning": "#FCD34D", "error": "#FCA5A5", "border": "#6B7FA3", "bg": "#0F172A", "surface": "#162033",
         "on-accent": "#06223A", "on-error": "#0F172A",
-        "side": "#0B1220", "surface-strong": "#1A2740", "selected": "#1B2A45", "line": "#2A3856", "warning-bg": "#2A2410",
+        "side": "#0B1220", "surface-strong": "#1A2740", "selected": "#22345A", "line": "#2A3856", "warning-bg": "#2A2410",
         "disabled-text": "#8896AD",
     },
 }
@@ -73,12 +74,12 @@ def theme_from_palette(palette) -> str:
 
 _QSS = Template("""
 QWidget#side { background: $side; border-right: 1px solid $line; }
-QToolButton#nav { border: 2px solid transparent; border-radius: ${r_control}px; padding: 0 ${s3}px; background: transparent; }
+QToolButton#nav { border: 2px solid transparent; border-left: ${s1}px solid transparent; border-radius: ${r_control}px; padding: 0 ${s3}px; background: transparent; }
 QToolButton#nav:hover { background: $surface_strong; }
-QToolButton#nav:checked { background: $selected; }
+QToolButton#nav:checked { background: $selected; border-left: ${s1}px solid $accent; }
 QToolButton#nav QLabel { color: $text_secondary; background: transparent; }
 QToolButton#nav:checked QLabel { color: $text; font-weight: 600; }
-QToolButton#nav:focus { border: ${f_width}px solid $accent; }
+QToolButton#nav:focus { border: ${f_width}px solid $accent; border-left: ${s1}px solid $accent; }
 QLabel#brand { font-size: ${t_section}px; font-weight: 600; padding: ${s1}px ${s3}px ${s4}px ${s3}px; }
 QPushButton { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s4}px; background: $surface; color: $text; }
 QPushButton:hover { background: $surface_strong; }
@@ -110,6 +111,10 @@ QTableWidget[dropState="ok"], QLabel#emptyDrop[dropState="ok"] { border: 2px das
 QTableWidget[dropState="refused"], QLabel#emptyDrop[dropState="refused"] { border: 2px dashed $error; border-radius: ${r_card}px; background: $warning_bg; }
 QLabel#dropCue { color: $text; font-weight: 600; padding: ${s1}px; }
 QToolButton#nav[dropTarget="true"] { background: $surface_strong; border: 2px dashed $accent; }
+QLabel#resultBanner { background: $surface; border: 1px solid $line; border-left: ${s1}px solid $border; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
+QLabel#resultBanner[level="success"] { border-left-color: $success; }
+QLabel#resultBanner[level="warning"] { border-left-color: $warning; background: $warning_bg; }
+QLabel#resultBanner[level="error"] { border-left-color: $error; }
 QLabel#pageTitle { font-size: ${t_title}px; font-weight: 600; }
 QLabel#pageScope, QLabel#shredAfterReason { color: $text_secondary; }
 QLabel#statusWarning { color: $warning; }

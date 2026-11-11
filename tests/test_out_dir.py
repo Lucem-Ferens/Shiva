@@ -273,14 +273,14 @@ def test_gui_out_dir_inside_listed_folder_is_blocked(w, dirs):
     assert "inside a listed folder" not in p.reasonLabel.text()
 
 
-def test_gui_mismatch_text_appears_once(w, tmp_path):
+def test_gui_mismatch_text_is_inline_and_by_the_button(w, tmp_path):
     f = tmp_path / "t.txt"; f.write_bytes(b"x")
     w.set_tab("encrypt"); p = w.pages["encrypt"]
     w.add_paths([f]); w.wait_for_probes()
     p.pwEdit.setText("one-long-pass"); p.pwConfirmEdit.setText("two-long-pass")
     shown = [lab.text() for lab in p.findChildren(type(p.matchLabel))
              if lab.isVisibleTo(p) and "do not match" in lab.text()]
-    assert len(shown) == 1 and (not p.reasonLabel.isVisibleTo(p)) and not p.primaryBtn.isEnabled()
+    assert len(shown) == 2 and p.reasonLabel.isVisibleTo(p) and not p.primaryBtn.isEnabled()
     assert p.strengthLabel.text() == "Length: 13 characters"
 
 

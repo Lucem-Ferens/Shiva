@@ -5,11 +5,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPalette
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QGroupBox, QHBoxLayout, QHeaderView,
                                QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
-                               QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QTableWidget, QTableWidgetItem,
+                               QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QStyledItemDelegate, QStyleOptionViewItem,
+                               QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
 from .. import output, steps, storage, tokens
@@ -48,7 +49,12 @@ class StageBox(QWidget):
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         v.addWidget(self.title); v.addWidget(self.list)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        self.suppressed = False        # a short window leaves the list out so the table keeps its rows
         self.setVisible(False)
+
+    def set_suppressed(self, on: bool) -> None:
+        self.suppressed = on
+        self.setVisible(self.list.count() > 0 and not on)
 
     @staticmethod
     def _colon() -> str:
@@ -57,7 +63,7 @@ class StageBox(QWidget):
 
     def fill(self, name: str, lines: list, theme: str) -> None:
         self.list.clear()
-        self.setVisible(bool(lines))
+        self.setVisible(bool(lines) and not self.suppressed)
         if not lines:
             return
         for ln in lines:
@@ -70,6 +76,43 @@ class StageBox(QWidget):
         self.title.setText(title); self.list.setAccessibleName(title)
         self.list.setFixedHeight(sum(self.list.sizeHintForRow(i) for i in range(len(lines))) + 4)
         self.list.setMinimumWidth(max(self.list.sizeHintForColumn(0) + 12, self.title.sizeHint().width()))
+
+
+class _FitScroll(QScrollArea):
+    """Scroll area that asks for the height of its content (so the options take what they need) and gives it up
+    down to a small minimum when the page is short; only then does it scroll."""
+    _MIN_H = 72
+
+    def __init__(self, content: QWidget):
+        super().__init__()
+        self.setWidgetResizable(True); self.setFrameShape(QScrollArea.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); self.setWidget(content)
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        content.installEventFilter(self)
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.LayoutRequest:
+            self.updateGeometry()
+        return super().eventFilter(obj, ev)
+
+    def sizeHint(self) -> QSize:
+        w, lay = self.widget(), self.widget().layout()
+        width = max(self.viewport().width(), 200)
+        h = lay.totalHeightForWidth(width) if lay.hasHeightForWidth() else w.sizeHint().height()
+        return QSize(super().sizeHint().width(), h + 2 * self.frameWidth())
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(0, self._MIN_H)
+
+
+class _NameDelegate(QStyledItemDelegate):
+    """One line, cut in the middle (the full name is the tooltip), even in a table that wraps its other cells."""
+
+    def initStyleOption(self, option, index) -> None:
+        super().initStyleOption(option, index)
+        option.features &= ~QStyleOptionViewItem.WrapText
+        option.textElideMode = Qt.ElideMiddle
 
 
 # ------------------------------------------------------------------ one page
@@ -152,6 +195,14 @@ class TabPage(QWidget):
         self.resultTable.setAccessibleName(tr("Results: status, name, result, size"))
         self._style_table(self.resultTable)
         self.resultTable.setWordWrap(True)
+        rh = self.resultTable.horizontalHeader()
+        rh.setStretchLastSection(False)
+        for c, mode in ((0, QHeaderView.Fixed), (1, QHeaderView.Interactive), (2, QHeaderView.Stretch), (3, QHeaderView.Fixed)):
+            rh.setSectionResizeMode(c, mode)
+        self.resultTable.setColumnWidth(0, 164); self.resultTable.setColumnWidth(1, 200); self.resultTable.setColumnWidth(3, 80)
+        self.resultTable.setItemDelegateForColumn(1, _NameDelegate(self.resultTable))
+        self._fitting = False
+        rh.sectionResized.connect(self._fit_result_rows)
         self.detailPane = QPlainTextEdit(); self.detailPane.setReadOnly(True); self.detailPane.setMaximumHeight(110)
         self.detailPane.setAccessibleName(tr("Details of the selected result"))
         self.summaryLabel = QLabel(""); self.summaryLabel.setWordWrap(True)
@@ -161,18 +212,17 @@ class TabPage(QWidget):
         self.resultBanner.setAccessibleName(tr("Result of the run"))
         rb = QHBoxLayout()
         self.showFolderBtn = QPushButton(tr("Show in folder")); self.copyBtn = QPushButton(tr("Copy results"))
-        rb.addWidget(self.showFolderBtn); rb.addWidget(self.copyBtn); rb.addStretch(1)
+        rb.addWidget(self.showTechCheck); rb.addStretch(1); rb.addWidget(self.showFolderBtn); rb.addWidget(self.copyBtn)
         rl.insertWidget(0, self.resultBanner)
+        self.resultBanner.setObjectName("resultBanner")
         self.runStages, self.resultStages = StageBox(), StageBox()      # while running / beside the details of a result
         detail_row = QHBoxLayout(); detail_row.addWidget(self.detailPane, 1); detail_row.addWidget(self.resultStages)
-        for w in (self.resultTable, self.showTechCheck):
-            rl.addWidget(w)
-        rl.addLayout(detail_row); rl.addWidget(self.summaryLabel)
-        rl.addLayout(rb)
+        rl.addWidget(self.resultTable, 1)
+        rl.addLayout(rb); rl.addLayout(detail_row); rl.addWidget(self.summaryLabel)
         self.view.addWidget(self.emptyView); self.view.addWidget(self.fileTable); self.view.addWidget(results)
         self.view.setMinimumHeight(self._VIEW_MIN_H)
         bl.addWidget(self.dropCue)
-        bl.addWidget(self.view, 1)
+        bl.addWidget(self.view, 100)       # takes the spare height; the options keep their own height first
         opts_pane = QWidget(); bl = QVBoxLayout(opts_pane); bl.setContentsMargins(0, 0, 0, 0)   # options and passphrase scroll
 
         self.noteLabel = QLabel(dyn(m.CLEAN_LIMITS if tab == "clean" else m.SHRED_LINE if tab == "shred" else ""))
@@ -269,13 +319,17 @@ class TabPage(QWidget):
         self.outBtn = QPushButton(tr("Choose folder...")); self.outBtn.setAccessibleName(tr("Choose output folder"))
         self.outBox = QWidget(); ol = QHBoxLayout(self.outBox); ol.setContentsMargins(0, 0, 0, 0)
         ol.addWidget(self.outEdit, 1); ol.addWidget(self.outBtn)
+        self.outChildren, ocl = self._child_box()       # the folder row and its note hang under the check box
         self.outNoteLabel = QLabel(""); self.outNoteLabel.setWordWrap(True)
         self.outNoteLabel.setAccessibleName(tr("Output folder note"))
         self._out_problem: str | None = None
         self._out_note_cache: dict[str, str] = {}
         self._opt["out"] = self.outCheck
-        for w in (self.outCheck, self.outBox, self.outNoteLabel):
-            bl.addWidget(w); w.setVisible(False)
+        bl.addWidget(self.outCheck); bl.addWidget(self.outChildren)
+        for w in (self.outBox, self.outNoteLabel):
+            ocl.addWidget(w)
+        for w in (self.outCheck, self.outChildren, self.outBox, self.outNoteLabel):
+            w.setVisible(False)
 
         # --- passphrase block
         self.pwBlock = QWidget(); pl = QVBoxLayout(self.pwBlock); pl.setContentsMargins(0, 0, 0, 0)
@@ -301,13 +355,12 @@ class TabPage(QWidget):
             cl.addWidget(w)
         pl.addWidget(self.confirmBox)
         self.pwBlock.setVisible(False)
-        bl.addWidget(self.pwBlock)
+        bl.insertWidget(bl.indexOf(self.moreOptionsCheck), self.pwBlock)     # the required input comes before the optional ones
         bl.addStretch(1)       # spare height goes below the options, not into the check boxes
-        scroll =QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QScrollArea.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); scroll.setWidget(opts_pane)   # buttons below stay on screen
-        scroll.setFocusPolicy(Qt.NoFocus)
-        self.optionsScroll = scroll
-        self.body.layout().addWidget(scroll, 1)
+        # the options and the passphrase scroll only when the page is too short for them; hidden while a run or its
+        # results show (what an option does comes from ui_model.option_view, never from this container's visibility)
+        self.optionsScroll = _FitScroll(opts_pane)
+        self.body.layout().addWidget(self.optionsScroll, 0)
         outer.addWidget(self.body, 1)
 
         # --- reason line, progress, buttons
@@ -315,24 +368,26 @@ class TabPage(QWidget):
         self.reasonLabel.setAccessibleName(tr("Why the button is disabled"))
         self.progressLabel = QLabel(""); self.progressBar = QProgressBar()
         self.progressLabel.setVisible(False); self.progressBar.setVisible(False)
-        self.primaryBtn = QPushButton(""); self.primaryBtn.setMinimumHeight(32)
+        self.primaryBtn = QPushButton(""); self.primaryBtn.setMinimumHeight(32); self.primaryBtn.setMinimumWidth(160)
         self.primaryBtn.setProperty("primary", True)
         self.primaryBtn.setToolTip(tr("Shortcut: Ctrl+Enter"))
-        self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setVisible(False)
+        self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setMinimumWidth(120)
+        self.cancelBtn.setVisible(False)
         self.cancelBtn.setAccessibleName(tr("Cancel the run"))
         # read-only list of the steps of one item (two or more steps only); not a tab stop
         outer.addWidget(self.runStages)
         outer.addWidget(self.progressLabel); outer.addWidget(self.progressBar)
         brow = QHBoxLayout(); brow.addWidget(self.reasonLabel, 1)
+        brow.addStretch(0)        # with no reason the buttons stay at the right instead of filling the row
         brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
         outer.addLayout(brow)
 
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.modeEncBtn, self.modeDecBtn,
-                 self.fileTable, self.resultTable, self.showTechCheck, self.detailPane, self.showFolderBtn, self.copyBtn,
+                 self.fileTable, self.resultTable, self.showTechCheck, self.showFolderBtn, self.copyBtn, self.detailPane,
                  self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
-                 self.shredAfterCheck, self.moreOptionsCheck, self.keepQualityCheck, self.keepQualityMore,
-                 self.keepOrientCheck,
-                 self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn, self.pwEdit, self.showPwCheck, self.pwConfirmEdit,
+                 self.shredAfterCheck, self.pwEdit, self.showPwCheck, self.pwConfirmEdit, self.moreOptionsCheck,
+                 self.keepQualityCheck, self.keepQualityMore, self.keepOrientCheck,
+                 self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
                  self.primaryBtn, self.cancelBtn]
         for a, b in zip(order, order[1:]):
             QWidget.setTabOrder(a, b)
@@ -458,11 +513,28 @@ class TabPage(QWidget):
         super().resizeEvent(e)
         self._apply_narrow()
 
+    def _fit_result_rows(self, *_) -> None:
+        """Wrapped results need their row height again whenever the Result column changes width."""
+        if not self._fitting:
+            self._fitting = True
+            try:
+                self.resultTable.resizeRowsToContents()
+            finally:
+                self._fitting = False
+
     def _apply_narrow(self) -> None:
-        """Narrow content: the Type and Size columns (Size of the results) are hidden; the data stays."""
+        """Narrow content: the Type and Size columns (Size of the results) are hidden; the data stays. Short content: the
+        scope line and the step lists are left out so the tables keep their rows."""
+        compact = self.height() < tokens.COMPACT_H
+        self.pageScope.setVisible(not compact)
+        self.detailPane.setMaximumHeight(60 if compact else 110)
+        for box in (self.runStages, self.resultStages):
+            box.set_suppressed(compact)
         narrow = self.width() < tokens.NARROW_W
         self.fileTable.setColumnHidden(2, narrow); self.fileTable.setColumnHidden(3, narrow)
         self.resultTable.setColumnHidden(3, narrow)
+        self.resultTable.setColumnWidth(1, 150 if narrow else 200)
+        self._fit_result_rows()       # the Result column takes what is left
 
     _EMPTY_CSS = "QLabel#emptyDrop { border: 1px dashed palette(mid); padding: 24px; }"
     _HC_DROP_CSS = {"ok": "QTableWidget[dropState], QLabel#emptyDrop[dropState] { border: 3px dashed palette(highlight); }",
@@ -527,14 +599,19 @@ class TabPage(QWidget):
                 w.setFocus(Qt.OtherFocusReason)
                 return
 
+    def _set_mode(self, mode: str) -> None:
+        """Options and passphrase are on screen only in the list; a run or its results get the whole height."""
+        self.mode = mode
+        self.optionsScroll.setVisible(mode == "list")
+
     def _leave_results(self, clear: bool) -> None:
-        self.mode = "list"
+        self._set_mode("list")
         if clear:
             self.rows = []
 
     def back_to_list(self) -> None:
         """After a run: keep the rows whose items still exist (re-checked), drop the rest."""
-        self.mode = "list"
+        self._set_mode("list")
         self._show_stages("", [])
         keep = [r for r in self.rows if os.path.lexists(r.path)]
         self.rows = []
@@ -588,6 +665,7 @@ class TabPage(QWidget):
                     note = self._out_note_cache[k]
         # a warning is word + icon, never colour alone; it replaces the confirmation window (the action is not irreversible)
         self.outNoteLabel.setText(f"⚠ {tr('Warning:')} {note}" if note else ""); self.outNoteLabel.setVisible(bool(note))
+        self.outChildren.setVisible(out_live or bool(note))
         self.update_controls()
 
     # ---- probing (off the GUI thread)
@@ -639,10 +717,18 @@ class TabPage(QWidget):
         if self.mode == "list":
             self._fill_file_table()
             self.view.setCurrentIndex(1 if self.rows else 0)
+            self._cap_view()
         if self.outCheck.isChecked() and self.mode == "list":
             self._out_changed()      # the listed folders may have changed; re-check the output folder (calls update_controls)
         else:
             self.update_controls()
+
+    def _cap_view(self) -> None:
+        """A short list is only as tall as its rows; the rest of the height goes to the options."""
+        if self.mode == "list" and self.rows:
+            self.view.setMaximumHeight(max(self._VIEW_MIN_H, self.fileTable.contentHeight()))
+        else:
+            self.view.setMaximumHeight(16777215)
 
     def _type_text(self, f: m.Facts) -> str:
         if not f.probed:
@@ -675,6 +761,8 @@ class TabPage(QWidget):
             for c, txt in enumerate(cells):
                 it = QTableWidgetItem(txt)
                 it.setData(Qt.UserRole, r.key)
+                if c in (1, 4) and txt:
+                    it.setToolTip(str(f.path) if c == 1 else txt)
                 if r.info.status in ("Not supported", "Not found", "Not readable"):
                     it.setForeground(grey)
                 if c == 0:
@@ -708,6 +796,7 @@ class TabPage(QWidget):
         # output folder: only where something is written (Clean and Encrypt)
         out_live = v.live["out"]
         self.outBox.setVisible(out_live)
+        self.outChildren.setVisible(out_live or not self.outNoteLabel.isHidden())
         out_reason = (self._out_problem if out_live else None)
         # passphrase block
         encrypting = (self.tab == "encrypt" and any(i.action == "encrypt" for i in infos)) or \
@@ -724,8 +813,9 @@ class TabPage(QWidget):
                                   self.win.busy, self.pending())
         self.primaryBtn.setText(dyn(m.primary_label(self.tab, ticked, infos)))
         self.primaryBtn.setEnabled(reason is None)
-        self.reasonLabel.setText(dyn(reason or "")); self.reasonLabel.setVisible(bool(reason))
-        self.reasonLabel.setAccessibleDescription(dyn(reason or ""))      # the accessible name is a fixed label: the reason goes here
+        shown = dyn(reason) if reason else self.matchLabel.text().lstrip("✗ ") if reason == "" else ""
+        self.reasonLabel.setText(shown); self.reasonLabel.setVisible(bool(shown))     # a mismatch has no reason text of its own
+        self.reasonLabel.setAccessibleDescription(shown)      # the accessible name is a fixed label: the reason goes here
         self.primaryBtn.setAccessibleName(self.primaryBtn.text().replace("...", ""))
         self.primaryBtn.setAccessibleDescription(reason or ps.match_text if reason is not None else "")
         self.clearBtn.setEnabled(bool(self.rows))
@@ -784,7 +874,7 @@ class TabPage(QWidget):
         self.win.begin_run(self, opts, run_rows)
 
     def set_running(self, run_rows: list[_Row]) -> None:
-        self.mode = "running"; self._run_rows = list(run_rows)
+        self._set_mode("running"); self._run_rows = list(run_rows); self._cap_view()
         self.view.setCurrentIndex(1)
         self.primaryBtn.setVisible(False); self.cancelBtn.setVisible(True); self.cancelBtn.setEnabled(True)
         self.reasonLabel.setVisible(False)
@@ -862,17 +952,21 @@ class TabPage(QWidget):
                 it = QTableWidgetItem(txt)
                 if c == 0:
                     status_item(it, rr.status, self._theme())
+                elif c == 1:
+                    it.setToolTip(str(row.path))
+                elif c == 3:
+                    it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 if c == 2 and rr.tip:
                     it.setToolTip(dyn(rr.tip)); it.setData(Qt.AccessibleTextRole, f"{txt}. {dyn(rr.tip)}")
                 t.setItem(i, c, it)
-        t.setColumnWidth(0, 164); t.setColumnWidth(2, 360); t.resizeRowsToContents()
+        t.resizeRowsToContents()
         statuses = [d[0].status for d in data]
         self.summaryLabel.setText(dyn(m.summary_text(statuses))); self.summaryLabel.setVisible(False)   # the banner says it
         risky = any(self.win._risk_lines(row) for rr, jr, row in data if rr.status in ("Done", "Warning")
                     and (tab == "shred" or (jr is not None and jr.original_removed)))
         self._set_banner(m.summary_level(statuses, risky), m.summary_text(statuses), risky)
         self.statuses = statuses
-        self.mode = "results"
+        self._set_mode("results"); self._cap_view()
         self.view.setCurrentIndex(2)
         self._stop_ticker()
         self.progressBar.setVisible(False); self.progressLabel.setVisible(False)
@@ -885,10 +979,9 @@ class TabPage(QWidget):
         self.restore_focus()            # no effect while the body is still disabled: the window calls it again afterwards
 
     _BANNER = {"success": ("✓", None), "warning": ("⚠", "Warning:"), "error": ("✗", "Failed:")}
-    _BANNER_COLOR = {"success": "success", "warning": "warning", "error": "error"}
 
     def _set_banner(self, level: str, summary: str, risky: bool) -> None:
-        """Icon + word + counts; never colour alone. The border colour comes from the theme tokens."""
+        """Icon + word + counts; never colour alone. The bar colour comes from the token style sheet (by the level property)."""
         glyph, word = self._BANNER[level]
         shown = dyn(summary)
         # the level word is added only when the counts do not already carry it ("3 warnings", "1 failed")
@@ -899,8 +992,9 @@ class TabPage(QWidget):
         self.resultBanner.setText(text)
         _announce(self.resultBanner, text)        # real text for screen readers, announced like the status line
         self.resultBanner.setProperty("level", level)
-        col = tokens.COLORS[tokens.theme_from_palette(self.palette())][self._BANNER_COLOR[level]]
-        self.resultBanner.setStyleSheet(f"QLabel {{ border-left: 4px solid {col}; padding: 4px 8px; }}")
+        if high_contrast_active():      # the token sheet is not applied: system colours only
+            self.resultBanner.setStyleSheet("QLabel#resultBanner { border-left: 4px solid palette(window-text); padding: 8px 12px; }")
+        self.resultBanner.style().unpolish(self.resultBanner); self.resultBanner.style().polish(self.resultBanner)
 
     def _show_details(self) -> None:
         sel = self.resultTable.selectionModel().selectedRows()

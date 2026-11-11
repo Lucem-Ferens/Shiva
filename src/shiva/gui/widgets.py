@@ -174,6 +174,16 @@ class _Table(QTableWidget):
         super().__init__(*args)
         self.setTabKeyNavigation(False)    # Tab leaves the table (the default walks cell by cell and never lets go)
 
+    _HINT_ROWS = 5      # the table asks for this many rows at most; it grows into spare height up to its content
+
+    def contentHeight(self) -> int:
+        return self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(self.rowCount())) + 2 * self.frameWidth()
+
+    def sizeHint(self):
+        n = min(self.rowCount(), self._HINT_ROWS)
+        h = self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(n)) + 2 * self.frameWidth()
+        return QSize(super().sizeHint().width(), max(h, 100))
+
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Delete:
             self.deleteRequested.emit()

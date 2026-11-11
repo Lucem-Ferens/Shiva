@@ -128,7 +128,7 @@ def test_enter_on_a_passphrase_mismatch_says_why(w, tmp_path):
     pg = w.pages["encrypt"]; w.set_tab("encrypt")
     w.add_paths(_files(tmp_path, 1), "encrypt"); w.wait_for_probes()
     pg.pwEdit.setText("correct horse battery"); pg.pwConfirmEdit.setText("correct horse batterX")
-    assert not pg.primaryBtn.isEnabled() and pg.reasonLabel.isHidden()
+    assert not pg.primaryBtn.isEnabled() and "match" in pg.reasonLabel.text().lower()   # the reason sits by the button
     w.set_status("2 items added")
     pg._enter()
     assert w.statusLine.text() != "2 items added"
