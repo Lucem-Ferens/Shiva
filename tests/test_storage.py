@@ -24,7 +24,10 @@ def test_warning_wording_per_kind():
 @needs_nt
 def test_assess_real_locations(tmp_path: Path):
     info = assess(tmp_path / "f.txt")
-    assert info.drive_kind in ("ssd", "hdd") and info.filesystem
+    # Virtual disks (CI runners) cannot answer the seek-penalty query; "unknown" is then the honest result.
+    assert info.drive_kind in ("ssd", "hdd") or (
+        info.drive_kind == "unknown" and "seek-penalty query failed" in info.notes)
+    assert info.filesystem
     assert assess(Path(r"\\server\share\f.txt")).drive_kind == "network"
 
 
