@@ -5,7 +5,9 @@ disabled, the result wording and the failure wording. Nothing here sees a key's 
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
+from pathlib import Path, PureWindowsPath
 
 from . import recipients as rcp
 
@@ -126,3 +128,45 @@ _FAIL = {
 }
 
 KEY_FAIL_CODES = frozenset(_FAIL) | {"key_mismatch"}
+
+
+# ---- the Create key pair window
+EXISTS_REASON = "A file with this name already exists. Choose another name."
+LOSS_WARNING = ("Warning: if you lose this key file or forget its password, files encrypted to this key can never be "
+                "opened. No one can recover them. Keep a backup copy somewhere safe, away from this computer.")
+UNPROTECTED_WARNING = ("Warning: without a password, anyone who can read this file can open your files. Shiva can't "
+                       "limit who can read it.")
+SHORT_KEY_PASSWORD = "Warning: short password. Use 8 or more characters."
+MIN_KEY_PASSWORD = 8
+
+
+def path_problem(path: str) -> str | None:
+    """Why a typed key file path is refused, or None. Only a full path is accepted: a relative one would put the key in
+    whatever folder the program runs from, and a colon after the drive would hide it in an NTFS data stream."""
+    p = path.strip()
+    if not p:
+        return "Choose where to save the key file."
+    if not PureWindowsPath(p).is_absolute():
+        return "Type the full path of the key file, starting with a drive letter, or use Choose..."
+    if ":" in p[2:]:
+        return "The file name can't contain a colon."
+    if not Path(os.path.abspath(p)).parent.is_dir():
+        return "That folder doesn't exist."
+    return None
+
+
+def create_reason(path: str, protect: bool, pw: str, pw2: str, exists: bool) -> str | None:
+    """The first reason "Create key pair" is disabled, or None. A short password never blocks."""
+    problem = path_problem(path)
+    if problem:
+        return problem
+    if protect:
+        if not pw:
+            return "Enter a password, or untick the password box."
+        if not pw2:
+            return "Repeat the password."
+        if pw != pw2:
+            return "Passwords do not match."
+    if exists:
+        return EXISTS_REASON
+    return None

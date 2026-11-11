@@ -800,5 +800,64 @@
     <message><source>%1, %2 characters, %3</source><translation>%1，%2 個字元，%3</translation></message>
     <message><source>%1 key, %2 characters, starts %3, ends %4, from %5</source><translation>%1金鑰，%2 個字元，開頭 %3，結尾 %4，來源 %5</translation></message>
     <message><source>Error: Shiva could not read the key file. Nothing was changed.</source><translation>錯誤：Shiva 無法讀取這個金鑰檔。沒有變更任何東西。</translation></message>
+    <message><source>Create a key pair</source><translation>建立金鑰組</translation></message>
+    <message><source>Create a key pair...</source><translation>建立金鑰組...</translation></message>
+    <message><source>Create key pair</source><translation>建立金鑰組</translation></message>
+    <message><source>Create key pair...</source><translation>建立金鑰組...</translation></message>
+    <message><source>No key file yet?</source><translation>還沒有金鑰檔？</translation></message>
+    <message><source>Use as my key file</source><translation>設為我的金鑰檔</translation></message>
+    <message><source>Use this key file</source><translation>使用這個金鑰檔</translation></message>
+    <message><source>A key pair has a public key that you share and a key file that you keep. People encrypt files with your public key. Only your key file opens them.</source><translation>金鑰組包含你要分享的公開金鑰，以及你要保管的金鑰檔。別人用你的公開金鑰加密檔案，只有你的金鑰檔能開啟。</translation></message>
+    <message><source>Key type</source><translation>金鑰類型</translation></message>
+    <message><source>Post-quantum (recommended)</source><translation>後量子（建議）</translation></message>
+    <message><source>Designed to resist attacks by future quantum computers. The public key is very long (about 2,000 characters). Opening files needs age 1.3.0 or later.</source><translation>設計用來抵抗未來量子電腦的攻擊。公開金鑰很長（約 2,000 個字元）。開啟檔案需要 age 1.3.0 或更新版本。</translation></message>
+    <message><source>A short public key. Works with every version of age.</source><translation>公開金鑰很短。適用於所有版本的 age。</translation></message>
+    <message><source>Save the key file as</source><translation>金鑰檔儲存為</translation></message>
+    <message><source>Choose...</source><translation>選擇...</translation></message>
+    <message><source>Choose where to save the key file</source><translation>選擇金鑰檔的儲存位置</translation></message>
+    <message><source>Save the key file</source><translation>儲存金鑰檔</translation></message>
+    <message><source>Protect the key file with a password</source><translation>用密碼保護金鑰檔</translation></message>
+    <message><source>Repeat password</source><translation>再次輸入密碼</translation></message>
+    <message><source>Password check</source><translation>密碼檢查</translation></message>
+    <message><source>Length: %1 characters</source><translation>長度：%1 個字元</translation></message>
+    <message><source>Passwords match</source><translation>兩次密碼相符</translation></message>
+    <message><source>Passwords do not match</source><translation>兩次密碼不相符</translation></message>
+    <message><source>Creating...</source><translation>建立中...</translation></message>
+    <message><source>Key pair created</source><translation>已建立金鑰組</translation></message>
+    <message><source>Key file: %1</source><translation>金鑰檔：%1</translation></message>
+    <message><source>Type: %1. Protected with a password: %2.</source><translation>類型：%1。以密碼保護：%2。</translation></message>
+    <message><source>post-quantum</source><translation>後量子</translation></message>
+    <message><source>standard</source><translation>一般</translation></message>
+    <message><source>yes</source><translation>是</translation></message>
+    <message><source>no</source><translation>否</translation></message>
+    <message><source>Public key</source><translation>公開金鑰</translation></message>
+    <message><source>Public key (safe to share)</source><translation>公開金鑰（可安全分享）</translation></message>
+    <message><source>Save public key...</source><translation>儲存公開金鑰...</translation></message>
+    <message><source>Save the public key</source><translation>儲存公開金鑰</translation></message>
+    <message><source>Save a backup copy...</source><translation>儲存備份...</translation></message>
+    <message><source>Save a backup copy of the key file</source><translation>儲存金鑰檔的備份</translation></message>
+    <message><source>Warning: make a backup copy of the key file now. If it is lost, files encrypted to this key can't be opened.</source><translation>警告：請現在備份金鑰檔。遺失後，加密給這把金鑰的檔案將無法開啟。</translation></message>
+    <message><source>Warning: this key file is not protected. Keep it in a private place.</source><translation>警告：這個金鑰檔沒有密碼保護。請存放在私人的地方。</translation></message>
+    <message><source>Warning: this folder is cloud-synced (%1). A copy of the key file will be uploaded.</source><translation>警告：這個資料夾由雲端同步（%1）。金鑰檔的副本會被上傳。</translation></message>
+    <message><source>Warning: this folder is on a network drive. The server may keep copies.</source><translation>警告：這個資料夾位於網路磁碟。伺服器可能保留副本。</translation></message>
+    <message><source>Error: A file with this name already exists. Nothing was created.</source><translation>錯誤：已有同名檔案。沒有建立任何東西。</translation></message>
+    <message><source>Error: The key file could not be saved. Nothing was created. (The folder may be read-only or full.)</source><translation>錯誤：無法儲存金鑰檔。沒有建立任何東西。（資料夾可能唯讀或已滿。）</translation></message>
+    <message><source>Error: The public key could not be saved.</source><translation>錯誤：無法儲存公開金鑰。</translation></message>
+    <message><source>Error: The backup copy could not be saved.</source><translation>錯誤：無法儲存備份。</translation></message>
+    <message><source>Choose where to save the key file.</source><translation>請選擇金鑰檔的儲存位置。</translation></message>
+    <message><source>Enter a password, or untick the password box.</source><translation>請輸入密碼，或取消勾選密碼保護。</translation></message>
+    <message><source>Repeat the password.</source><translation>請再輸入一次密碼。</translation></message>
+    <message><source>Passwords do not match.</source><translation>兩次密碼不相符。</translation></message>
+    <message><source>A file with this name already exists. Choose another name.</source><translation>已有同名檔案。請選擇其他名稱。</translation></message>
+    <message><source>Warning: if you lose this key file or forget its password, files encrypted to this key can never be opened. No one can recover them. Keep a backup copy somewhere safe, away from this computer.</source><translation>警告：若遺失這個金鑰檔或忘記它的密碼，加密給這把金鑰的檔案將永遠無法開啟，沒有人能救回。請把備份存放在安全、遠離這台電腦的地方。</translation></message>
+    <message><source>Warning: without a password, anyone who can read this file can open your files. Shiva can't limit who can read it.</source><translation>警告：沒有密碼時，任何能讀取這個檔案的人都能開啟你的檔案。Shiva 無法限制誰能讀取它。</translation></message>
+    <message><source>Warning: short password. Use 8 or more characters.</source><translation>警告：密碼太短。使用 8 個字元以上。</translation></message>
+    <message><source>Type the full path of the key file, starting with a drive letter, or use Choose...</source><translation>請輸入金鑰檔的完整路徑（以磁碟代號開頭），或按「選擇...」。</translation></message>
+    <message><source>The file name can't contain a colon.</source><translation>檔名不能包含冒號。</translation></message>
+    <message><source>That folder doesn't exist.</source><translation>這個資料夾不存在。</translation></message>
+    <message><source>Error: That folder doesn't exist. Nothing was created.</source><translation>錯誤：這個資料夾不存在。沒有建立任何東西。</translation></message>
+    <message><source>Error: Shiva could not create the key. Nothing was created.</source><translation>錯誤：Shiva 無法建立金鑰。沒有建立任何東西。</translation></message>
+    <message><source>Public key saved: %1</source><translation>已儲存公開金鑰：%1</translation></message>
+    <message><source>Backup saved: %1</source><translation>已儲存備份：%1</translation></message>
 </context>
 </TS>

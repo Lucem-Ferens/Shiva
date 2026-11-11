@@ -786,3 +786,58 @@ _many({
     "%1 key, %2 characters, starts %3, ends %4, from %5": "%1金鑰，%2 個字元，開頭 %3，結尾 %4，來源 %5",
     "Error: Shiva could not read the key file. Nothing was changed.": "錯誤：Shiva 無法讀取這個金鑰檔。沒有變更任何東西。",
 })
+
+# ------------------------------------------------------------------ Create a key pair
+_many({
+    "Create a key pair": "建立金鑰組", "Create a key pair...": "建立金鑰組...", "Create key pair": "建立金鑰組",
+    "Create key pair...": "建立金鑰組...", "No key file yet?": "還沒有金鑰檔？",
+    "Use as my key file": "設為我的金鑰檔", "Use this key file": "使用這個金鑰檔",
+    "A key pair has a public key that you share and a key file that you keep. People encrypt files with your public key. Only your key file opens them.":
+        "金鑰組包含你要分享的公開金鑰，以及你要保管的金鑰檔。別人用你的公開金鑰加密檔案，只有你的金鑰檔能開啟。",
+    "Key type": "金鑰類型", "Post-quantum (recommended)": "後量子（建議）",
+    "Designed to resist attacks by future quantum computers. The public key is very long (about 2,000 characters). Opening files needs age 1.3.0 or later.":
+        "設計用來抵抗未來量子電腦的攻擊。公開金鑰很長（約 2,000 個字元）。開啟檔案需要 age 1.3.0 或更新版本。",
+    "A short public key. Works with every version of age.": "公開金鑰很短。適用於所有版本的 age。",
+    "Save the key file as": "金鑰檔儲存為", "Choose...": "選擇...", "Choose where to save the key file": "選擇金鑰檔的儲存位置",
+    "Save the key file": "儲存金鑰檔",
+    "Protect the key file with a password": "用密碼保護金鑰檔", "Repeat password": "再次輸入密碼",
+    "Password check": "密碼檢查", "Length: %1 characters": "長度：%1 個字元",
+    "Passwords match": "兩次密碼相符", "Passwords do not match": "兩次密碼不相符",
+    "Creating...": "建立中...",
+    "Key pair created": "已建立金鑰組", "Key file: %1": "金鑰檔：%1",
+    "Type: %1. Protected with a password: %2.": "類型：%1。以密碼保護：%2。",
+    "post-quantum": "後量子", "standard": "一般", "yes": "是", "no": "否",
+    "Public key": "公開金鑰", "Public key (safe to share)": "公開金鑰（可安全分享）",
+    "Save public key...": "儲存公開金鑰...", "Save the public key": "儲存公開金鑰",
+    "Save a backup copy...": "儲存備份...", "Save a backup copy of the key file": "儲存金鑰檔的備份",
+    "Warning: make a backup copy of the key file now. If it is lost, files encrypted to this key can't be opened.":
+        "警告：請現在備份金鑰檔。遺失後，加密給這把金鑰的檔案將無法開啟。",
+    "Warning: this key file is not protected. Keep it in a private place.": "警告：這個金鑰檔沒有密碼保護。請存放在私人的地方。",
+    "Warning: this folder is cloud-synced (%1). A copy of the key file will be uploaded.":
+        "警告：這個資料夾由雲端同步（%1）。金鑰檔的副本會被上傳。",
+    "Warning: this folder is on a network drive. The server may keep copies.": "警告：這個資料夾位於網路磁碟。伺服器可能保留副本。",
+    "Error: A file with this name already exists. Nothing was created.": "錯誤：已有同名檔案。沒有建立任何東西。",
+    "Error: The key file could not be saved. Nothing was created. (The folder may be read-only or full.)":
+        "錯誤：無法儲存金鑰檔。沒有建立任何東西。（資料夾可能唯讀或已滿。）",
+    "Error: The public key could not be saved.": "錯誤：無法儲存公開金鑰。",
+    "Error: The backup copy could not be saved.": "錯誤：無法儲存備份。",
+    # key_model
+    "Choose where to save the key file.": "請選擇金鑰檔的儲存位置。",
+    "Enter a password, or untick the password box.": "請輸入密碼，或取消勾選密碼保護。",
+    "Repeat the password.": "請再輸入一次密碼。", "Passwords do not match.": "兩次密碼不相符。",
+    "A file with this name already exists. Choose another name.": "已有同名檔案。請選擇其他名稱。",
+    "Warning: if you lose this key file or forget its password, files encrypted to this key can never be opened. No one can recover them. Keep a backup copy somewhere safe, away from this computer.":
+        "警告：若遺失這個金鑰檔或忘記它的密碼，加密給這把金鑰的檔案將永遠無法開啟，沒有人能救回。請把備份存放在安全、遠離這台電腦的地方。",
+    "Warning: without a password, anyone who can read this file can open your files. Shiva can't limit who can read it.":
+        "警告：沒有密碼時，任何能讀取這個檔案的人都能開啟你的檔案。Shiva 無法限制誰能讀取它。",
+    "Warning: short password. Use 8 or more characters.": "警告：密碼太短。使用 8 個字元以上。",
+})
+
+_many({
+    "Type the full path of the key file, starting with a drive letter, or use Choose...":
+        "請輸入金鑰檔的完整路徑（以磁碟代號開頭），或按「選擇...」。",
+    "The file name can't contain a colon.": "檔名不能包含冒號。", "That folder doesn't exist.": "這個資料夾不存在。",
+    "Error: That folder doesn't exist. Nothing was created.": "錯誤：這個資料夾不存在。沒有建立任何東西。",
+    "Error: Shiva could not create the key. Nothing was created.": "錯誤：Shiva 無法建立金鑰。沒有建立任何東西。",
+    "Public key saved: %1": "已儲存公開金鑰：%1", "Backup saved: %1": "已儲存備份：%1",
+})

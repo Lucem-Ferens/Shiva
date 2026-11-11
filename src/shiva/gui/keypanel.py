@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 
 from .. import agecli, key_model as K, recipients as rcp, tokens
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, _Table, _announce
+from .createkey import CreateKeyDialog
+from .widgets import WrapCheckBox, _Table, _announce, link_button
 
 _MAX_RECIPIENT_FILE = 1 << 20
 
@@ -229,12 +230,14 @@ class KeyPanel(QWidget):
         self.recipientEdit = QPlainTextEdit(); self.recipientEdit.setTabChangesFocus(True)
         self.recipientEdit.setPlaceholderText(tr("Paste a public key here (starts with age1)"))
         self.recipientEdit.setAccessibleName(tr("Public keys to add"))
-        self.recipientEdit.setAccessibleDescription(tr("Paste a public key here (starts with age1)")); self.recipientEdit.setMaximumHeight(64)
+        self.recipientEdit.setAccessibleDescription(tr("Paste a public key here (starts with age1)")); self.recipientEdit.setMaximumHeight(48)
         self.addKeyBtn = QPushButton(tr("Add key")); self.addKeyBtn.setEnabled(False)
         paste.addWidget(self.recipientEdit, 1); paste.addWidget(self.addKeyBtn, 0, Qt.AlignTop)
         self.recipientHint = _label(); self.recipientHint.setAccessibleName(tr("Public key check"))
         files = QHBoxLayout()
-        self.addKeyFileBtn = QPushButton(tr("Add from file...")); files.addWidget(self.addKeyFileBtn); files.addStretch(1)
+        self.addKeyFileBtn = QPushButton(tr("Add from file..."))
+        self.createKeyBtn = QPushButton(tr("Create key pair..."))
+        files.addWidget(self.addKeyFileBtn); files.addWidget(self.createKeyBtn); files.addStretch(1)
         self.recipientTable = _Table(0, 3)
         self.recipientTable.setHorizontalHeaderLabels([tr(x) for x in ("Kind", "Key", "Source")])
         self.recipientTable.setAccessibleName(tr("Recipient keys: kind, key, source"))
@@ -245,7 +248,7 @@ class KeyPanel(QWidget):
         self.recipientTable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.recipientTable.verticalHeader().setDefaultSectionSize(32)
         self.recipientTable.setColumnWidth(0, 120); self.recipientTable.setColumnWidth(1, 240)
-        self.recipientTable.setMaximumHeight(150)
+        self.recipientTable.setMaximumHeight(104)
         self.recipientEmpty = _label(tr("No keys added yet."))
         self.removeKeyBtn = QPushButton(tr("Remove key")); self.removeKeyBtn.setEnabled(False)
         self.recipientSummary = _label(); self.recipientMixLabel = _label(); self.recipientMixLabel.setObjectName("statusError")
@@ -258,11 +261,20 @@ class KeyPanel(QWidget):
         self.keyFile = key_file_row or KeyFileRow(pick=pick_file)
         self.ownKeyCheck = WrapCheckBox(tr("Also encrypt to my own key")); self.ownKeyCheck.setAccessibleName(tr("Also encrypt to my own key"))
         self.ownKeyReason = _label(); self.ownKeyReason.setObjectName("shredAfterReason")
-        lay.addWidget(self.recipientSection); lay.addWidget(self.keyFile)
+        self.createKeyRow = QWidget(); cr = QHBoxLayout(self.createKeyRow); cr.setContentsMargins(0, 0, 0, 0)
+        self.createKeyLabel = QLabel(tr("No key file yet?"))
+        self.createKeyLink = link_button(QPushButton(tr("Create a key pair...")))
+        self.createKeyLink.setAccessibleName(tr("Create a key pair"))
+        cr.addWidget(self.createKeyLabel); cr.addWidget(self.createKeyLink); cr.addStretch(1)
+        self.createKeyRow.setVisible(False)
+        self._dialog_factory = lambda parent: CreateKeyDialog(parent, decrypting=self._decrypting)
+        lay.addWidget(self.recipientSection); lay.addWidget(self.keyFile); lay.addWidget(self.createKeyRow)
         lay.addWidget(self.ownKeyCheck); lay.addWidget(self.ownKeyReason)
         self.recipientEdit.textChanged.connect(self._pasted)
         self.addKeyBtn.clicked.connect(self.add_pasted)
         self.addKeyFileBtn.clicked.connect(self.add_from_file)
+        self.createKeyBtn.clicked.connect(self.open_create)
+        self.createKeyLink.clicked.connect(self.open_create)
         self.removeKeyBtn.clicked.connect(self.remove_selected)
         self.recipientTable.deleteRequested.connect(self.remove_selected)
         self.recipientTable.itemSelectionChanged.connect(self._selection)
@@ -278,7 +290,23 @@ class KeyPanel(QWidget):
         self._decrypting = decrypting
         self.recipientSection.setVisible(not decrypting)
         self.keyFile.set_decrypt(decrypting)
+        self.createKeyRow.setVisible(decrypting)
         self.ownKeyCheck.setVisible(not decrypting); self.ownKeyReason.setVisible(not decrypting)
+
+    def open_create(self) -> None:
+        """The Create a key pair window; "Use as my key file" fills the key file row (and unlocks it)."""
+        dlg = self._dialog_factory(self)
+        dlg.exec()
+        path, use = dlg.made_path, dlg.use_requested
+        pw = dlg.take_password()
+        dlg.deleteLater()
+        if use and path is not None:
+            self.keyFile.keyPwEdit.setText("")
+            self.keyFile.set_path(path)
+            if pw:
+                self.keyFile.keyPwEdit.setText(pw)
+                self.keyFile.unlock()
+        del pw
 
     # ---- the recipient list
     def recipients(self) -> list[rcp.Recipient]:
@@ -439,8 +467,10 @@ class KeyPanel(QWidget):
     def tab_widgets(self) -> list:
         """The controls in keyboard order."""
         k = self.keyFile
-        return [self.recipientEdit, self.addKeyBtn, self.addKeyFileBtn, self.recipientTable, self.removeKeyBtn,
-                k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.showKeyPwCheck, k.unlockBtn, k.copyPubKeyBtn, self.ownKeyCheck]
+        return [self.recipientEdit, self.addKeyBtn, self.addKeyFileBtn, self.createKeyBtn, self.recipientTable,
+                self.removeKeyBtn,
+                k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.showKeyPwCheck, k.unlockBtn, k.copyPubKeyBtn,
+                self.createKeyLink, self.ownKeyCheck]
 
     def set_own_reason(self, text: str) -> None:
         self.ownKeyReason.setText(text); self.ownKeyReason.setVisible(bool(text))
