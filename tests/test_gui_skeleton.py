@@ -82,3 +82,52 @@ def test_primary_shortcut_on_disabled_button_says_why(w):
     w.set_status("Ready")
     w._press_primary()
     assert w.statusLine.text() and w.statusLine.text() != "Ready"
+
+
+def test_drag_over_state_property_cue_and_clear(w):
+    w.set_tab("clean"); p = w.pages["clean"]
+    assert not p.emptyState.property("dropState") and not p.dropCue.isVisible()
+    p.set_drop_active(True)
+    assert p.emptyState.property("dropState") == "ok" and p.fileTable.property("dropState") == "ok"
+    assert "Drop files to add them" in p.emptyState.text()
+    p.set_drop_active(False)
+    assert not p.emptyState.property("dropState") and not p.fileTable.property("dropState")
+    p.view.setCurrentIndex(1)           # a list is showing: the cue label carries the text
+    p.set_drop_active(True)
+    assert p.dropCue.isVisible() and p.dropCue.text() == "Drop files to add them"
+    p.set_drop_active(False)
+    assert not p.dropCue.isVisible()
+
+
+def test_drag_over_refused_while_busy_and_cleared_on_leave_and_drop(w):
+    from PySide6.QtCore import QMimeData, QUrl
+    from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
+    from PySide6.QtCore import QPoint, QPointF, Qt
+    w.set_tab("clean"); p = w.pages["clean"]
+    md = QMimeData(); md.setUrls([QUrl.fromLocalFile(__file__)])
+    w.busy = True
+    w.dragEnterEvent(QDragEnterEvent(QPoint(5, 5), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier))
+    assert p.emptyState.property("dropState") == "refused" and "Wait for the current run" in p.emptyState.text()
+    w.dragLeaveEvent(QDragLeaveEvent())
+    assert not p.emptyState.property("dropState")
+    w.busy = False
+    w.dragEnterEvent(QDragEnterEvent(QPoint(5, 5), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier))
+    assert p.emptyState.property("dropState") == "ok"
+    w.dropEvent(QDropEvent(QPointF(5, 5), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier))
+    assert not p.emptyState.property("dropState")
+
+
+def test_nav_button_drop_target_state(w):
+    from PySide6.QtCore import QMimeData, QPoint, Qt, QUrl
+    from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent
+    b = w.nav["shred"]
+    md = QMimeData(); md.setUrls([QUrl.fromLocalFile(__file__)])
+    b.dragEnterEvent(QDragEnterEvent(QPoint(5, 5), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier))
+    assert b.property("dropTarget") is True
+    b.dragLeaveEvent(QDragLeaveEvent())
+    assert not b.property("dropTarget")
+
+
+def test_drag_over_rules_use_tokens_only():
+    css = tokens.stylesheet("light")
+    assert 'dropState="ok"' in css and 'dropTarget="true"' in css

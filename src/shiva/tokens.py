@@ -108,6 +108,11 @@ QListWidget#confirmItems { border: 1px solid $line; border-radius: ${r_card}px; 
 QListWidget#confirmItems:focus { border: ${f_width}px solid $accent; }
 QPushButton#learnLink { color: $accent; text-decoration: underline; border: 0; background: transparent; padding: 0; text-align: left; }
 QPushButton#learnLink:focus { border: ${f_width}px solid $accent; }
+QLabel#emptyDrop { border: 1px dashed $border; border-radius: ${r_card}px; padding: ${s5}px; }
+QTableWidget[dropState="ok"], QLabel#emptyDrop[dropState="ok"] { border: 2px dashed $accent; border-radius: ${r_card}px; background: $selected; }
+QTableWidget[dropState="refused"], QLabel#emptyDrop[dropState="refused"] { border: 2px dashed $error; border-radius: ${r_card}px; background: $warning_bg; }
+QLabel#dropCue { color: $text; font-weight: 600; padding: ${s1}px; }
+QToolButton#nav[dropTarget="true"] { background: $surface_strong; border: 2px dashed $accent; }
 QLabel#pageTitle { font-size: ${t_title}px; font-weight: 600; }
 QLabel#pageScope, QLabel#shredAfterReason { color: $text_secondary; }
 QLabel#statusWarning { color: $warning; }
@@ -128,4 +133,4 @@ def stylesheet(theme: str) -> str:
     """Style sheet text for one theme, built only from the tokens above."""
     c = {k.replace("-", "_"): v for k, v in COLORS[theme].items()}
     return _QSS.substitute(c, r_control=RADIUS["control"], r_card=RADIUS["card"], s1=SPACE[1], s2=SPACE[2], s3=SPACE[3],
-                           s4=SPACE[4], f_width=FOCUS["width"], t_section=TYPE["section"][0], t_title=TYPE["title"][0])
+                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], t_section=TYPE["section"][0], t_title=TYPE["title"][0])

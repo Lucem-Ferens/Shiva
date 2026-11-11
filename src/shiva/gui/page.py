@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, _Table, status_item
+from .widgets import WrapCheckBox, _Table, high_contrast_active, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -84,14 +84,18 @@ class TabPage(QWidget):
             self.addFolderBtn.setEnabled(False)
             self.addFolderBtn.setToolTip(tr("Folders can't be cleaned yet."))
 
-        self.view = QStackedWidget()
+        self.view = QStackedWidget();
+        self.dropCue = QLabel(""); self.dropCue.setObjectName("dropCue"); self.dropCue.setAlignment(Qt.AlignCenter)
+        self.dropCue.setVisible(False)
         head, sub = _EMPTY[tab]
         head, sub = tr(head), tr(sub)
         self.emptyState = QLabel(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
         self.emptyState.setAlignment(Qt.AlignCenter); self.emptyState.setWordWrap(True)
-        self.emptyState.setStyleSheet(self._EMPTY_CSS)
+        self.emptyState.setObjectName("emptyDrop")
+        if high_contrast_active():
+            self.emptyState.setStyleSheet(self._EMPTY_CSS)   # the token sheet is not applied: palette colours only
         self.emptyState.setAccessibleName(f"{head}. {sub}")
-        self.dropActive = False
+        self.dropActive = False; self.dropState = ""
         self.emptyView = QWidget(); ev = QVBoxLayout(self.emptyView)
         ev.addWidget(self.emptyState, 1)
         self.emptyAddBtn = QPushButton(tr("Add files...")); self.emptyAddBtn.setAccessibleName(tr("Add files"))
@@ -124,6 +128,7 @@ class TabPage(QWidget):
         rl.addLayout(rb)
         self.view.addWidget(self.emptyView); self.view.addWidget(self.fileTable); self.view.addWidget(results)
         self.view.setMinimumHeight(self._VIEW_MIN_H)
+        bl.addWidget(self.dropCue)
         bl.addWidget(self.view, 1)
         opts_pane = QWidget(); bl = QVBoxLayout(opts_pane); bl.setContentsMargins(0, 0, 0, 0)   # options and passphrase scroll
 
@@ -417,18 +422,30 @@ class TabPage(QWidget):
         self.fileTable.setColumnHidden(2, narrow); self.fileTable.setColumnHidden(3, narrow)
         self.resultTable.setColumnHidden(3, narrow)
 
-    _EMPTY_CSS = "QLabel { border: 1px dashed palette(mid); padding: 24px; }"
-    _EMPTY_DROP_CSS = "QLabel { border: 2px solid palette(link); padding: 24px; }"
+    _EMPTY_CSS = "QLabel#emptyDrop { border: 1px dashed palette(mid); padding: 24px; }"
+    _HC_DROP_CSS = {"ok": "QTableWidget[dropState], QLabel#emptyDrop[dropState] { border: 3px dashed palette(highlight); }",
+                    "refused": "QTableWidget[dropState], QLabel#emptyDrop[dropState] { border: 3px dotted palette(window-text); }"}
 
-    def set_drop_active(self, on: bool) -> None:
-        """Drag-over feedback on the empty state: a solid accent border and a release hint."""
-        if on == self.dropActive:
+    def set_drop_active(self, on: bool, refused: bool = False) -> None:
+        """Drag-over feedback: a dashed accent border plus a text cue ("Drop files to add them"), or, when the
+        drop would be refused (a run is in progress), a dotted border plus the reason. Cleared with on=False."""
+        state = ("refused" if refused else "ok") if on else ""
+        if state == self.dropState:
             return
-        self.dropActive = on
-        self.emptyState.setStyleSheet(self._EMPTY_DROP_CSS if on else self._EMPTY_CSS)
+        self.dropState = state; self.dropActive = bool(state)
+        for w in (self.fileTable, self.resultTable, self.emptyState):
+            w.setProperty("dropState", state)
+        if high_contrast_active():
+            css = self._HC_DROP_CSS.get(state, "")
+            self.setStyleSheet(css); self.emptyState.setStyleSheet(css or self._EMPTY_CSS)
+        for w in (self.fileTable, self.resultTable, self.emptyState):
+            w.style().unpolish(w); w.style().polish(w); w.update()
+        cue = tr("Wait for the current run to finish.") if refused else tr("Drop files to add them")
+        self.dropCue.setText(cue)
+        self.dropCue.setVisible(bool(state) and self.view.currentIndex() != 0)
         head, sub = tr(_EMPTY[self.tab][0]), tr(_EMPTY[self.tab][1])
-        if on:
-            head, sub = tr("Release to add the files"), ""
+        if state:
+            head, sub = cue, ""
         elif self.tab == "encrypt" and self.cryptMode == "decrypt":
             head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the passphrase they were encrypted with.")
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")

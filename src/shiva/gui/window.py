@@ -258,8 +258,7 @@ class MainWindow(QMainWindow):
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
-            if not self.busy:
-                self.pages[self.current_tab()].set_drop_active(True)
+            self.pages[self.current_tab()].set_drop_active(True, refused=self.busy)
             e.acceptProposedAction()
 
     dragMoveEvent = dragEnterEvent

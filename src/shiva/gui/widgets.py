@@ -80,13 +80,26 @@ class NavButton(QToolButton):
             w.setAttribute(Qt.WA_TransparentForMouseEvents)
         lay.addWidget(icon); lay.addWidget(a, 1)
 
+    def _set_target(self, on: bool) -> None:
+        if bool(self.property("dropTarget")) == on:
+            return
+        self.setProperty("dropTarget", on)
+        if high_contrast_active():
+            self.setStyleSheet("QToolButton#nav { border: 2px dashed palette(highlight); }" if on else "")
+        self.style().unpolish(self); self.style().polish(self); self.update()
+
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
+            self._set_target(True)
             e.acceptProposedAction()
 
     dragMoveEvent = dragEnterEvent
 
+    def dragLeaveEvent(self, e):
+        self._set_target(False)
+
     def dropEvent(self, e):
+        self._set_target(False)
         self.dropped.emit(_urls(e.mimeData()))
         e.acceptProposedAction()
 

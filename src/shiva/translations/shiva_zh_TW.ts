@@ -43,7 +43,7 @@
     <message><source>Failed:</source><translation>失敗：</translation></message>
     <message><source>Some items may leave traces.</source><translation>部分項目可能留下痕跡。</translation></message>
     <message><source>Result of the run</source><translation>執行結果</translation></message>
-    <message><source>Release to add the files</source><translation>放開即可加入檔案</translation></message>
+    <message><source>Drop files to add them</source><translation>拖放檔案即可加入</translation></message>
     <message><source>Folders can't be cleaned yet.</source><translation>目前還不能清理資料夾。</translation></message>
     <message><source>Add files to clean</source><translation>加入要清理的檔案</translation></message>
     <message><source>Drop files here.</source><translation>把檔案拖放到這裡。</translation></message>

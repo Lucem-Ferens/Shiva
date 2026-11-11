@@ -668,7 +668,7 @@ def test_drag_feedback_on_empty_state(w):
     w.set_tab("clean"); p = w.pages["clean"]
     normal = p.emptyState.text()
     p.set_drop_active(True)
-    assert p.dropActive and "Release" in p.emptyState.text()
+    assert p.dropActive and "Drop files to add them" in p.emptyState.text()
     p.set_drop_active(False)
     assert not p.dropActive and p.emptyState.text() == normal
 
