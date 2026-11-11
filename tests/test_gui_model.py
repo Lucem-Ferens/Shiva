@@ -107,7 +107,7 @@ def test_disable_reason_order():
 def test_shred_text_claims_trial_decrypt_only_when_encrypting():
     title, solo, do = m.shred_dialog_text(False, False, 3)
     assert title == "Shred 3 items?" and do == "Shred"
-    assert "No copy is kept" in solo and "can't undo" in solo and "trial decrypt" not in solo
+    assert "keeps no copy" in solo and "can't undo" in solo and "trial decrypt" not in solo
     _, cs, _ = m.shred_dialog_text(True, False, 3)
     assert "trial decrypt" not in cs and "not encrypted" in cs
     for clean in (True, False):
