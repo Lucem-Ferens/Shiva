@@ -1,6 +1,6 @@
 # Shiva
 
-> **Warning: this is an early version (0.0.9). Do not use it on important files.** Expect defects, and keep a
+> **Warning: this is an early version, release candidate 0.1.0-rc.1. Do not use it on important files.** Expect defects, and keep a
 > separate copy of anything you process. See [Honest limits](#honest-limits).
 
 **Clean metadata, encrypt, and shred files, from one small Windows window.**
@@ -10,7 +10,7 @@ optional pipeline that chains them: **clean, then encrypt, then verify by trial 
 
 ![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)
-![Status: early, 0.0.9](https://img.shields.io/badge/status-early%200.0.9-orange)
+![Status: early, 0.1.0-rc.1](https://img.shields.io/badge/status-early%200.1.0--rc.1-orange)
 
 ## Download and start
 
@@ -29,13 +29,15 @@ on first run; the hash check above is how you confirm the file is the one publis
 3. Tick only the options you want (all are off by default) and press the action button.
 4. Read the result list. Each row says what happened and whether the original is untouched.
 
+**Settings** (language) and **About** are at the bottom of the sidebar.
+
 ## What it does
 
 | Page | What you get |
 |---|---|
 | **Clean** | Removes metadata from copies of your files. The original is never changed. |
-| **Encrypt** (with an Encrypt / Decrypt switch) | Passphrase encryption of files and folders with [age](https://github.com/FiloSottile/age). |
-| **Shred** | Overwrites and removes files and folders, with warnings about where that cannot be trusted. |
+| **Encrypt** (with an Encrypt / Decrypt switch) | Encrypts files and folders with [age](https://github.com/FiloSottile/age), with a password or to recipients' public keys (standard or post-quantum). |
+| **Shred** | Overwrites and deletes files and folders, with warnings about where that cannot be trusted. |
 
 Every optional behaviour is a checkbox and is **off by default**. Only irreversible actions (shredding, or shredding
 originals after a verified encryption) ask for confirmation, in a window that names exactly what will happen.
@@ -43,7 +45,8 @@ originals after a verified encryption) ask for confirmation, in a window that na
 ### Clean metadata
 
 Cleaned copies are saved as `NAME.cleaned.EXT`, or into another folder you choose. A file that cannot be cleaned is
-refused or reported, never copied through silently.
+refused or reported, never copied through silently. When there is nothing to remove, no copy is saved and the result says
+so. A taken name gets a number (`photo.cleaned (2).jpg`); an existing file is never overwritten.
 
 | Type | Formats |
 |---|---|
@@ -75,15 +78,27 @@ loss of quality and that no copy of the original images is kept; the originals a
 
 ### Encrypt and decrypt
 
-- Passphrase mode (age, scrypt); any file type, any size (streamed).
-- Folders become `NAME.tar.age` and are restored into a new folder.
-- Optional: shred the originals (best effort), but only after a trial decrypt matches the original's hash. If verification fails,
-  everything is kept.
+Choose how the files are protected: **Password** (age, scrypt) or **Recipient keys** (age public keys). Any file type, any
+size (streamed). Folders become `NAME.tar.age` and are restored into a new folder.
+
+**Recipient keys.** Paste public keys (they start with `age1`) or add them from a text file; each recipient opens the files
+with their own key file. Both kinds age supports are offered: **post-quantum** keys (`age1pq1...`, ML-KEM-768 with X25519) and
+**standard** keys. One file can use only one kind. **Create key pair...** makes a key file and its public key in the
+window: the key file can be protected with a password and is checked by reading it back. Shiva does not keep keys: you
+choose the key file for each run, and nothing about keys is saved.
+
+- Optional "Also encrypt to my own key", and an optional key file of your own: with it, each encrypted copy is opened and
+  verified before anything is shredded.
+- Decrypting uses the password, or a key file (a password-protected key file is unlocked first).
+- Optional: shred the originals (best effort), but only after a trial decrypt matches the original's hash. In key mode this
+  needs your key file; without it nothing is shredded. If verification fails, everything is kept.
 - Existing output files are never overwritten; a taken name gets a number (`notes (2).txt.age`).
+- A password file is not labelled post-quantum: how well it resists guessing, including by future quantum computers,
+  depends on how strong the password is. Opening a post-quantum file needs age 1.3.0 or later.
 
 ### Shred
 
-- Single overwrite pass over files and folders.
+- Single overwrite pass over files and folders, then deleted.
 - Refuses dangerous targets (drive roots, the Windows folder, your profile folder itself, hard-linked files, and others).
 - Warns before running when the location is an SSD, a network share or a cloud-synced folder, and when a file is
   compressed, sparse or EFS-encrypted.
@@ -92,8 +107,9 @@ loss of quality and that no copy of the original images is kept; the originals a
 ## Design choices
 
 - **Portable.** An unzip-and-run folder; no installer and no temp folders left behind after a crash.
-- **Official age.** Shiva bundles the unmodified official `age` binaries and calls them as a subprocess. The passphrase
-  reaches age only through the child process environment, never on a command line.
+- **Official age.** Shiva bundles the unmodified official `age` binaries and calls them as a subprocess. The password
+  reaches age only through the child process environment, never on a command line. A private key reaches age only through
+  a pipe and is never written to disk by Shiva (except the key file you ask it to create).
 - **Verify before destroy.** Plaintext is shredded only after a trial decrypt matches the original.
 - **Clear failure messages.** Every failure says what happened, what to do next, and whether the original is untouched.
 - **Languages.** English and Traditional Chinese, chosen by the Windows language (override with `SHIVA_LANG=en` or
@@ -111,12 +127,20 @@ loss of quality and that no copy of the original images is kept; the originals a
   helper process that has a memory limit, is stopped on cancel or timeout, and cannot start other programs directly (in the packaged
   build). It is **not a sandbox**: the helper still has your Windows user's rights, so a flaw in a library that a crafted file
   triggers could read or change files you can. Keep Windows and Shiva up to date.
-- **The passphrase is visible to your own programs while age runs.** It reaches age through the child process environment,
+- **The password is visible to your own programs while age runs.** It reaches age through the child process environment,
   so another program running as the same Windows user can read it during that time, as it could read Shiva's own memory.
+  The same holds for a key file password, and an unlocked private key stays in Shiva's memory until the run starts or the
+  window closes; Python cannot wipe it.
+- **A lost key file cannot be recovered.** Files encrypted to a key can be opened only with its key file (and its password,
+  if it has one). Keep a backup copy away from the computer. Windows gives a key file no extra protection: a password on the
+  key file is the protection, and a key file in a cloud-synced folder is uploaded.
+- **age files do not record who they were encrypted to.** Shiva shows the recipients you gave it in the results; it cannot
+  list them later from the file.
 
 ## Not implemented yet
 
-Key-based (recipient) encryption in the window, MP4 / MOV / WAV / TIFF / HEIC / RAW cleaning, and German.
+SSH keys, plugin and hardware keys, and armored (text) output for encryption; MP4 / MOV / WAV / TIFF / HEIC / RAW
+cleaning; and German.
 
 ## Build and contribute
 

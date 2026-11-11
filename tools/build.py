@@ -146,7 +146,7 @@ def compile_app(build_dir: Path) -> Path:
     if not (AGE_DIR / "age.exe").is_file() or not (AGE_DIR / "age-plugin-batchpass.exe").is_file():
         die("age binaries missing; run tools/fetch_third_party.py first")
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-    numeric = ".".join((version.split(".") + ["0"] * 4)[:4])      # Windows file versions are four numbers
+    numeric = ".".join((re.match(r"\d+(?:\.\d+)*", version).group(0).split(".") + ["0"] * 4)[:4])   # four numbers; a pre-release suffix such as rc1 is dropped
     cmd = [sys.executable, "-m", "nuitka", "--standalone", "--assume-yes-for-downloads",
            "--enable-plugin=pyside6", "--windows-console-mode=disable", "--include-package=shiva",
            "--include-package=pypdfium2", "--include-package=pypdfium2_raw",

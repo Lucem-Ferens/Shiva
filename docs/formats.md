@@ -20,9 +20,11 @@ Format-independent: age encrypts a byte stream, so any file type works.
 | Any single file, any size (streamed) | done |
 | Folder (becomes `NAME.tar.age`, restored into a new folder) | done |
 | Decrypt `.age` file / `.tar.age` folder archive | done |
-| Passphrase mode (scrypt) | done |
-| Public-key recipients (`age1...`, key files) | later (needs key management UI) |
-| Post-quantum recipients (`age1pq1`) | later |
+| Password mode (scrypt) | done |
+| Public-key recipients (`age1...`), several at once; decrypt with a key file (plain or password-protected) | done |
+| Post-quantum recipients (`age1pq1`); one file never mixes post-quantum and standard keys | done |
+| Create a key pair in the window (standard or post-quantum, optional password, read back after saving) | done |
+| SSH keys, plugin and hardware keys, armored output | no |
 Not supported: files you cannot read, cloud placeholders that are not downloaded, links/junctions inside folders
 (refused with a reason).
 
@@ -54,7 +56,7 @@ helper process with a memory limit; it is not a security sandbox (see the README
 | WEBP | done | default: decoded and saved again (lossless sources rebuilt pixel for pixel, lossy at quality 90 with a similarity and transparency check; animations keep frames, durations and loop; mixed lossy/lossless animations and images over 40 Mpx, and animations whose consecutive frames are identical, are refused; colour hidden under fully transparent pixels is cleared); the "keep the image data as it is" option uses the chunk whitelist and copies the image chunk unchanged, so bytes hidden inside it are not detected |
 | MP3, FLAC, OGG, Opus | done | byte-level tag removal (ID3v1/v2, APEv2, Lyrics3, FLAC blocks, Vorbis comments), audio-payload hash check; M4A/MP4 not supported |
 | DOCX, XLSX, PPTX, ODT/ODS/ODP | done | port of mat2 office logic, in memory; per-category selection dialog (unticked = copied unchanged); comments, tracked changes and glossary count as content changes and are unticked by default; theme and numbering always kept; signed or encrypted files refused; embedded images cleaned (JPEGs follow the same mode as standalone files) |
-| ZIP | done | images, audio, nested zips and office files inside are cleaned (office files inside ignore the category choice and are cleaned with every category); other members: refuse (default), omit or keep via options (GUI checkboxes pending) |
+| ZIP | done | images, audio, nested zips and office files inside are cleaned (office files inside ignore the category choice and are cleaned with every category); other members: refuse (default), omit or keep via options |
 | M4A/MP4/MOV/AVI/WAV/AIFF | later | needs bundled ffmpeg/ExifTool and a licence check of that binary |
 | TIFF, BMP, HEIC, AVIF, JXL, RAW | later | needs bundled ExifTool |
 | EPUB, SVG, HTML/CSS, torrent | later | port from mat2 |
