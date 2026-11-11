@@ -297,7 +297,12 @@ def test_closing_the_window_during_a_scan_cancels_the_run_and_starts_no_worker(t
     row = SimpleNamespace(path=pdf, info=SimpleNamespace(can_unclean=False),
                           facts=m.Facts(pdf, fmt_status="supported", fmt="pdf"))
     started: list = []
-    monkeypatch.setattr(gui, "_Worker", lambda *a: started.append(a))
+    from shiva.gui import window
+
+    def no_worker(*a):
+        started.append(a)
+        raise AssertionError("a worker was started")
+    monkeypatch.setattr(window, "_Worker", no_worker)
 
     def slow_scan(path, cancel=None):
         deadline = time.monotonic() + 5

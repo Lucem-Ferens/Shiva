@@ -129,9 +129,14 @@ def _covered(text: str) -> bool:
     return True
 
 
+GUI_FILES = sorted((ROOT / "src" / "shiva" / "gui").glob("*.py"))
+GUI_WRAPPED_LITERALS = 114   # total over the package; a split or a move must not lose a file or a literal
+
+
 def test_every_literal_wrapped_in_gui_has_an_entry(zh):
-    lits = _wrapped_literals(ROOT / "src" / "shiva" / "gui.py")
-    assert len(lits) > 60
+    assert len(GUI_FILES) >= 5
+    lits = [x for f in GUI_FILES for x in _wrapped_literals(f)]
+    assert len(lits) == GUI_WRAPPED_LITERALS
     missing = [(n, t) for n, t in lits if t.strip() and not _covered(t)]
     assert not missing, missing
     from shiva import gui
@@ -147,9 +152,10 @@ _ALLOWED_BARE = {"Shiva"}
 
 
 def test_no_bare_english_literal_goes_to_a_widget():
-    tree = ast.parse((ROOT / "src" / "shiva" / "gui.py").read_text(encoding="utf-8"))
+    assert len(GUI_FILES) >= 5
+    trees = [ast.parse(f.read_text(encoding="utf-8")) for f in GUI_FILES]
     bad = []
-    for node in ast.walk(tree):
+    for node in (n for tree in trees for n in ast.walk(tree)):
         if isinstance(node, ast.Call):
             f = node.func
             name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""

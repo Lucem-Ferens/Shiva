@@ -4,7 +4,7 @@ from pathlib import Path
 from shiva import tokens as t
 
 TEXT_ROLES = ("text", "text-secondary", "accent", "success", "warning", "error")
-GUI = Path(__file__).resolve().parents[1] / "src" / "shiva" / "gui.py"
+GUI_DIR = Path(__file__).resolve().parents[1] / "src" / "shiva" / "gui"
 # Literal ratchet: the token sweep takes this to zero. It may only fall.
 GUI_LITERAL_LIMIT = 14
 
@@ -62,7 +62,9 @@ def test_stylesheet_uses_only_token_colours():
 
 
 def _literal_count() -> int:
-    s = GUI.read_text(encoding="utf-8")
+    files = sorted(GUI_DIR.glob("*.py"))
+    assert len(files) >= 5
+    s = "\n".join(f.read_text(encoding="utf-8") for f in files)
     pats = (r"#[0-9a-fA-F]{6}", r"rgb\(", r"font-size", r"setPointSize", r"setContentsMargins\(", r"font-weight: bold")
     return sum(len(re.findall(p, s)) for p in pats)
 
