@@ -129,8 +129,8 @@ choose the key file for each run, and nothing about keys is saved.
   triggers could read or change files you can. Keep Windows and Shiva up to date.
 - **The password is visible to your own programs while age runs.** It reaches age through the child process environment,
   so another program running as the same Windows user can read it during that time, as it could read Shiva's own memory.
-  The same holds for a key file password, and an unlocked private key stays in Shiva's memory until the run starts or the
-  window closes; Python cannot wipe it.
+  The same holds for a key file password, and an unlocked private key stays in Shiva's memory while the run is going and
+  until the window closes or is rebuilt; Python cannot wipe it.
 - **A lost key file cannot be recovered.** Files encrypted to a key can be opened only with its key file (and its password,
   if it has one). Keep a backup copy away from the computer. Windows gives a key file no extra protection: a password on the
   key file is the protection, and a key file in a cloud-synced folder is uploaded.
