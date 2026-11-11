@@ -135,7 +135,8 @@ def run_jobs(paths: list[Path], passphrase: str, shred_original: bool,
                         removed = True
                         msg += "; original overwritten and removed (best-effort). " + " ".join(rep.caveats)
             results.append(JobResult(p, True, msg, created=out, original_removed=removed,
-                                     original_untouched=bool(rep is not None and rep.warning and rep.untouched)))
+                                     original_untouched=bool(rep is not None and rep.warning and rep.untouched),
+                                     shred_attempted=rep is not None))
         except agecli.Cancelled as e:
             results.append(note_cleanup(JobResult(p, False, "Cancelled; partial output removed", cancelled=True),
                                         getattr(e, "cleanup_problems", [])))
