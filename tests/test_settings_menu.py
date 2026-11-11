@@ -66,8 +66,22 @@ def test_radio_change_alone_does_not_apply(win, sdir):
     assert not pg.applyBtn.isEnabled()
 
 
-def test_apply_persists_rebuilds_and_returns_to_settings(win, sdir, tmp_path):
+@pytest.fixture(scope="session")
+def qm_dir(tmp_path_factory):
+    """Compiled catalogs in a temporary folder: a fresh checkout has no .qm files."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    import compile_translations
+    d = tmp_path_factory.mktemp("translations")
+    compile_translations.build(d)
+    return d
+
+
+def test_apply_persists_rebuilds_and_returns_to_settings(win, sdir, tmp_path, qm_dir, monkeypatch):
     from shiva import gui
+    real_install = i18n.install
+    monkeypatch.setattr(i18n, "install", lambda requested=None, search_dirs=None: real_install(requested, [qm_dir]))
     f = tmp_path / "a.txt"; f.write_bytes(b"x")
     win.add_paths([f], "shred"); win.wait_for_probes()
     win.pages["shred"].pwEdit.setText("secret")
