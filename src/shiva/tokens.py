@@ -9,7 +9,8 @@ from string import Template
 
 SPACE = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32}
 RADIUS = {"control": 4, "card": 8}
-TARGET = {"button_h": 32, "check_h": 24, "menu_btn": 32, "nav_h": 36}
+TARGET = {"button_h": 32, "check_h": 24, "radio_h": 28, "menu_btn": 32, "nav_h": 36}
+CONTROL_CONTENT_H = 22   # content height inside the 1 px border and 4 px padding: buttons and one-line fields are 32 px tall
 FOCUS = {"width": 2, "gap": 2}
 NAV_BAR = 3             # width of the accent bar on the selected navigation row
 SIDEBAR_W = 184
@@ -104,6 +105,7 @@ QPushButton[danger="true"]:disabled { background: $surface_strong; color: $disab
 QPushButton[primary="true"]:focus { border: ${f_width}px solid $on_accent; }
 QPushButton[danger="true"]:focus { border: ${f_width}px solid $on_error; }
 QPushButton:flat { border: 0; background: transparent; padding: 0; }
+QPushButton, QLineEdit { min-height: ${ctl_h}px; }
 QLineEdit, QPlainTextEdit { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s2}px; background: $surface; color: $text; }
 QLineEdit:focus, QPlainTextEdit:focus { border: ${f_width}px solid $accent; }
 QTableWidget { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; gridline-color: $line; selection-background-color: $selected; selection-color: $text; }
@@ -116,7 +118,7 @@ QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; lef
 QLabel#confirmTitle { font-size: ${t_section}px; font-weight: 600; }
 QListWidget#confirmItems { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; padding: ${s1}px; }
 QListWidget#confirmItems:focus { border: ${f_width}px solid $accent; }
-QPushButton#learnLink { color: $accent; text-decoration: underline; border: ${f_width}px solid transparent; background: transparent; padding: 0 ${s1}px; text-align: left; }
+QPushButton#learnLink { color: $accent; text-decoration: underline; border: ${f_width}px solid transparent; background: transparent; padding: 0; min-height: 0; text-align: left; }
 QPushButton#learnLink:focus { border: ${f_width}px solid $accent; }
 QPushButton#learnLink[indent="true"] { padding-left: ${s5}px; }
 QFrame#emptyDrop { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; }
@@ -151,4 +153,4 @@ def stylesheet(theme: str) -> str:
     """Style sheet text for one theme, built only from the tokens above."""
     c = {k.replace("-", "_"): v for k, v in COLORS[theme].items()}
     return _QSS.substitute(c, r_control=RADIUS["control"], r_card=RADIUS["card"], s1=SPACE[1], s2=SPACE[2], s3=SPACE[3],
-                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], nav_bar=NAV_BAR, t_section=TYPE["section"][0], t_title=TYPE["title"][0])
+                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], nav_bar=NAV_BAR, ctl_h=CONTROL_CONTENT_H, t_section=TYPE["section"][0], t_title=TYPE["title"][0])

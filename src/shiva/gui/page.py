@@ -155,7 +155,7 @@ class TabPage(QWidget):
         self.modeBox = QWidget(); mbl = QHBoxLayout(self.modeBox); mbl.setContentsMargins(0, 0, 0, 0)
         self.modeEncBtn = QRadioButton(tr("Encrypt")); self.modeDecBtn = QRadioButton(tr("Decrypt"))
         for b, nm in ((self.modeEncBtn, "Encrypt files"), (self.modeDecBtn, "Decrypt .age files")):
-            b.setCheckable(True); b.setAutoExclusive(True); b.setMinimumHeight(32); b.setAccessibleName(tr(nm))
+            b.setCheckable(True); b.setAutoExclusive(True); b.setMinimumHeight(tokens.TARGET["radio_h"]); b.setAccessibleName(tr(nm))
             mbl.addWidget(b)
         mbl.addStretch(1)
         self.modeEncBtn.setChecked(True)
@@ -931,7 +931,7 @@ class TabPage(QWidget):
         row.addWidget(self.credHeading)
         self.credPasswordRadio = QRadioButton(tr("Password")); self.credKeysRadio = QRadioButton(tr("Recipient keys"))
         for b in (self.credPasswordRadio, self.credKeysRadio):
-            b.setAutoExclusive(True); b.setMinimumHeight(28); row.addWidget(b)
+            b.setAutoExclusive(True); b.setMinimumHeight(tokens.TARGET["radio_h"]); row.addWidget(b)
         row.addStretch(1)
         self.credPasswordRadio.setChecked(True)
         self.credHelper = QLabel(""); self.credHelper.setWordWrap(True)

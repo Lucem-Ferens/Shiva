@@ -48,13 +48,13 @@ class SettingsPage(QWidget):
         _header(self, "settings", outer)
 
         self.languageGroup = QGroupBox(tr("Language")); self.languageGroup.setAccessibleName(tr("Language"))
-        gl = QVBoxLayout(self.languageGroup)
+        gl = QVBoxLayout(self.languageGroup); gl.setContentsMargins(0, 0, 0, tokens.SPACE[3])
         gl.setSpacing(tokens.SPACE[2])
         self.languageRadios: dict[str, QRadioButton] = {}
         saved = settings.load().get("language", "system")
         for code, label in LANGUAGES:
             r = QRadioButton(tr(label) if code == "system" else label)
-            r.setChecked(code == saved)
+            r.setChecked(code == saved); r.setMinimumHeight(tokens.TARGET["radio_h"])
             r.toggled.connect(self._update_apply)
             self.languageRadios[code] = r
             gl.addWidget(r)
@@ -69,7 +69,7 @@ class SettingsPage(QWidget):
         outer.addWidget(self.languageGroup)
 
         self.choicesGroup = QGroupBox(tr("Saved choices")); self.choicesGroup.setAccessibleName(tr("Saved choices"))
-        cl = QHBoxLayout(self.choicesGroup)
+        cl = QHBoxLayout(self.choicesGroup); cl.setContentsMargins(0, 0, 0, 0)
         self.resetBtn = QPushButton(tr("Reset saved choices"))
         self.resetBtn.clicked.connect(win.reset_saved_choices)
         cl.addWidget(self.resetBtn); cl.addStretch(1)

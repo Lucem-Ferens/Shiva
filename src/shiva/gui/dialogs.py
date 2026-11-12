@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QLabel, QListWid
 from .. import tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import button_icon, status_icon
+from .widgets import WrapCheckBox, button_icon, status_icon
 
 # ------------------------------------------------------------------ dialogs
 class ConfirmDialog(QDialog):
@@ -139,7 +139,7 @@ class PdfDialog(QDialog):
         self.changing: set[str] = set()
         for c in cats:
             label = f"{dyn(c['label'])}: {dyn(c['detail'])}" + (("  " + tr("(changes content)")) if c["content_changing"] else "")
-            cb = QCheckBox(label); cb.setAccessibleName(label)
+            cb = WrapCheckBox(label); cb.setAccessibleName(label)
             if c.get("selectable", True):
                 cb.setChecked(bool(c.get("default_checked", True)))
                 self.boxes.append((c["key"], cb))
@@ -175,7 +175,7 @@ class PdfDialog(QDialog):
         for _k, cb in self.boxes:
             cb.toggled.connect(self._update_warning)
         self._update_warning()
-        self.useOthersCheck = QCheckBox(trf(f"Use these choices for all other {others} (%1)", remaining))
+        self.useOthersCheck = WrapCheckBox(trf(f"Use these choices for all other {others} (%1)", remaining))
         self.useOthersCheck.setVisible(remaining > 0)
         box.addWidget(self.useOthersCheck)
         row = QHBoxLayout(); row.addStretch(1)

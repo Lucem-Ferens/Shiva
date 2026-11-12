@@ -10,13 +10,13 @@ from pathlib import Path
 
 from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit,
+from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPlainTextEdit, QPushButton, QRadioButton, QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import agecli, key_model as K, storage, tokens
 from ..i18n import dyn, tr, trf
 from ..ui_model import unit
-from .widgets import Reveal, _announce
+from .widgets import Reveal, WrapCheckBox, _announce
 
 
 def _label(text: str = "", name: str = "") -> QLabel:
@@ -83,6 +83,8 @@ class CreateKeyDialog(QDialog):
         lay.addWidget(QLabel(tr("Key type")))
         self.typePqRadio = QRadioButton(tr("Post-quantum (recommended)")); self.typeStdRadio = QRadioButton(tr("Standard"))
         self.typePqRadio.setChecked(True)
+        for r in (self.typePqRadio, self.typeStdRadio):
+            r.setMinimumHeight(tokens.TARGET["radio_h"])
         lay.addWidget(self.typePqRadio)
         lay.addWidget(_label(tr("Designed to resist attacks by future quantum computers. The public key is very long (about "
                                 "2,000 characters). Anyone opening the files needs age 1.3.0 or later.")))
@@ -96,19 +98,18 @@ class CreateKeyDialog(QDialog):
         srow.addWidget(self.savePathEdit, 1); srow.addWidget(self.chooseSaveBtn)
         lay.addLayout(srow)
         self.locationHint = _label(); self.locationHint.setObjectName("statusWarning"); lay.addWidget(self.locationHint)
-        self.protectCheck = QCheckBox(tr("Protect the key file with a password")); self.protectCheck.setChecked(True)
+        self.protectCheck = WrapCheckBox(tr("Protect the key file with a password")); self.protectCheck.setChecked(True)
         lay.addWidget(self.protectCheck)
         self.pwBox = QWidget(); pl = QVBoxLayout(self.pwBox); pl.setContentsMargins(tokens.SPACE[5], 0, 0, 0)
-        r1 = QHBoxLayout()
+        r1 = QGridLayout(); r1.setHorizontalSpacing(tokens.SPACE[3])      # one label column, so both fields start at the same x
         self.kpwEdit = QLineEdit(); self.kpwEdit.setEchoMode(QLineEdit.Password); self.kpwEdit.setAccessibleName(tr("Key file password"))
-        r1.addWidget(QLabel(tr("Key file password"))); r1.addWidget(self.kpwEdit, 1)
-        r2 = QHBoxLayout()
+        r1.addWidget(QLabel(tr("Key file password")), 0, 0); r1.addWidget(self.kpwEdit, 0, 1)
         self.kpwConfirmEdit = QLineEdit(); self.kpwConfirmEdit.setEchoMode(QLineEdit.Password)
         self.kpwConfirmEdit.setAccessibleName(tr("Repeat password"))
         self.kpwReveal = Reveal([self.kpwEdit, self.kpwConfirmEdit])
-        r2.addWidget(QLabel(tr("Repeat password"))); r2.addWidget(self.kpwConfirmEdit, 1)
+        r1.addWidget(QLabel(tr("Repeat password")), 1, 0); r1.addWidget(self.kpwConfirmEdit, 1, 1); r1.setColumnStretch(1, 1)
         self.kpwHint = _label(); self.kpwHint.setAccessibleName(tr("Password check"))
-        pl.addLayout(r1); pl.addLayout(r2); pl.addWidget(self.kpwHint)
+        pl.addLayout(r1); pl.addWidget(self.kpwHint)
         lay.addWidget(self.pwBox)
         self.unprotectedHint = _label(); self.unprotectedHint.setObjectName("statusWarning")
         self.unprotectedHint.setText("⚠ " + tr(K.UNPROTECTED_WARNING)); lay.addWidget(self.unprotectedHint)

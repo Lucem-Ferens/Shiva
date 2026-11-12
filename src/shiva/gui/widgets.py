@@ -410,12 +410,16 @@ class WrapCheckBox(QCheckBox):
         st = self.style()
         return st.pixelMetric(QStyle.PM_IndicatorWidth) + st.pixelMetric(QStyle.PM_CheckBoxLabelSpacing)
 
+    def _text_top(self) -> int:
+        """Top of the first text line: the line is centred in a one-row box, the same centre line as the indicator."""
+        return max(0, (tokens.TARGET["check_h"] - self.fontMetrics().height()) // 2 - 1)   # 1 px up: Latin and CJK ink centres differ
+
     def hasHeightForWidth(self) -> bool:
         return True
 
     def heightForWidth(self, w: int) -> int:
         r = self.fontMetrics().boundingRect(QRect(0, 0, max(1, w - self._label_left()), 10000), int(self._FLAGS), self.text())
-        return max(tokens.TARGET["check_h"], r.height() + tokens.SPACE[1])
+        return max(tokens.TARGET["check_h"], r.height() + 2 * self._text_top())
 
     def sizeHint(self) -> QSize:
         w = self._label_left() + self.fontMetrics().horizontalAdvance(self.text())
@@ -430,10 +434,13 @@ class WrapCheckBox(QCheckBox):
         st = self.style()
         text = opt.text
         opt.text = ""
-        opt.rect = st.subElementRect(QStyle.SE_CheckBoxIndicator, opt, self)
+        ind = st.subElementRect(QStyle.SE_CheckBoxIndicator, opt, self)
+        ind.moveTop((tokens.TARGET["check_h"] - ind.height()) // 2)       # beside the first line, also when the label wraps
+        opt.rect = ind
         st.drawPrimitive(QStyle.PE_IndicatorCheckBox, opt, p, self)
         left = self._label_left()
-        trect = QRect(left, 0, self.width() - left, self.height())
+        top = self._text_top()
+        trect = QRect(left, top, self.width() - left, self.height() - top)
         st.drawItemText(p, trect, int(self._FLAGS), opt.palette, bool(opt.state & QStyle.State_Enabled), text, QPalette.WindowText)
         if self.hasFocus():
             f = QStyleOptionFocusRect(); f.initFrom(self); f.rect = trect
