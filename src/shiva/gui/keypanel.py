@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import agecli, key_model as K, recipients as rcp, tokens
 from ..i18n import dyn, tr, trf
 from .createkey import CreateKeyDialog
-from .widgets import WrapCheckBox, _Table, _announce, link_button
+from .widgets import Reveal, WrapCheckBox, _Table, _announce, _urls, link_button
 
 _MAX_RECIPIENT_FILE = 1 << 20
 
@@ -47,7 +47,9 @@ class KeyFileRow(QWidget):
         self.captionLabel = QLabel(tr("Your key file (optional)"))
         self.helperLabel = _label(tr("Used to verify the encrypted copy (required for shredding) and to encrypt to your own key."))
         row = QHBoxLayout()
+        self.setAcceptDrops(True)       # a key file dropped here is the key file, not a file to process
         self.keyFileEdit = QLineEdit(); self.keyFileEdit.setReadOnly(True); self.keyFileEdit.setFocusPolicy(Qt.NoFocus)
+        self.keyFileEdit.setAcceptDrops(False)      # so the drop reaches this row
         self.keyFileEdit.setAccessibleName(tr("Key file path"))
         self.keyFileBtn = QPushButton(tr("Choose key file...")); self.keyFileBtn.setAccessibleName(tr("Choose key file"))
         self.removeKeyFileBtn = QPushButton(tr("Remove key file")); self.removeKeyFileBtn.setAccessibleName(tr("Remove key file"))
@@ -56,9 +58,9 @@ class KeyFileRow(QWidget):
         self.keyPwLabel = QLabel(tr("Key file password"))
         self.keyPwEdit = QLineEdit(); self.keyPwEdit.setEchoMode(QLineEdit.Password)
         self.keyPwEdit.setAccessibleName(tr("Key file password"))
-        self.showKeyPwCheck = QCheckBox(tr("Show password")); self.showKeyPwCheck.setAccessibleName(tr("Show password (key file)"))
+        self.keyPwReveal = Reveal([self.keyPwEdit])
         self.unlockBtn = QPushButton(tr("Unlock")); self.unlockBtn.setAccessibleName(tr("Unlock the key file"))
-        for w in (self.keyPwLabel, self.keyPwEdit, self.showKeyPwCheck, self.unlockBtn):
+        for w in (self.keyPwLabel, self.keyPwEdit, self.unlockBtn):
             pl.addWidget(w)
         pl.setStretchFactor(self.keyPwEdit, 1)
         stat = QHBoxLayout()
@@ -73,8 +75,6 @@ class KeyFileRow(QWidget):
         self.removeKeyFileBtn.clicked.connect(self.remove)
         self.keyPwEdit.returnPressed.connect(self.unlock)
         self.keyPwEdit.textChanged.connect(self._password_edited)
-        self.showKeyPwCheck.toggled.connect(
-            lambda on: self.keyPwEdit.setEchoMode(QLineEdit.Normal if on else QLineEdit.Password))
         self.copyPubKeyBtn.clicked.connect(self.copy_public_key)
         self._render()
 
@@ -98,13 +98,13 @@ class KeyFileRow(QWidget):
     def forget(self) -> None:
         """Drop the key and the password: the window closes or is rebuilt."""
         self.keyPwEdit.blockSignals(True)
-        self.keyPwEdit.setText(""); self.showKeyPwCheck.setChecked(False)
+        self.keyPwEdit.setText(""); self.keyPwReveal.setChecked(False)
         self.keyPwEdit.blockSignals(False)
         self._drop()
 
     def remove(self) -> None:
         """Stop using the chosen key file."""
-        self.showKeyPwCheck.setChecked(False)
+        self.keyPwReveal.setChecked(False)
         self.keyPwEdit.setText("")
         self.set_path(None)
 
@@ -150,6 +150,26 @@ class KeyFileRow(QWidget):
             QApplication.restoreOverrideCursor()
         self._set_state(K.KF_UNLOCKED)
 
+    def _dropped_file(self, mime) -> Path | None:
+        paths = _urls(mime)
+        return paths[0] if len(paths) == 1 and paths[0].is_file() else None
+
+    def dragEnterEvent(self, e) -> None:
+        if self.isEnabled() and self._dropped_file(e.mimeData()) is not None:
+            e.acceptProposedAction()
+        else:
+            e.ignore()
+
+    dragMoveEvent = dragEnterEvent
+
+    def dropEvent(self, e) -> None:
+        path = self._dropped_file(e.mimeData())
+        if path is None or not self.isEnabled():
+            return e.ignore()
+        e.acceptProposedAction()
+        self.keyPwEdit.setText("")
+        self.set_path(path)
+
     def choose(self) -> None:
         path = self._pick(self)
         if path:
@@ -176,7 +196,7 @@ class KeyFileRow(QWidget):
         """Hand the key to a run and wipe what the row holds: the password field, the key bytes. The chosen path stays; a
         plain key file is read again at once, a protected one needs its password again."""
         ident = self.identity()
-        self.showKeyPwCheck.setChecked(False)
+        self.keyPwReveal.setChecked(False)
         self.keyPwEdit.setText("")
         path = self._path
         self._drop()
@@ -468,7 +488,7 @@ class KeyPanel(QWidget):
     def tab_widgets(self) -> list:
         """The controls in keyboard order."""
         k = self.keyFile
-        return [k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.showKeyPwCheck, k.unlockBtn, k.copyPubKeyBtn,
+        return [k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.unlockBtn, k.copyPubKeyBtn,
                 self.createKeyLink, self.ownKeyCheck,
                 self.recipientEdit, self.addKeyBtn, self.addKeyFileBtn, self.createKeyBtn, self.recipientTable,
                 self.removeKeyBtn]

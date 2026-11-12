@@ -108,3 +108,22 @@ def test_output_folder_row_is_indented_under_its_check_box(win, tmp_path):
     x_check = p.outCheck.mapTo(p, p.outCheck.rect().topLeft()).x()
     x_edit = p.outEdit.mapTo(p, p.outEdit.rect().topLeft()).x()
     assert x_edit >= x_check + 20
+
+
+def test_spare_height_is_not_spread_into_the_mode_row_or_between_password_rows(win, tmp_path):
+    w = win; _show(w, (953, 760))
+    w.set_tab("encrypt"); p = w.pages["encrypt"]
+    w.add_paths(_files(tmp_path, 1), "encrypt"); w.wait_for_probes()
+    p.modeDecBtn.click(); QApplication.processEvents()
+    assert p.modeBox.height() <= p.modeBox.sizeHint().height() + 4          # a tall gap used to open around the radio row
+    p.modeEncBtn.click(); p.credPasswordRadio.click(); QApplication.processEvents()
+    p.credKeysRadio.click(); QApplication.processEvents()
+    p.credPasswordRadio.click(); QApplication.processEvents()
+    gap = p.pwConfirmEdit.mapTo(p.pwBlock, p.pwConfirmEdit.rect().topLeft()).y() - \
+        p.pwEdit.mapTo(p.pwBlock, p.pwEdit.rect().bottomLeft()).y()
+    assert gap < 120      # the password block sat in a stack as tall as the key panel and its rows drifted apart
+
+
+def test_status_text_keeps_clear_of_the_window_edge(win):
+    w = win; _show(w, (953, 662))
+    assert w.statusLine.contentsMargins().left() >= 8

@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shiva"
-version = "0.1.0rc1"
+version = "0.1.0"
 description = "Windows portable tool: metadata cleaning, age encryption, file shredding"
 requires-python = ">=3.12"
 license = { text = "GPL-3.0-or-later" }
-dependencies = ["PySide6-Essentials>=6.12", "Pillow>=13.0", "pikepdf>=10.17", "pypdfium2>=5.14"]
+dependencies = ["PySide6-Essentials>=6.12", "Pillow>=13.0", "pikepdf>=10.18", "pypdfium2>=5.15.2"]
 
 [project.optional-dependencies]
 dev = ["pytest", "nuitka", "mutagen>=1.48"]

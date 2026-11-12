@@ -18,7 +18,7 @@ from .. import creds, i18n, key_model as K, output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
 from .keypanel import KeyPanel
-from .widgets import WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
+from .widgets import Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -159,6 +159,7 @@ class TabPage(QWidget):
             mbl.addWidget(b)
         mbl.addStretch(1)
         self.modeEncBtn.setChecked(True)
+        self.modeBox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)     # spare height must not widen this row
         self.modeBox.setVisible(tab == "encrypt")
         bl.addWidget(self.modeBox)
         self.modeEncBtn.clicked.connect(lambda: self.set_crypt_mode("encrypt"))
@@ -343,8 +344,7 @@ class TabPage(QWidget):
         prow = QHBoxLayout()
         self.pwEdit = QLineEdit(); self.pwEdit.setEchoMode(QLineEdit.Password)
         self.pwEdit.setAccessibleName(tr("Password"))
-        self.showPwCheck = QCheckBox(tr("Sho&w password")); self.showPwCheck.setAccessibleName(tr("Show password"))
-        prow.addWidget(self.pwEdit, 1); prow.addWidget(self.showPwCheck)
+        prow.addWidget(self.pwEdit, 1)
         pl.addLayout(prow)
         self.strengthLabel = QLabel("")
         self.pwWarnLabel = QLabel(""); self.pwWarnLabel.setAccessibleName(tr("Password warning"))
@@ -355,11 +355,13 @@ class TabPage(QWidget):
         cl.addWidget(QLabel(tr("Repeat password")))
         self.pwConfirmEdit = QLineEdit(); self.pwConfirmEdit.setEchoMode(QLineEdit.Password)
         self.pwConfirmEdit.setAccessibleName(tr("Repeat password"))
+        self.pwReveal = Reveal([self.pwEdit, self.pwConfirmEdit])     # the eye in both fields shows or hides both
         self.matchLabel = QLabel(""); self.matchLabel.setAccessibleName(tr("Password match"))
         self.lostPwNotice = QLabel(dyn(m.LOST_PW)); self.lostPwNotice.setWordWrap(True)
         for w in (self.pwConfirmEdit, self.matchLabel, self.lostPwNotice):
             cl.addWidget(w)
         pl.addWidget(self.confirmBox)
+        pl.addStretch(1)        # beside the taller key panel this block is stretched: the spare height goes below, not between rows
         self.pwBlock.setVisible(False)
         if tab == "encrypt":
             self._build_credentials(bl)
@@ -394,12 +396,12 @@ class TabPage(QWidget):
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.showFolderBtn, self.copyBtn, self.detailPane,
                  self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
-                 self.shredAfterCheck, self.pwEdit, self.showPwCheck, self.pwConfirmEdit, self.moreOptionsCheck,
+                 self.shredAfterCheck, self.pwEdit, self.pwConfirmEdit, self.moreOptionsCheck,
                  self.keepQualityCheck, self.keepQualityMore, self.keepOrientCheck,
                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
                  self.primaryBtn, self.cancelBtn]
         if tab == "encrypt":        # the credentials come before the optional steps
-            moved = (self.pwEdit, self.showPwCheck, self.pwConfirmEdit)
+            moved = (self.pwEdit, self.pwConfirmEdit)
             order = [w for w in order if w not in moved]
             i = order.index(self.encryptCleanedCheck)
             order[i:i] = [self.credPasswordRadio, self.credKeysRadio, *moved, *self.keyPanel.tab_widgets()]
@@ -420,7 +422,6 @@ class TabPage(QWidget):
         self.copyBtn.clicked.connect(self.copy_results)
         self.primaryBtn.clicked.connect(self.start)
         self.cancelBtn.clicked.connect(self.win.cancel)
-        self.showPwCheck.toggled.connect(self._echo)
         for cb in (self.encryptCleanedCheck, self.shredAfterCheck):
             cb.toggled.connect(self._steps_changed)
         self.moreOptionsCheck.toggled.connect(self.update_controls)
@@ -496,18 +497,14 @@ class TabPage(QWidget):
         allow = self._allow_unclean()
         return [r for r in self.rows if r.info.run or (allow and r.info.can_unclean)]
 
-    def _echo(self, shown: bool) -> None:
-        mode = QLineEdit.Normal if shown else QLineEdit.Password
-        self.pwEdit.setEchoMode(mode); self.pwConfirmEdit.setEchoMode(mode)
-
     def take_passphrase(self) -> str:
         """Return the passphrase and empty the fields. Show is switched off FIRST and setText('') is used
         (clear() leaves an undo history that Ctrl+Z could bring back once the field is shown again)."""
         pw = self.pwEdit.text()
-        self.showPwCheck.setChecked(False)
+        self.pwReveal.setChecked(False)
         self.pwEdit.setText(""); self.pwConfirmEdit.setText("")
         if self.tab == "encrypt":
-            self.keyPanel.keyFile.showKeyPwCheck.setChecked(False)
+            self.keyPanel.keyFile.keyPwReveal.setChecked(False)
             self.keyPanel.keyFile.keyPwEdit.setText("")
         return pw
 
@@ -605,7 +602,7 @@ class TabPage(QWidget):
         if state:
             head, sub = cue, ""
         elif self.tab == "encrypt" and self.cryptMode == "decrypt":
-            head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the password they were encrypted with.")
+            head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the password or key file they were encrypted with.")
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
 
     def _selection_changed(self) -> None:
@@ -619,6 +616,7 @@ class TabPage(QWidget):
         self.rows = [r for r in self.rows if r.key not in gone]
         self.fileTable.clearSelection()   # the rows below move up; a kept selection would now point at other files
         self.refresh_rows()
+        self.win.set_status("Ready")      # "Added 1 item" no longer describes the list
 
     def clear_list(self) -> None:
         if self.win.busy:
@@ -743,7 +741,7 @@ class TabPage(QWidget):
         self.modeEncBtn.setChecked(mode == "encrypt"); self.modeDecBtn.setChecked(mode == "decrypt")
         self._credentials_for_mode()
         head, sub = (("Add .age files to decrypt", "Drop files ending in .age here.\n"
-                      "You need the password they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
+                      "You need the password or key file they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
         head, sub = tr(head), tr(sub)
         self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
         self.emptyState.setAccessibleName(f"{head}. {sub}")
@@ -856,7 +854,7 @@ class TabPage(QWidget):
         cred_reason = None
         if self.tab == "encrypt":
             keys = self.key_mode()
-            self.credGroup.setVisible(encrypting or decrypting)
+            self.credGroup.setVisible(encrypting or decrypting or self.cryptMode == "decrypt")   # the key file can be chosen before any file is listed
             self.credStack.setCurrentIndex(1 if keys else 0)
             self.pwBlock.setVisible(not keys)
             if keys:

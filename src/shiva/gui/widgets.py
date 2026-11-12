@@ -5,14 +5,77 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QRect, QSize, Signal, QPointF, QRectF
-from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPalette, QPen, QPixmap
-from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
+from PySide6.QtCore import QObject, Qt, QRect, QSize, Signal, QPointF, QRectF
+from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap
+from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
                                QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QWidget)
 
 from .. import tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr
+
+def _eye_icon(widget: QWidget, crossed: bool) -> QIcon:
+    """An eye (crossed out while the password is hidden), drawn in the field's text colour: no image files."""
+    pm = QPixmap(32, 32)
+    pm.setDevicePixelRatio(2.0)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.Antialiasing)
+    col = QColor(widget.palette().color(QPalette.Text))
+    p.setPen(QPen(col, 1.4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    lens = QPainterPath()
+    lens.moveTo(1.5, 8)
+    lens.quadTo(8, 1.0, 14.5, 8)
+    lens.quadTo(8, 15.0, 1.5, 8)
+    p.drawPath(lens)
+    p.drawEllipse(QPointF(8, 8), 2.2, 2.2)
+    if crossed:
+        p.drawLine(QPointF(2.5, 13.5), QPointF(13.5, 2.5))
+    p.end()
+    return QIcon(pm)
+
+
+class Reveal(QObject):
+    """The eye button inside one or more password fields. One state for all of them: clicking (or Alt+W in a focused
+    field) shows or hides every field's text. Replaces a "Show password" check box beside the field."""
+    toggled = Signal(bool)
+
+    def __init__(self, edits):
+        super().__init__(edits[0])
+        self._edits = list(edits)
+        self._on = False
+        self._actions: list[QAction] = []
+        for e in self._edits:
+            a = QAction(e)
+            a.setCheckable(True)
+            a.setShortcut(QKeySequence("Alt+W"))
+            a.setShortcutContext(Qt.WidgetShortcut)
+            a.toggled.connect(self.setChecked)
+            e.addAction(a, QLineEdit.TrailingPosition)
+            self._actions.append(a)
+        self._apply()
+
+    def isChecked(self) -> bool:
+        return self._on
+
+    def setChecked(self, on: bool) -> None:
+        changed = bool(on) != self._on
+        self._on = bool(on)
+        self._apply()
+        if changed:
+            self.toggled.emit(self._on)
+
+    def _apply(self) -> None:
+        text = tr("Hide password") if self._on else tr("Show password")
+        for e, a in zip(self._edits, self._actions):
+            e.setEchoMode(QLineEdit.Normal if self._on else QLineEdit.Password)
+            a.blockSignals(True)
+            a.setChecked(self._on)
+            a.blockSignals(False)
+            a.setIcon(_eye_icon(e, not self._on))
+            a.setText(text)
+            a.setToolTip(text + " (Alt+W)")
+
 
 def _announce(widget: QWidget, text: str) -> None:
     """Tell screen readers about a status change (best effort)."""

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFileDialog, QH
 from .. import agecli, key_model as K, storage, tokens
 from ..i18n import dyn, tr, trf
 from ..ui_model import unit
-from .widgets import _announce
+from .widgets import Reveal, _announce
 
 
 def _label(text: str = "", name: str = "") -> QLabel:
@@ -72,8 +72,6 @@ class CreateKeyDialog(QDialog):
             w.textChanged.connect(self._update)
         self.protectCheck.toggled.connect(self._update)
         self.chooseSaveBtn.clicked.connect(self.choose_save)
-        self.showKpwCheck.toggled.connect(
-            lambda on: [e.setEchoMode(QLineEdit.Normal if on else QLineEdit.Password) for e in (self.kpwEdit, self.kpwConfirmEdit)])
         self._update()
         self.typePqRadio.setFocus()
 
@@ -103,11 +101,11 @@ class CreateKeyDialog(QDialog):
         self.pwBox = QWidget(); pl = QVBoxLayout(self.pwBox); pl.setContentsMargins(tokens.SPACE[5], 0, 0, 0)
         r1 = QHBoxLayout()
         self.kpwEdit = QLineEdit(); self.kpwEdit.setEchoMode(QLineEdit.Password); self.kpwEdit.setAccessibleName(tr("Key file password"))
-        self.showKpwCheck = QCheckBox(tr("Show password"))
-        r1.addWidget(QLabel(tr("Key file password"))); r1.addWidget(self.kpwEdit, 1); r1.addWidget(self.showKpwCheck)
+        r1.addWidget(QLabel(tr("Key file password"))); r1.addWidget(self.kpwEdit, 1)
         r2 = QHBoxLayout()
         self.kpwConfirmEdit = QLineEdit(); self.kpwConfirmEdit.setEchoMode(QLineEdit.Password)
         self.kpwConfirmEdit.setAccessibleName(tr("Repeat password"))
+        self.kpwReveal = Reveal([self.kpwEdit, self.kpwConfirmEdit])
         r2.addWidget(QLabel(tr("Repeat password"))); r2.addWidget(self.kpwConfirmEdit, 1)
         self.kpwHint = _label(); self.kpwHint.setAccessibleName(tr("Password check"))
         pl.addLayout(r1); pl.addLayout(r2); pl.addWidget(self.kpwHint)
@@ -241,7 +239,7 @@ class CreateKeyDialog(QDialog):
         self.stack.setCurrentIndex(1)
         for w in (self.kpwEdit, self.kpwConfirmEdit):
             w.setText("")
-        self.showKpwCheck.setChecked(False)
+        self.kpwReveal.setChecked(False)
         self.doneFile.setText(trf("Key file: %1", str(self.made_path)))
         if self.public_key.startswith("age1pq1"):
             summary = (tr("Post-quantum key file, protected with a password.") if protected

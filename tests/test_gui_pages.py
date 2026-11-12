@@ -119,8 +119,8 @@ def test_build_options_per_tab(w, tmp_path):
     assert key(c.build_options()) == (True, False, False, False)
     e.shredAfterCheck.setChecked(True)
     assert key(e.build_options()) == (False, True, True, True)
-    e.set_crypt_mode("decrypt")                              # decrypt mode: the option is greyed out, un-ticked and inert
-    assert e.shredAfterCheck.isVisibleTo(e) and not e.shredAfterCheck.isEnabled() and not e.shredAfterCheck.isChecked()
+    e.set_crypt_mode("decrypt")                              # decrypt mode: the option is not shown, un-ticked and inert
+    assert not e.shredAfterCheck.isVisibleTo(e) and not e.shredAfterCheck.isChecked()
     assert key(e.build_options()) == (False, True, False, True)
 
 
@@ -197,12 +197,12 @@ def test_encrypt_page_decrypt_switch(w, tmp_path):
 
 def test_passphrase_cleared_at_run_start_cannot_be_undone(w, tmp_path):
     w.set_tab("encrypt"); p = w.pages["encrypt"]
-    p.showPwCheck.setChecked(True)
+    p.pwReveal.setChecked(True)
     QTest.keyClicks(p.pwEdit, "s3cret-pass"); QTest.keyClicks(p.pwConfirmEdit, "s3cret-pass")
     assert p.pwEdit.text() == "s3cret-pass"
     assert p.take_passphrase() == "s3cret-pass"            # what start() does before the worker is created
-    assert p.pwEdit.text() == "" and p.pwConfirmEdit.text() == "" and not p.showPwCheck.isChecked()
-    p.showPwCheck.setChecked(True)
+    assert p.pwEdit.text() == "" and p.pwConfirmEdit.text() == "" and not p.pwReveal.isChecked()
+    p.pwReveal.setChecked(True)
     for e in (p.pwEdit, p.pwConfirmEdit):
         e.undo(); assert e.text() == ""
         e.setFocus(); QTest.keyClick(e, Qt.Key_Z, Qt.ControlModifier); assert e.text() == ""
@@ -728,3 +728,24 @@ def test_clear_list_after_a_failed_run_resets_the_status_line(w, tmp_path):
     w.add_paths([_docx_unknown(tmp_path)]); w.wait_for_probes()
     run_and_wait(w); p.back_to_list()
     assert w.statusLine.text() == "Ready"
+
+
+def test_the_eye_in_the_password_fields_shows_and_hides_both_and_has_names(w):
+    from PySide6.QtWidgets import QLineEdit
+    w.set_tab("encrypt"); p = w.pages["encrypt"]
+    acts = [a for e in (p.pwEdit, p.pwConfirmEdit) for a in e.actions()]
+    assert len(acts) == 2 and all(a.text() == "Show password" and "Alt+W" in a.toolTip() for a in acts)
+    assert p.pwEdit.echoMode() == QLineEdit.Password
+    acts[0].trigger()                                  # clicking the eye in the first field
+    assert p.pwReveal.isChecked() and p.pwEdit.echoMode() == p.pwConfirmEdit.echoMode() == QLineEdit.Normal
+    assert all(a.text() == "Hide password" and a.isChecked() for a in acts)
+    acts[1].trigger()                                  # the second field's eye switches both back
+    assert not p.pwReveal.isChecked() and p.pwEdit.echoMode() == p.pwConfirmEdit.echoMode() == QLineEdit.Password
+
+
+def test_the_password_fields_are_as_wide_as_each_other(w):
+    from PySide6.QtWidgets import QApplication
+    w.resize(960, 700); w.show(); w.set_tab("encrypt"); QApplication.processEvents()
+    p = w.pages["encrypt"]
+    p.credPasswordRadio.click(); p.pwEdit.setText("a"); QApplication.processEvents()
+    assert abs(p.pwEdit.width() - p.pwConfirmEdit.width()) <= 2

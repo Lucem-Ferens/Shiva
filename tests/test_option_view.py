@@ -75,4 +75,4 @@ def test_disabled_child_stays_shown_with_a_reason():
     v = m.option_view("clean", "encrypt", {"encrypt_cleaned": True}, m.OptionFacts())
     assert v.enabled["shred_after"] and not v.shown["shred_after_reason"]
     v = m.option_view("encrypt", "decrypt", {"shred_after": True}, m.OptionFacts())
-    assert v.shown["shred_after"] and not v.live["shred_after"] and v.shown["shred_after_reason"]
+    assert not v.shown["shred_after"] and not v.live["shred_after"] and not v.shown["shred_after_reason"]   # nothing to shred after a decrypt

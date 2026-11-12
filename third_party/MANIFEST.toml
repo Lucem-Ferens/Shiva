@@ -67,12 +67,12 @@ last_reviewed = "2026-11-02"
 [pikepdf]
 kind = "bundled"
 repo = "pikepdf/pikepdf"
-version = "10.17.0"          # wheel bundles qpdf 12.4.2
+version = "10.18.0"          # wheel bundles qpdf 12.4.2 (read from pikepdf.__libqpdf_version__ 2026-11-12)
 license = "MPL-2.0"
-verification = "PyPI wheel, version and licence read from installed metadata 2026-11-02; pinned with hashes in requirements/lock.txt"
+verification = "PyPI wheel, version and licence read from installed metadata 2026-11-12; pinned with hashes in requirements/lock.txt"
 security_critical = true     # parses untrusted PDFs; runs in the worker subprocess
 update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
-last_reviewed = "2026-11-02"
+last_reviewed = "2026-11-12"
 
 # mutagen is not shipped: the tests use it as an independent check of the audio cleaner.
 [mutagen]
@@ -89,9 +89,9 @@ last_reviewed = "2026-11-02"
 [pypdfium2]
 kind = "bundled"
 repo = "pypdfium2-team/pypdfium2"
-version = "5.14.0"           # wheel bundles PDFium (BSD-3-Clause / Apache-2.0; build licences in the wheel's dist-info)
+version = "5.15.2"           # wheel bundles PDFium 8149 (BSD-3-Clause / Apache-2.0; build licences in the wheel's dist-info)
 license = "BSD-3-Clause OR Apache-2.0"
-verification = "PyPI wheel, version and licence read from installed metadata 2026-11-02; pinned with hashes in requirements/lock.txt"
+verification = "PyPI wheel, version and licence read from installed metadata 2026-11-12; pinned with hashes in requirements/lock.txt"
 security_critical = true     # renders untrusted PDFs; runs in the worker subprocess
 update_mechanism = "tools/check_upstream.py report, then pip pin after release-note review"
-last_reviewed = "2026-11-02"
+last_reviewed = "2026-11-12"
