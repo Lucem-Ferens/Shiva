@@ -111,9 +111,9 @@ class CreateKeyDialog(QDialog):
         self.kpwHint = _label(); self.kpwHint.setAccessibleName(tr("Password check"))
         pl.addLayout(r1); pl.addWidget(self.kpwHint)
         lay.addWidget(self.pwBox)
-        self.unprotectedHint = _label(); self.unprotectedHint.setObjectName("statusWarning")
+        self.unprotectedHint = _label(); self.unprotectedHint.setObjectName("warningNote")
         self.unprotectedHint.setText("⚠ " + tr(K.UNPROTECTED_WARNING)); lay.addWidget(self.unprotectedHint)
-        self.lossHint = _label("⚠ " + tr(K.LOSS_WARNING)); self.lossHint.setObjectName("statusWarning")   # always visible
+        self.lossHint = _label("⚠ " + tr(K.LOSS_WARNING)); self.lossHint.setObjectName("warningNote")   # always visible
         lay.addWidget(self.lossHint)
         self.errorLabel = _label(); self.errorLabel.setObjectName("statusError"); lay.addWidget(self.errorLabel)
         return w

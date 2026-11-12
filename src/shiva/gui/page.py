@@ -339,7 +339,7 @@ class TabPage(QWidget):
 
         # --- passphrase block
         self.pwBlock = QWidget(); pl = QVBoxLayout(self.pwBlock); pl.setContentsMargins(0, 0, 0, 0)
-        pl.addWidget(QLabel(tr("Password")))
+        pwLabel = QLabel(tr("Password")); pwLabel.setObjectName("fieldLabel"); pl.addWidget(pwLabel)
         prow = QHBoxLayout()
         self.pwEdit = QLineEdit(); self.pwEdit.setEchoMode(QLineEdit.Password)
         self.pwEdit.setAccessibleName(tr("Password"))
@@ -351,7 +351,7 @@ class TabPage(QWidget):
         self.strengthLabel.setAccessibleName(tr("Password length"))
         pl.addWidget(self.strengthLabel); pl.addWidget(self.pwWarnLabel)
         self.confirmBox = QWidget(); cl = QVBoxLayout(self.confirmBox); cl.setContentsMargins(0, 0, 0, 0)
-        cl.addWidget(QLabel(tr("Repeat password")))
+        repeatLabel = QLabel(tr("Repeat password")); repeatLabel.setObjectName("fieldLabel"); cl.addWidget(repeatLabel)
         self.pwConfirmEdit = QLineEdit(); self.pwConfirmEdit.setEchoMode(QLineEdit.Password)
         self.pwConfirmEdit.setAccessibleName(tr("Repeat password"))
         self.pwReveal = Reveal([self.pwEdit, self.pwConfirmEdit])     # the eye in both fields shows or hides both

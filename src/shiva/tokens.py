@@ -10,6 +10,7 @@ from string import Template
 SPACE = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32}
 RADIUS = {"control": 4, "card": 8}
 TARGET = {"button_h": 32, "check_h": 24, "radio_h": 28, "menu_btn": 32, "nav_h": 36}
+SCROLLBAR_W = 12          # width of the thin scroll bar (handle only, no arrow buttons)
 CONTROL_CONTENT_H = 22   # content height inside the 1 px border and 4 px padding: buttons and one-line fields are 32 px tall
 FOCUS = {"width": 2, "gap": 2}
 NAV_BAR = 3             # width of the accent bar on the selected navigation row
@@ -110,7 +111,7 @@ QLineEdit, QPlainTextEdit { border: 1px solid $border; border-radius: ${r_contro
 QLineEdit:focus, QPlainTextEdit:focus { border: ${f_width}px solid $accent; }
 QTableWidget { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; gridline-color: $line; selection-background-color: $selected; selection-color: $text; }
 QHeaderView::section { background: $surface_strong; color: $text_secondary; border: 0; border-bottom: 1px solid $line; padding: ${s1}px ${s2}px; font-weight: 600; }
-QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
+QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint, QLabel#warningNote { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
 QGroupBox { border: 0; margin-top: ${s4}px; padding: 0; font-weight: 600; }
 QGroupBox#nextStepsGroup { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; margin-top: ${s5}px; padding: ${s3}px; }
 QFrame#optionCard { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; }
@@ -136,6 +137,14 @@ QLabel#resultBanner[level="error"] { border-left-color: $error; }
 QLabel#pageTitle { font-size: ${t_title}px; font-weight: 600; }
 QLabel#pageScope, QLabel#shredAfterReason { color: $text_secondary; }
 QLabel#statusWarning { color: $warning; }
+QScrollBar:vertical { background: transparent; width: ${sb}px; margin: 0; }
+QScrollBar:horizontal { background: transparent; height: ${sb}px; margin: 0; }
+QScrollBar::handle:vertical { background: $border; border-radius: ${r_control}px; min-height: 24px; margin: 2px; }
+QScrollBar::handle:horizontal { background: $border; border-radius: ${r_control}px; min-width: 24px; margin: 2px; }
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover, QScrollBar::handle:vertical:pressed, QScrollBar::handle:horizontal:pressed { background: $text_secondary; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: none; border: none; }
+QScrollBar::add-page, QScrollBar::sub-page { background: none; }
+QLabel#fieldLabel { font-weight: 600; }
 QLabel#statusError { color: $error; font-weight: 600; }
 """)
 
@@ -153,4 +162,4 @@ def stylesheet(theme: str) -> str:
     """Style sheet text for one theme, built only from the tokens above."""
     c = {k.replace("-", "_"): v for k, v in COLORS[theme].items()}
     return _QSS.substitute(c, r_control=RADIUS["control"], r_card=RADIUS["card"], s1=SPACE[1], s2=SPACE[2], s3=SPACE[3],
-                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], nav_bar=NAV_BAR, ctl_h=CONTROL_CONTENT_H, t_section=TYPE["section"][0], t_title=TYPE["title"][0])
+                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], nav_bar=NAV_BAR, ctl_h=CONTROL_CONTENT_H, sb=SCROLLBAR_W, t_section=TYPE["section"][0], t_title=TYPE["title"][0])

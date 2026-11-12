@@ -44,7 +44,7 @@ class KeyFileRow(QWidget):
         self._identity: bytes | None = None
         self._public: list[str] = []
         lay = QVBoxLayout(self); lay.setContentsMargins(0, 0, 0, 0); lay.setSpacing(tokens.SPACE[1])
-        self.captionLabel = QLabel(tr("Your key file (optional)"))
+        self.captionLabel = QLabel(tr("Your key file (optional)")); self.captionLabel.setObjectName("fieldLabel")
         self.helperLabel = _label(tr("Used to verify the encrypted copy (required for shredding) and to encrypt to your own key."))
         row = QHBoxLayout()
         self.setAcceptDrops(True)       # a key file dropped here is the key file, not a file to process
@@ -245,7 +245,7 @@ class KeyPanel(QWidget):
         lay = QVBoxLayout(self); lay.setContentsMargins(0, 0, 0, 0); lay.setSpacing(tokens.SPACE[1])
         self.recipientSection = QWidget(); rl = QVBoxLayout(self.recipientSection)
         rl.setContentsMargins(0, 0, 0, 0); rl.setSpacing(tokens.SPACE[1])
-        self.captionLabel = QLabel(tr("Public keys of the recipients"))
+        self.captionLabel = QLabel(tr("Public keys of the recipients")); self.captionLabel.setObjectName("fieldLabel")
         paste = QHBoxLayout()
         self.recipientEdit = QPlainTextEdit(); self.recipientEdit.setTabChangesFocus(True)
         self.recipientEdit.setPlaceholderText(tr("Paste a public key here (starts with age1)"))

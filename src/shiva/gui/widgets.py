@@ -189,7 +189,7 @@ class OptionCard(QFrame):
         self.setAttribute(Qt.WA_StyledBackground, True)
         self._lay = QVBoxLayout(self)
         self._lay.setContentsMargins(tokens.SPACE[3], tokens.SPACE[2], tokens.SPACE[3], tokens.SPACE[2])
-        self._lay.setSpacing(tokens.SPACE[2])
+        self._lay.setSpacing(tokens.SPACE[4])        # a hairline sits in the middle of this gap: 8 px above and below
 
     def add_row(self, w: QWidget) -> None:
         self._lay.addWidget(w)
@@ -237,10 +237,10 @@ class DisclosureRow(QPushButton):
 
     def sizeHint(self) -> QSize:
         return QSize(self._label_left() + self.fontMetrics().horizontalAdvance(self.text()) + tokens.SPACE[3],
-                     tokens.TARGET["button_h"])
+                     tokens.TARGET["check_h"])
 
     def minimumSizeHint(self) -> QSize:
-        return QSize(self._label_left() + self.fontMetrics().horizontalAdvance("W") * 4, tokens.TARGET["button_h"])
+        return QSize(self._label_left() + self.fontMetrics().horizontalAdvance("W") * 4, tokens.TARGET["check_h"])
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self); p.setRenderHint(QPainter.Antialiasing)
@@ -652,6 +652,9 @@ def _draw_status(p: QPainter, kind: str, s: float, color: QColor) -> None:
         p.drawPolygon([pt(.5, .08), pt(.94, .90), pt(.06, .90)])
         p.drawLine(pt(.5, .38), pt(.5, .62)); p.drawPoint(pt(.5, .76))
         return
+    if kind == "ready":                                     # a small dot: an empty circle would look like an unticked radio button
+        p.setPen(Qt.NoPen); p.setBrush(color); p.drawEllipse(QPointF(s * .5, s * .5), s * .11, s * .11)
+        return
     p.drawEllipse(r)
     if kind == "ok":                                        # check in a circle
         p.drawPolyline([pt(.28, .52), pt(.44, .67), pt(.72, .35)])
@@ -665,7 +668,6 @@ def _draw_status(p: QPainter, kind: str, s: float, color: QColor) -> None:
         p.setBrush(color); p.drawPie(r, 90 * 16, -180 * 16)
     elif kind == "pending":                                 # clock hands
         p.drawPolyline([pt(.5, .28), pt(.5, .5), pt(.66, .6)])
-    # "ready": plain empty circle
 
 
 def status_icon(kind: str, size: int = 16, theme: str = "light", high_contrast: bool | None = None,

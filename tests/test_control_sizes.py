@@ -88,3 +88,19 @@ def test_a_wrapped_check_box_grows_and_keeps_its_box_on_the_first_line(w):
     box = WrapCheckBox("A long label that has to wrap onto several lines when the box is narrow")
     assert box.heightForWidth(120) > tokens.TARGET["check_h"] * 2
     assert box.heightForWidth(2000) == tokens.TARGET["check_h"]
+
+
+def test_ready_status_is_a_dot_not_an_empty_circle():
+    from shiva.gui.widgets import status_icon
+    img = status_icon("ready", 16, "light").pixmap(16, 16).toImage()
+    s = img.devicePixelRatio()
+    def alpha(x, y):
+        return img.pixelColor(int(x * s), int(y * s)).alpha()
+    assert alpha(8, 8) > 100          # the centre is filled
+    assert alpha(8, 2) < 30           # no ring: a ring would look like an unticked radio button
+
+
+def test_style_sheet_has_thin_scroll_bars_and_the_shared_warning_note():
+    for theme in ("light", "dark"):
+        css = tokens.stylesheet(theme)
+        assert "QScrollBar::handle:vertical" in css and "QLabel#warningNote" in css
