@@ -159,6 +159,7 @@ class TabPage(QWidget):
             mbl.addWidget(b)
         mbl.addStretch(1)
         self.modeEncBtn.setChecked(True)
+        self.modeBox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)     # spare height must not widen this row
         self.modeBox.setVisible(tab == "encrypt")
         bl.addWidget(self.modeBox)
         self.modeEncBtn.clicked.connect(lambda: self.set_crypt_mode("encrypt"))
@@ -360,6 +361,7 @@ class TabPage(QWidget):
         for w in (self.pwConfirmEdit, self.matchLabel, self.lostPwNotice):
             cl.addWidget(w)
         pl.addWidget(self.confirmBox)
+        pl.addStretch(1)        # beside the taller key panel this block is stretched: the spare height goes below, not between rows
         self.pwBlock.setVisible(False)
         if tab == "encrypt":
             self._build_credentials(bl)

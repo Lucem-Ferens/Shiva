@@ -106,6 +106,7 @@ class MainWindow(QMainWindow):
         rl.addWidget(self.tabBar); rl.addWidget(self.stack, 1)
         self.setCentralWidget(root)
         self.statusLine = QLabel(tr("Ready")); self.statusLine.setAccessibleName(tr("Status"))
+        self.statusLine.setContentsMargins(tokens.SPACE[3], 0, 0, 0)    # the first character must not touch the window edge
         self.statusBar().addWidget(self.statusLine, 1)
         QWidget.setTabOrder(self.nav["clean"], self.nav["encrypt"])
         QWidget.setTabOrder(self.nav["encrypt"], self.nav["shred"])
