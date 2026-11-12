@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import agecli, key_model as K, recipients as rcp, tokens
 from ..i18n import dyn, tr, trf
 from .createkey import CreateKeyDialog
-from .widgets import WrapCheckBox, _Table, _announce, _urls, link_button
+from .widgets import Reveal, WrapCheckBox, _Table, _announce, _urls, link_button
 
 _MAX_RECIPIENT_FILE = 1 << 20
 
@@ -58,9 +58,9 @@ class KeyFileRow(QWidget):
         self.keyPwLabel = QLabel(tr("Key file password"))
         self.keyPwEdit = QLineEdit(); self.keyPwEdit.setEchoMode(QLineEdit.Password)
         self.keyPwEdit.setAccessibleName(tr("Key file password"))
-        self.showKeyPwCheck = QCheckBox(tr("Show password")); self.showKeyPwCheck.setAccessibleName(tr("Show password (key file)"))
+        self.keyPwReveal = Reveal([self.keyPwEdit])
         self.unlockBtn = QPushButton(tr("Unlock")); self.unlockBtn.setAccessibleName(tr("Unlock the key file"))
-        for w in (self.keyPwLabel, self.keyPwEdit, self.showKeyPwCheck, self.unlockBtn):
+        for w in (self.keyPwLabel, self.keyPwEdit, self.unlockBtn):
             pl.addWidget(w)
         pl.setStretchFactor(self.keyPwEdit, 1)
         stat = QHBoxLayout()
@@ -75,8 +75,6 @@ class KeyFileRow(QWidget):
         self.removeKeyFileBtn.clicked.connect(self.remove)
         self.keyPwEdit.returnPressed.connect(self.unlock)
         self.keyPwEdit.textChanged.connect(self._password_edited)
-        self.showKeyPwCheck.toggled.connect(
-            lambda on: self.keyPwEdit.setEchoMode(QLineEdit.Normal if on else QLineEdit.Password))
         self.copyPubKeyBtn.clicked.connect(self.copy_public_key)
         self._render()
 
@@ -100,13 +98,13 @@ class KeyFileRow(QWidget):
     def forget(self) -> None:
         """Drop the key and the password: the window closes or is rebuilt."""
         self.keyPwEdit.blockSignals(True)
-        self.keyPwEdit.setText(""); self.showKeyPwCheck.setChecked(False)
+        self.keyPwEdit.setText(""); self.keyPwReveal.setChecked(False)
         self.keyPwEdit.blockSignals(False)
         self._drop()
 
     def remove(self) -> None:
         """Stop using the chosen key file."""
-        self.showKeyPwCheck.setChecked(False)
+        self.keyPwReveal.setChecked(False)
         self.keyPwEdit.setText("")
         self.set_path(None)
 
@@ -198,7 +196,7 @@ class KeyFileRow(QWidget):
         """Hand the key to a run and wipe what the row holds: the password field, the key bytes. The chosen path stays; a
         plain key file is read again at once, a protected one needs its password again."""
         ident = self.identity()
-        self.showKeyPwCheck.setChecked(False)
+        self.keyPwReveal.setChecked(False)
         self.keyPwEdit.setText("")
         path = self._path
         self._drop()
@@ -490,7 +488,7 @@ class KeyPanel(QWidget):
     def tab_widgets(self) -> list:
         """The controls in keyboard order."""
         k = self.keyFile
-        return [k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.showKeyPwCheck, k.unlockBtn, k.copyPubKeyBtn,
+        return [k.keyFileBtn, k.removeKeyFileBtn, k.keyPwEdit, k.unlockBtn, k.copyPubKeyBtn,
                 self.createKeyLink, self.ownKeyCheck,
                 self.recipientEdit, self.addKeyBtn, self.addKeyFileBtn, self.createKeyBtn, self.recipientTable,
                 self.removeKeyBtn]

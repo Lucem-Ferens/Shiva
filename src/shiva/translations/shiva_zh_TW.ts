@@ -73,7 +73,7 @@
     <message><source>Items are overwritten and deleted. This can't be undone.</source><translation>項目會先覆寫再刪除，無法復原。</translation></message>
     <message><source>Add .age files to decrypt</source><translation>加入要解密的 .age 檔案</translation></message>
     <message><source>Drop files ending in .age here.</source><translation>把副檔名為 .age 的檔案拖放到這裡。</translation></message>
-    <message><source>You need the password they were encrypted with.</source><translation>需要加密時使用的密碼。</translation></message>
+    <message><source>You need the password or key file they were encrypted with.</source><translation>需要加密時使用的密碼或私鑰檔。</translation></message>
     <message><source>Status</source><translation>狀態</translation></message>
     <message><source>Name</source><translation>名稱</translation></message>
     <message><source>Type</source><translation>類型</translation></message>
@@ -123,7 +123,6 @@
     <message><source>The output folder does not exist.</source><translation>輸出資料夾不存在。</translation></message>
     <message><source>The output folder is inside a folder in the list. Choose another folder.</source><translation>輸出資料夾位於清單中的某個資料夾內。改選其他資料夾。</translation></message>
     <message><source>Password</source><translation>密碼</translation></message>
-    <message><source>Sho&amp;w password</source><translation>顯示密碼(&amp;W)</translation></message>
     <message><source>Show password</source><translation>顯示密碼</translation></message>
     <message><source>Password warning</source><translation>密碼警告</translation></message>
     <message><source>Password length</source><translation>密碼長度</translation></message>
@@ -729,7 +728,7 @@
     <message><source>Choose key file...</source><translation>選擇私鑰檔...</translation></message>
     <message><source>Choose key file</source><translation>選擇私鑰檔</translation></message>
     <message><source>Key file password</source><translation>私鑰檔密碼</translation></message>
-    <message><source>Show password (key file)</source><translation>顯示密碼（私鑰檔）</translation></message>
+    <message><source>Hide password</source><translation>隱藏密碼</translation></message>
     <message><source>Unlock</source><translation>解鎖</translation></message>
     <message><source>Unlock the key file</source><translation>解鎖私鑰檔</translation></message>
     <message><source>Key file status</source><translation>私鑰檔狀態</translation></message>
