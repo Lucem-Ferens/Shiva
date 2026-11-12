@@ -15,7 +15,7 @@ from .. import ui_model as m
 from ..i18n import dyn, tr
 
 def _eye_icon(widget: QWidget, crossed: bool) -> QIcon:
-    """An eye (crossed out while the password is shown), drawn in the field's text colour: no image files."""
+    """An eye (crossed out while the password is hidden), drawn in the field's text colour: no image files."""
     pm = QPixmap(32, 32)
     pm.setDevicePixelRatio(2.0)
     pm.fill(Qt.transparent)
@@ -72,7 +72,7 @@ class Reveal(QObject):
             a.blockSignals(True)
             a.setChecked(self._on)
             a.blockSignals(False)
-            a.setIcon(_eye_icon(e, self._on))
+            a.setIcon(_eye_icon(e, not self._on))
             a.setText(text)
             a.setToolTip(text + " (Alt+W)")
 
