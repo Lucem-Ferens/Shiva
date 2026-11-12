@@ -539,6 +539,12 @@ class _TokenStyle(QProxyStyle):
         super().__init__("Fusion")
         self._c = tokens.COLORS[theme]
 
+    def polish(self, arg):
+        super().polish(arg)
+        if isinstance(arg, QPushButton) and not getattr(arg, "_focus_visible_hooked", False):
+            arg._focus_visible_hooked = True
+            arg.installEventFilter(FOCUS_VISIBLE)      # only the buttons are watched, not every event of the application
+
     def drawPrimitive(self, element, option, painter, widget=None):
         if element == QStyle.PE_FrameFocusRect and not isinstance(widget, (QPushButton, QToolButton)):
             # check boxes, radios, table cells: the buttons' ring (accent, focus width); shown for keyboard focus only
@@ -650,6 +656,9 @@ class _FocusVisible(QObject):
         return False
 
 
+FOCUS_VISIBLE = _FocusVisible()
+
+
 def apply_theme(app: QApplication) -> str:
     """Fusion style, token palette and token style sheet for the system's light or dark theme. Returns the theme,
     or "contrast" (nothing applied: the system colours stay) when Windows High Contrast is on."""
@@ -665,8 +674,6 @@ def apply_theme(app: QApplication) -> str:
         pal.setColor(QPalette.Disabled, role, off)
     app.setPalette(pal)
     app.setStyleSheet(tokens.stylesheet(theme))
-    if not hasattr(app, "_focus_visible"):
-        app._focus_visible = _FocusVisible(app); app.installEventFilter(app._focus_visible)
     font = app.font(); font.setFamilies(["Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI"]); app.setFont(font)
     return theme
 
