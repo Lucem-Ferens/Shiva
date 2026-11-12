@@ -115,6 +115,13 @@ def _move(widget, pos):
     QApplication.sendEvent(widget, ev)
 
 
+@pytest.fixture(autouse=True)
+def _glow_settings(monkeypatch):
+    """The glow depends on the Windows "Animation effects" setting and on High Contrast, which differ between machines (a build server has animations off): pin both."""
+    monkeypatch.setattr(widgets, "animations_enabled", lambda: True)
+    monkeypatch.setattr(widgets, "high_contrast_active", lambda: False)
+
+
 def _glow_card(w):
     pg = w.pages["encrypt"]
     w.nav["encrypt"].setChecked(True); QApplication.processEvents()
@@ -136,10 +143,10 @@ def test_glow_is_off_while_dragging_in_high_contrast_and_without_animations(w, m
     assert card.glow_pos() is not None
     monkeypatch.setattr(widgets, "animations_enabled", lambda: False)
     assert card.glow_pos() is None
-    monkeypatch.undo()
+    monkeypatch.setattr(widgets, "animations_enabled", lambda: True)
     monkeypatch.setattr(widgets, "high_contrast_active", lambda: True)
     assert card.glow_pos() is None
-    monkeypatch.undo()
+    monkeypatch.setattr(widgets, "high_contrast_active", lambda: False)
     w.pages["encrypt"].set_drop_active(True)
     assert card.glow_pos() is None
     w.pages["encrypt"].set_drop_active(False)
