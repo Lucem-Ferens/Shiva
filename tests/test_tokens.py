@@ -87,8 +87,8 @@ def test_layout_roles_have_readable_text_and_visible_controls():
 def test_focus_ring_differs_from_the_fill_of_filled_buttons():
     for theme, c in t.COLORS.items():
         qss = t.stylesheet(theme)
-        assert 'QPushButton[primary="true"]:focus { border: 2px solid ' + c["on-accent"] in qss
-        assert 'QPushButton[danger="true"]:focus { border: 2px solid ' + c["on-error"] in qss
+        assert 'QPushButton[primary="true"][kbFocus="true"]:focus { border: 2px solid ' + c["on-accent"] in qss
+        assert 'QPushButton[danger="true"][kbFocus="true"]:focus { border: 2px solid ' + c["on-error"] in qss
         assert t.contrast(c["on-accent"], c["accent"]) >= 3.0 and t.contrast(c["on-error"], c["error"]) >= 3.0, theme
 
 

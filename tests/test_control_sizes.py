@@ -121,3 +121,36 @@ def test_the_show_more_row_has_no_focus_ring_after_a_click(w):
     row = w.pages["clean"].moreOptionsRow
     row.focusInEvent(QFocusEvent(QEvent.FocusIn, Qt.MouseFocusReason)); assert not row._ring
     row.focusInEvent(QFocusEvent(QEvent.FocusIn, Qt.TabFocusReason)); assert row._ring
+
+
+def test_push_button_focus_ring_only_after_keyboard_focus(w):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QFocusEvent
+    from shiva.gui.dialogs import ConfirmDialog
+    d = ConfirmDialog(w, "Shred 3 files?", "It cannot be undone.", ["a.jpg"], [], "Shred 3 files", delay_ms=0)
+    app = QApplication.instance()
+    app._focus_visible.keyboard = False                             # the last input was the mouse
+    d.show(); QApplication.processEvents()
+    assert not d.cancelBtn.property("kbFocus")                      # opened by a click: no ring, so the two buttons look equal
+    app.sendEvent(d.cancelBtn, QFocusEvent(QEvent.FocusIn, Qt.TabFocusReason))
+    assert d.cancelBtn.property("kbFocus") is True
+    app.sendEvent(d.cancelBtn, QFocusEvent(QEvent.FocusOut, Qt.TabFocusReason))
+    assert not d.cancelBtn.property("kbFocus")
+    d.close()
+
+
+def test_focus_ring_follows_the_last_input_device(w):
+    from PySide6.QtCore import QEvent, QPointF, Qt
+    from PySide6.QtGui import QFocusEvent, QKeyEvent, QMouseEvent
+    from shiva.gui.dialogs import ConfirmDialog
+    app = QApplication.instance()
+    d = ConfirmDialog(w, "Shred 3 files?", "It cannot be undone.", ["a.jpg"], [], "Shred 3 files", delay_ms=0)
+    d.show(); QApplication.processEvents()
+    btn = d.cancelBtn
+    app.sendEvent(btn, QMouseEvent(QEvent.MouseButtonPress, QPointF(5, 5), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
+    app.sendEvent(btn, QFocusEvent(QEvent.FocusIn, Qt.ActiveWindowFocusReason))
+    assert not btn.property("kbFocus")                       # mouse was last: a re-activated window shows no ring
+    app.sendEvent(btn, QKeyEvent(QEvent.KeyPress, Qt.Key_Shift, Qt.NoModifier))
+    app.sendEvent(btn, QFocusEvent(QEvent.FocusIn, Qt.ActiveWindowFocusReason))
+    assert btn.property("kbFocus") is True                   # keyboard was last: the ring is there
+    d.close()

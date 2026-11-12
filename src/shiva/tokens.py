@@ -94,7 +94,7 @@ QLabel#brand { font-size: ${t_section}px; font-weight: 600; padding: ${s1}px ${s
 QPushButton { border: 1px solid $line; border-radius: ${r_control}px; padding: ${s1}px ${s4}px; background: $surface_strong; color: $text; }
 QPushButton:hover { background: $surface_hover; }
 QPushButton:pressed { background: $selected; }
-QPushButton:focus { border: ${f_width}px solid $accent; }
+QPushButton[kbFocus="true"]:focus { border: ${f_width}px solid $accent; }
 QPushButton:disabled { color: $disabled_text; border-color: $line; background: $bg; }
 QPushButton[primary="true"] { background: $accent; color: $on_accent; border-color: $accent; font-weight: 600; }
 QPushButton[primary="true"]:hover { background: $accent_hover; border-color: $accent_hover; }
@@ -103,8 +103,8 @@ QPushButton[primary="true"]:disabled { background: $surface_strong; color: $disa
 QPushButton[danger="true"] { background: $error; color: $on_error; border-color: $error; font-weight: 600; }
 QPushButton[danger="true"]:hover, QPushButton[danger="true"]:pressed { background: $error_hover; border-color: $error_hover; }
 QPushButton[danger="true"]:disabled { background: $surface_strong; color: $disabled_text; border-color: $line; }
-QPushButton[primary="true"]:focus { border: ${f_width}px solid $on_accent; }
-QPushButton[danger="true"]:focus { border: ${f_width}px solid $on_error; }
+QPushButton[primary="true"][kbFocus="true"]:focus { border: ${f_width}px solid $on_accent; }
+QPushButton[danger="true"][kbFocus="true"]:focus { border: ${f_width}px solid $on_error; }
 QPushButton:flat { border: 0; background: transparent; padding: 0; }
 QPushButton, QLineEdit { min-height: ${ctl_h}px; }
 QLineEdit, QPlainTextEdit { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s2}px; background: $surface; color: $text; }
@@ -120,7 +120,7 @@ QLabel#confirmTitle { font-size: ${t_section}px; font-weight: 600; }
 QListWidget#confirmItems { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; padding: ${s1}px; }
 QListWidget#confirmItems:focus { border: ${f_width}px solid $accent; }
 QPushButton#learnLink { color: $accent; text-decoration: underline; border: ${f_width}px solid transparent; background: transparent; padding: 0; min-height: 0; text-align: left; }
-QPushButton#learnLink:focus { border: ${f_width}px solid $accent; }
+QPushButton#learnLink[kbFocus="true"]:focus { border: ${f_width}px solid $accent; }
 QPushButton#learnLink[indent="true"] { padding-left: ${s5}px; }
 QFrame#emptyDrop { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; }
 QFrame#emptyDrop QLabel { background: transparent; }

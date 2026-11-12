@@ -624,6 +624,32 @@ def animations_enabled() -> bool:
         return True
 
 
+class _FocusVisible(QObject):
+    """A push button draws its focus ring when the keyboard moved the focus (Tab, Shift+Tab, a shortcut), or when the focus
+    arrived by itself (a window opened, a window was re-activated) while the last input was the keyboard. After a mouse
+    click, or a window opened by a click, there is no ring: a filled default button then keeps the size of its neighbours."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.keyboard = True        # nothing was pressed yet: show the ring on the first focused button
+
+    def eventFilter(self, obj, ev) -> bool:
+        t = ev.type()
+        if t == QEvent.KeyPress:
+            self.keyboard = True
+        elif t in (QEvent.MouseButtonPress, QEvent.MouseButtonDblClick):
+            self.keyboard = False
+        if isinstance(obj, QPushButton) and t in (QEvent.FocusIn, QEvent.FocusOut):
+            r = ev.reason()
+            kb = t == QEvent.FocusIn and (r in (Qt.TabFocusReason, Qt.BacktabFocusReason, Qt.ShortcutFocusReason)
+                                          or (self.keyboard and r in (Qt.ActiveWindowFocusReason, Qt.PopupFocusReason,
+                                                                      Qt.OtherFocusReason)))
+            if bool(obj.property("kbFocus")) != kb:
+                obj.setProperty("kbFocus", kb)
+                obj.style().unpolish(obj); obj.style().polish(obj); obj.update()
+        return False
+
+
 def apply_theme(app: QApplication) -> str:
     """Fusion style, token palette and token style sheet for the system's light or dark theme. Returns the theme,
     or "contrast" (nothing applied: the system colours stay) when Windows High Contrast is on."""
@@ -639,6 +665,8 @@ def apply_theme(app: QApplication) -> str:
         pal.setColor(QPalette.Disabled, role, off)
     app.setPalette(pal)
     app.setStyleSheet(tokens.stylesheet(theme))
+    if not hasattr(app, "_focus_visible"):
+        app._focus_visible = _FocusVisible(app); app.installEventFilter(app._focus_visible)
     font = app.font(); font.setFamilies(["Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI"]); app.setFont(font)
     return theme
 
