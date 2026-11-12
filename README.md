@@ -1,6 +1,6 @@
 # Shiva
 
-> **Warning: this is an early version, release candidate 0.2.0-rc.1. Do not use it on important files.** Expect defects, and keep a
+> **Warning: this is an early version, 0.2.0. Do not use it on important files.** Expect defects, and keep a
 > separate copy of anything you process. See [Honest limits](#honest-limits).
 
 **Clean metadata, encrypt, and shred files, from one small Windows window.**
@@ -10,7 +10,7 @@ optional pipeline that chains them: **clean, then encrypt, then verify by trial 
 
 ![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)
-![Status: early, 0.2.0-rc.1](https://img.shields.io/badge/status-early%200.2.0--rc.1-orange)
+![Status: early, 0.2.0](https://img.shields.io/badge/status-early%200.2.0-orange)
 
 ## Download and start
 
