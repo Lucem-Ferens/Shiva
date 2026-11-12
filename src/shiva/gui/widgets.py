@@ -230,6 +230,11 @@ class DisclosureRow(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover, True)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._ring = False          # the focus ring shows for keyboard focus only, not after a click
+
+    def focusInEvent(self, e) -> None:
+        self._ring = e.reason() != Qt.MouseFocusReason
+        super().focusInEvent(e)
 
     def _label_left(self) -> int:
         st = self.style()
@@ -264,7 +269,7 @@ class DisclosureRow(QPushButton):
         p.setPen(text)
         left = self._label_left()
         p.drawText(QRectF(left, 0, r.width() - left, r.height()), int(Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine), self.text())
-        if self.hasFocus():
+        if self.hasFocus() and self._ring:
             p.setPen(QPen(focus, tokens.FOCUS["width"])); p.setBrush(Qt.NoBrush)
             p.drawRoundedRect(r.adjusted(1, 1, -1, -1), tokens.RADIUS["control"], tokens.RADIUS["control"])
         p.end()

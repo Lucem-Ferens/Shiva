@@ -70,6 +70,8 @@ class ConfirmDialog(QDialog):
         self.doBtn.setIcon(button_icon("warning", 16, theme))     # the word on the button stays the accessible name
         self.cancelBtn = QPushButton(tr("Cancel")); self.cancelBtn.setDefault(True)
         self.cancelBtn.setProperty("primary", True)
+        same = max(self.doBtn.sizeHint().width(), self.cancelBtn.sizeHint().width())      # the two choices are equally big
+        self.doBtn.setMinimumWidth(same); self.cancelBtn.setMinimumWidth(same)
         row.addWidget(self.doBtn); row.addWidget(self.cancelBtn)
         box.addLayout(row)
         self.doBtn.clicked.connect(self.accept)

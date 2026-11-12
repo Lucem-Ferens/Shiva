@@ -381,7 +381,7 @@ class TabPage(QWidget):
         self.primaryBtn = QPushButton(""); self.primaryBtn.setMinimumHeight(32); self.primaryBtn.setMinimumWidth(160)
         self.primaryBtn.setProperty("primary", True)
         self.primaryBtn.setToolTip(tr("Shortcut: Ctrl+Enter"))
-        self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setMinimumWidth(120)
+        self.cancelBtn = QPushButton(tr("&Cancel")); self.cancelBtn.setMinimumHeight(32); self.cancelBtn.setMinimumWidth(160)
         self.cancelBtn.setVisible(False)
         self.cancelBtn.setAccessibleName(tr("Cancel the run"))
         # read-only list of the steps of one item (two or more steps only); not a tab stop

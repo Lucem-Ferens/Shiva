@@ -104,3 +104,20 @@ def test_style_sheet_has_thin_scroll_bars_and_the_shared_warning_note():
     for theme in ("light", "dark"):
         css = tokens.stylesheet(theme)
         assert "QScrollBar::handle:vertical" in css and "QLabel#warningNote" in css
+
+
+def test_confirm_dialog_buttons_are_equally_wide(w):
+    from shiva.gui.dialogs import ConfirmDialog
+    d = ConfirmDialog(w, "Shred 3 files?", "It cannot be undone.", ["a.jpg"], [], "Shred 3 files", delay_ms=0)
+    d.show(); QApplication.processEvents()
+    assert d.doBtn.width() == d.cancelBtn.width()
+    d.close()
+
+
+def test_the_show_more_row_has_no_focus_ring_after_a_click(w):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QFocusEvent
+    from PySide6.QtCore import QEvent
+    row = w.pages["clean"].moreOptionsRow
+    row.focusInEvent(QFocusEvent(QEvent.FocusIn, Qt.MouseFocusReason)); assert not row._ring
+    row.focusInEvent(QFocusEvent(QEvent.FocusIn, Qt.TabFocusReason)); assert row._ring
