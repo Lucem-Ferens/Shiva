@@ -18,7 +18,7 @@ from .. import creds, i18n, key_model as K, output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
 from .keypanel import KeyPanel
-from .widgets import EmptyCard, OptionCard, Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
+from .widgets import DisclosureRow, EmptyCard, OptionCard, Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -257,7 +257,7 @@ class TabPage(QWidget):
         shred_host = ecl if tab == "clean" else ng           # the Encrypt page has no parent option: it sits in the group
 
         # --- options (not shown or not enabled means un-ticked, so they never stay active invisibly)
-        self.moreOptionsCheck = WrapCheckBox(tr("Show more options"))
+        self.moreOptionsRow = DisclosureRow(tr("Show more options"))
         self.keepOrientCheck = WrapCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
         self.keepIccCheck = WrapCheckBox(tr("Keep the colour profile"))
         self.keepQualityCheck = WrapCheckBox(tr("JPEG and WebP: keep the image data as it is (no re-encoding)"))
@@ -293,18 +293,18 @@ class TabPage(QWidget):
         # "Show more options" and its children, indented under it
         self.moreCard = OptionCard(); self.moreCard.setVisible(False)    # "Show more options" and the output folder
         bl.addWidget(self.moreCard)
-        self.moreCard.add_row(self.moreOptionsCheck)
+        self.moreCard.add_row(self.moreOptionsRow)
         self.moreChildren, mcl = self._child_box()
         self.moreCard.add_row(self.moreChildren)
         for w in (self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore, self.keepOrientCheck,
                   self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.keepPartsHint):
             mcl.addWidget(w)
-        for w in (self.moreOptionsCheck, self.keepQualityCheck, self.keepOrientCheck, self.chroma420Check,
+        for w in (self.moreOptionsRow, self.keepQualityCheck, self.keepOrientCheck, self.chroma420Check,
                   self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.allowUncleanCheck):
             w.setAccessibleName(w.text().replace("&", ""))
         # option name (ui_model.option_view) -> widget; update_controls sets shown/enabled from the view
         self._opt = {"encrypt_cleaned":self.encryptCleanedCheck, "shred_after": self.shredAfterCheck,
-                     "more": self.moreOptionsCheck, "keep_quality": self.keepQualityCheck,
+                     "more": self.moreOptionsRow, "keep_quality": self.keepQualityCheck,
                      "keep_orient": self.keepOrientCheck, "chroma420": self.chroma420Check,
                      "keep_icc": self.keepIccCheck, "omit_parts": self.omitPartsCheck,
                      "keep_parts": self.keepPartsCheck, "allow_unclean": self.allowUncleanCheck}
@@ -313,7 +313,7 @@ class TabPage(QWidget):
                            "shred_after_reason": self.shredAfterReason, "reencode_hint": self.reencodeHint}
         for w in (*self._opt.values(), *self._opt_notes.values(), self.moreChildren):
             w.setVisible(False)
-        self.moreOptionsCheck.setVisible(False)
+        self.moreOptionsRow.setVisible(False)
         bl.insertWidget(bl.indexOf(self.moreCard), self.nextStepsGroup)
 
         # --- optional output folder (off by default; results otherwise go next to the originals)
@@ -395,7 +395,7 @@ class TabPage(QWidget):
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.emptyFolderBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.showFolderBtn, self.copyBtn, self.detailPane,
                  self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
-                 self.shredAfterCheck, self.pwEdit, self.pwConfirmEdit, self.moreOptionsCheck,
+                 self.shredAfterCheck, self.pwEdit, self.pwConfirmEdit, self.moreOptionsRow,
                  self.keepQualityCheck, self.keepQualityMore, self.keepOrientCheck,
                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
                  self.primaryBtn, self.cancelBtn]
@@ -424,7 +424,7 @@ class TabPage(QWidget):
         self.cancelBtn.clicked.connect(self.win.cancel)
         for cb in (self.encryptCleanedCheck, self.shredAfterCheck):
             cb.toggled.connect(self._steps_changed)
-        self.moreOptionsCheck.toggled.connect(self.update_controls)
+        self.moreOptionsRow.toggled.connect(self.update_controls)
         self.outCheck.toggled.connect(self._out_changed)
         self.outEdit.textChanged.connect(self._out_changed)
         self.outBtn.clicked.connect(self.choose_out_dir)

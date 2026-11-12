@@ -126,22 +126,22 @@ def test_build_options_per_tab(w, tmp_path):
 
 def test_hidden_options_are_not_active(w, tmp_path):
     p = w.pages["clean"]
-    assert p.moreOptionsCheck.isVisibleTo(p)           # Clean always offers it; the shred page never does
+    assert p.moreOptionsRow.isVisibleTo(p)           # Clean always offers it; the shred page never does
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
-    assert p.moreOptionsCheck.isVisibleTo(p) and (not p.keepOrientCheck.isVisibleTo(p))
-    p.moreOptionsCheck.setChecked(True); p.keepQualityCheck.setChecked(True)
+    assert p.moreOptionsRow.isVisibleTo(p) and (not p.keepOrientCheck.isVisibleTo(p))
+    p.moreOptionsRow.setChecked(True); p.keepQualityCheck.setChecked(True)
     p.keepOrientCheck.setChecked(True); p.keepIccCheck.setChecked(True)
     o = p.build_options(); assert o.keep_orientation and o.keep_icc and o.jpeg_mode == "lossless"
-    p.moreOptionsCheck.setChecked(False)
+    p.moreOptionsRow.setChecked(False)
     o = p.build_options(); assert not o.keep_orientation and not o.keep_icc and not p.keepOrientCheck.isChecked()
     assert o.jpeg_mode == "reencode" and o.jpeg_subsampling == "source" and not p.keepQualityCheck.isChecked()
-    assert not w.pages["shred"].moreOptionsCheck.isVisibleTo(w.pages["shred"])
+    assert not w.pages["shred"].moreOptionsRow.isVisibleTo(w.pages["shred"])
 
 
 def test_jpeg_options_follow_each_other(w, tmp_path):
     p = w.pages["clean"]
     w.add_paths([mk(tmp_path, "a.bin")]); w.wait_for_probes()
-    p.moreOptionsCheck.setChecked(True)
+    p.moreOptionsRow.setChecked(True)
     # default: re-encode; the colour-detail choice is offered, the rotation tag and the warning are not
     assert p.chroma420Check.isVisibleTo(p) and (not p.keepOrientCheck.isVisibleTo(p)) and (not p.keepQualityHint.isVisibleTo(p))
     p.chroma420Check.setChecked(True)
@@ -282,7 +282,7 @@ def test_unclean_option_has_an_inline_warning_and_no_confirmation_window(w, tmp_
 def test_keep_parts_option_has_an_inline_warning(w, tmp_path):
     c = w.pages["clean"]
     w.add_paths([mk(tmp_path, "a.zip")]); w.wait_for_probes()
-    c.moreOptionsCheck.setChecked(True)
+    c.moreOptionsRow.setChecked(True)
     assert (not c.keepPartsHint.isVisibleTo(c))
     c.keepPartsCheck.setChecked(True)
     assert c.keepPartsHint.isVisibleTo(c) and c.keepPartsHint.text().startswith("⚠ Warning:")
@@ -558,13 +558,13 @@ def test_archive_part_options_exclusive_hidden_and_mapped(w, tmp_path):
     w.add_paths([_docx_unknown(tmp_path)]); w.wait_for_probes()
     assert (not p.omitPartsCheck.isVisibleTo(p)) and (not p.keepPartsCheck.isVisibleTo(p))
     assert p.build_options().unknown_members == "abort"
-    p.moreOptionsCheck.setChecked(True)
+    p.moreOptionsRow.setChecked(True)
     assert p.omitPartsCheck.isVisibleTo(p) and p.keepPartsCheck.isVisibleTo(p)
     p.omitPartsCheck.setChecked(True); assert p.build_options().unknown_members == "omit"
     p.keepPartsCheck.setChecked(True)
     assert not p.omitPartsCheck.isChecked() and p.build_options().unknown_members == "keep"
     p.omitPartsCheck.setChecked(True); assert not p.keepPartsCheck.isChecked()
-    p.moreOptionsCheck.setChecked(False)
+    p.moreOptionsRow.setChecked(False)
     assert not p.omitPartsCheck.isChecked() and not p.keepPartsCheck.isChecked()
     assert p.build_options().unknown_members == "abort"
 
@@ -572,7 +572,7 @@ def test_archive_part_options_exclusive_hidden_and_mapped(w, tmp_path):
 def test_keep_parts_runs_without_a_confirmation_window_and_is_marked(w, tmp_path, monkeypatch):
     src = _docx_unknown(tmp_path); p = w.pages["clean"]
     w.add_paths([src]); w.wait_for_probes()
-    p.moreOptionsCheck.setChecked(True); p.keepPartsCheck.setChecked(True)
+    p.moreOptionsRow.setChecked(True); p.keepPartsCheck.setChecked(True)
     assert p.keepPartsHint.isVisibleTo(p)               # the warning sits next to the option
     asked = []
     monkeypatch.setattr(ConfirmDialog, "exec", lambda self: asked.append(1) or 1)
@@ -586,7 +586,7 @@ def test_docx_unknown_member_refused_by_default_and_omit_cleans(w, tmp_path):
     w.add_paths([src]); w.wait_for_probes()
     run_and_wait(w); assert p.statuses == ["Failed"]
     p.back_to_list(); w.wait_for_probes()
-    p.moreOptionsCheck.setChecked(True); p.omitPartsCheck.setChecked(True)
+    p.moreOptionsRow.setChecked(True); p.omitPartsCheck.setChecked(True)
     run_and_wait(w); assert p.statuses == ["Warning"], p._results[0][0].details
     assert src.exists()
     assert any("oleObject1" in d for d in p._results[0][0].details)

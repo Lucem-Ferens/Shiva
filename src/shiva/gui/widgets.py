@@ -218,6 +218,58 @@ class OptionCard(QFrame):
         p.end()
 
 
+class DisclosureRow(QPushButton):
+    """A whole row that shows or hides a group of options: a chevron (right while closed, down while open) and a label.
+    The entire row is the click target (also Space with the keyboard). It is a checkable button, so `isChecked()`,
+    `setChecked()` and `toggled` work as they do for a check box, and a screen reader announces a toggle button."""
+
+    def __init__(self, text: str = ""):
+        super().__init__(text)
+        self.setObjectName("disclosure")
+        self.setCheckable(True); self.setAutoDefault(False)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAttribute(Qt.WA_Hover, True)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def _label_left(self) -> int:
+        st = self.style()
+        return st.pixelMetric(QStyle.PM_IndicatorWidth) + st.pixelMetric(QStyle.PM_CheckBoxLabelSpacing)
+
+    def sizeHint(self) -> QSize:
+        return QSize(self._label_left() + self.fontMetrics().horizontalAdvance(self.text()) + tokens.SPACE[3],
+                     tokens.TARGET["button_h"])
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(self._label_left() + self.fontMetrics().horizontalAdvance("W") * 4, tokens.TARGET["button_h"])
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self); p.setRenderHint(QPainter.Antialiasing)
+        pal = self.palette()
+        hc = high_contrast_active()
+        if hc:
+            text = sec = pal.color(QPalette.WindowText); hover = None; focus = pal.color(QPalette.Highlight)
+        else:
+            c = tokens.COLORS[tokens.theme_from_palette(pal)]
+            text, sec, hover, focus = QColor(c["text"]), QColor(c["text-secondary"]), QColor(c["surface-strong"]), QColor(c["accent"])
+        r = QRectF(self.rect())
+        if hover is not None and self.underMouse():
+            p.setPen(Qt.NoPen); p.setBrush(hover); p.drawRoundedRect(r, tokens.RADIUS["control"], tokens.RADIUS["control"])
+        p.save()
+        p.translate(self.style().pixelMetric(QStyle.PM_IndicatorWidth) / 2, r.height() / 2)
+        if self.isChecked():
+            p.rotate(90)
+        p.setPen(QPen(sec, 1.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)); p.setBrush(Qt.NoBrush)
+        p.drawPolyline([QPointF(-2.5, -4.5), QPointF(2.5, 0), QPointF(-2.5, 4.5)])
+        p.restore()
+        p.setPen(text)
+        left = self._label_left()
+        p.drawText(QRectF(left, 0, r.width() - left, r.height()), int(Qt.AlignLeft | Qt.AlignVCenter | Qt.TextSingleLine), self.text())
+        if self.hasFocus():
+            p.setPen(QPen(focus, tokens.FOCUS["width"])); p.setBrush(Qt.NoBrush)
+            p.drawRoundedRect(r.adjusted(1, 1, -1, -1), tokens.RADIUS["control"], tokens.RADIUS["control"])
+        p.end()
+
+
 class EmptyCard(QFrame):
     """The empty-list drop surface: a file icon, a heading, one sentence, and the "Add files" / "Add folder" buttons side
     by side. It is the drag target (`dropState` property, styled by the token sheet as QFrame#emptyDrop).
