@@ -8,9 +8,10 @@ from __future__ import annotations
 from string import Template
 
 SPACE = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32}
-RADIUS = {"control": 8, "card": 8}
+RADIUS = {"control": 4, "card": 8}
 TARGET = {"button_h": 32, "check_h": 24, "menu_btn": 32, "nav_h": 36}
 FOCUS = {"width": 2, "gap": 2}
+NAV_BAR = 3             # width of the accent bar on the selected navigation row
 SIDEBAR_W = 184
 NARROW_W = 640          # content width below which the Type and Size columns are hidden
 COMPACT_H = 520         # content height below which the scope line and the step lists are left out
@@ -21,7 +22,7 @@ TYPE = {
     "body": (14, 20, 400),
     "body-strong": (14, 20, 600),
     "section": (18, 24, 600),
-    "title": (22, 28, 600),
+    "title": (20, 28, 600),
 }
 FONT_FAMILY = '"Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI", sans-serif'
 
@@ -32,21 +33,28 @@ CONFIRM_DELAY_MS = 500  # the destructive button of a confirmation stays disable
 
 COLORS = {
     "light": {
-        "text": "#020617", "text-secondary": "#475569", "accent": "#0369A1", "success": "#166534",
-        "warning": "#92400E", "error": "#B91C1C", "border": "#64748B", "bg": "#F8FAFC", "surface": "#FFFFFF",
+        "text": "#0F172A", "text-secondary": "#475569", "accent": "#0369A1", "success": "#166534",
+        "warning": "#92400E", "error": "#B91C1C", "border": "#64748B", "bg": "#F7F8FA", "surface": "#FFFFFF",
         "on-accent": "#FFFFFF", "on-error": "#FFFFFF",
-        "side": "#F1F5F9", "surface-strong": "#EEF2F7", "selected": "#D4E9FA", "line": "#DBE3EC", "warning-bg": "#FFFBEB",
+        "side": "#EEF1F6", "surface-strong": "#E8ECF2", "selected": "#DCEBF8", "line": "#E2E8F0", "warning-bg": "#FFFBEB",
+        "accent-hover": "#075985", "accent-press": "#0C4A6E", "error-hover": "#991B1B", "surface-hover": "#DDE3EC",
         # decoration only (never for text that carries meaning)
         "disabled-text": "#5F6672",
     },
     "dark": {
-        "text": "#F1F5F9", "text-secondary": "#A3B1C6", "accent": "#38BDF8", "success": "#4ADE80",
-        "warning": "#FCD34D", "error": "#FCA5A5", "border": "#6B7FA3", "bg": "#0F172A", "surface": "#162033",
+        "text": "#E8EDF5", "text-secondary": "#A3B1C6", "accent": "#38BDF8", "success": "#4ADE80",
+        "warning": "#FCD34D", "error": "#FCA5A5", "border": "#6B7FA3", "bg": "#0E1420", "surface": "#151D2C",
         "on-accent": "#06223A", "on-error": "#0F172A",
-        "side": "#0B1220", "surface-strong": "#1A2740", "selected": "#22345A", "line": "#2A3856", "warning-bg": "#2A2410",
+        "side": "#0A0F19", "surface-strong": "#1E2839", "selected": "#1C3350", "line": "#243044", "warning-bg": "#2A2410",
+        "accent-hover": "#7DD3FC", "accent-press": "#0EA5E9", "error-hover": "#FECACA", "surface-hover": "#26334A",
         "disabled-text": "#8896AD",
     },
 }
+
+# Black layer drawn over the window behind a modal dialog (opacity per theme); not a colour token because it has alpha.
+SCRIM_ALPHA = {"light": 0.40, "dark": 0.55}
+# Cursor glow on the empty drop card: (rgb, opacity, radius px). Decoration only; text stays above 4.5:1 under it.
+SPOTLIGHT = {"light": ((3, 105, 161), 0.06, 200), "dark": ((255, 255, 255), 0.06, 200)}
 
 
 def _lin(c: int) -> float:
@@ -74,21 +82,24 @@ def theme_from_palette(palette) -> str:
 
 _QSS = Template("""
 QWidget#side { background: $side; border-right: 1px solid $line; }
-QToolButton#nav { border: 2px solid transparent; border-left: ${s1}px solid transparent; border-radius: ${r_control}px; padding: 0 ${s3}px; background: transparent; }
+QToolButton#nav { border: 2px solid transparent; border-left: ${nav_bar}px solid transparent; border-radius: ${r_control}px; padding: 0 ${s3}px; background: transparent; }
 QToolButton#nav:hover { background: $surface_strong; }
-QToolButton#nav:checked { background: $selected; border-left: ${s1}px solid $accent; }
+QToolButton#nav:checked { background: $selected; border-left: ${nav_bar}px solid $accent; }
 QToolButton#nav QLabel { color: $text_secondary; background: transparent; }
 QToolButton#nav:checked QLabel { color: $text; font-weight: 600; }
-QToolButton#nav:focus { border: ${f_width}px solid $accent; border-left: ${s1}px solid $accent; }
+QToolButton#nav:focus { border: ${f_width}px solid $accent; border-left: ${nav_bar}px solid $accent; }
 QLabel#brand { font-size: ${t_section}px; font-weight: 600; padding: ${s1}px ${s3}px ${s4}px ${s3}px; }
-QPushButton { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s4}px; background: $surface; color: $text; }
-QPushButton:hover { background: $surface_strong; }
+QPushButton { border: 1px solid $line; border-radius: ${r_control}px; padding: ${s1}px ${s4}px; background: $surface_strong; color: $text; }
+QPushButton:hover { background: $surface_hover; }
+QPushButton:pressed { background: $selected; }
 QPushButton:focus { border: ${f_width}px solid $accent; }
 QPushButton:disabled { color: $disabled_text; border-color: $line; background: $bg; }
 QPushButton[primary="true"] { background: $accent; color: $on_accent; border-color: $accent; font-weight: 600; }
-QPushButton[primary="true"]:hover { background: $accent; }
+QPushButton[primary="true"]:hover { background: $accent_hover; border-color: $accent_hover; }
+QPushButton[primary="true"]:pressed { background: $accent_press; border-color: $accent_press; }
 QPushButton[primary="true"]:disabled { background: $surface_strong; color: $disabled_text; border-color: $line; }
 QPushButton[danger="true"] { background: $error; color: $on_error; border-color: $error; font-weight: 600; }
+QPushButton[danger="true"]:hover, QPushButton[danger="true"]:pressed { background: $error_hover; border-color: $error_hover; }
 QPushButton[danger="true"]:disabled { background: $surface_strong; color: $disabled_text; border-color: $line; }
 QPushButton[primary="true"]:focus { border: ${f_width}px solid $on_accent; }
 QPushButton[danger="true"]:focus { border: ${f_width}px solid $on_error; }
@@ -135,4 +146,4 @@ def stylesheet(theme: str) -> str:
     """Style sheet text for one theme, built only from the tokens above."""
     c = {k.replace("-", "_"): v for k, v in COLORS[theme].items()}
     return _QSS.substitute(c, r_control=RADIUS["control"], r_card=RADIUS["card"], s1=SPACE[1], s2=SPACE[2], s3=SPACE[3],
-                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], t_section=TYPE["section"][0], t_title=TYPE["title"][0])
+                           s4=SPACE[4], s5=SPACE[5], f_width=FOCUS["width"], nav_bar=NAV_BAR, t_section=TYPE["section"][0], t_title=TYPE["title"][0])
