@@ -5,10 +5,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QRect, QSize, Signal, QPointF, QRectF
-from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap
-from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
-                               QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QWidget)
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QRect, QSize, Signal, QPointF, QRectF
+from PySide6.QtGui import (QAction, QBrush, QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap,
+                           QRadialGradient)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
+                               QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QVBoxLayout, QWidget)
 
 from .. import tokens
 from .. import ui_model as m
@@ -93,35 +94,245 @@ def _urls(mime) -> list[Path]:
 
 # ------------------------------------------------------------------ small widgets
 class _NavIcon(QWidget):
-    """A 16 px line icon drawn with the text colour (no image files)."""
+    """A 16 px line icon (no image files): 1.5 px stroke, filled while its page is selected. Unselected it uses the
+    secondary text colour; selected the main text colour (the label is bold then, so colour is never the only cue)."""
+    STROKE = 1.5
 
     def __init__(self, tab: str):
         super().__init__()
         self.tab = tab
+        self.filled = False
         self.setFixedSize(16, 16)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+    def set_filled(self, on: bool) -> None:
+        if on != self.filled:
+            self.filled = on
+            self.update()
 
     def paintEvent(self, _e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        col = self.palette().color(QPalette.Text)
-        p.setPen(QPen(col, 1.6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        pal = self.palette()
+        col = pal.color(QPalette.Text if self.filled or high_contrast_active() else QPalette.PlaceholderText)
+        p.setPen(QPen(col, self.STROKE, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        fill = QBrush(col) if self.filled else Qt.NoBrush
         pt = QPointF
         if self.tab == "clean":
             for y, x2 in ((3, 14), (8, 10), (13, 14)):
                 p.drawLine(pt(2, y), pt(x2, y))
+            if self.filled:
+                p.setBrush(fill); p.drawEllipse(pt(13, 8), 1.6, 1.6)
         elif self.tab == "encrypt":
-            p.drawRoundedRect(3, 7, 10, 7, 1, 1)
             p.drawArc(5, 1, 6, 8, 0, 180 * 16)
+            p.setBrush(fill); p.drawRoundedRect(3, 7, 10, 7, 1, 1)
         elif self.tab == "shred":
             p.drawLine(pt(3, 4), pt(13, 4)); p.drawLine(pt(6, 4), pt(6, 2)); p.drawLine(pt(6, 2), pt(10, 2))
-            p.drawLine(pt(10, 2), pt(10, 4)); p.drawLine(pt(4.5, 4), pt(5.2, 14)); p.drawLine(pt(5.2, 14), pt(10.8, 14))
-            p.drawLine(pt(10.8, 14), pt(11.5, 4))
+            p.drawLine(pt(10, 2), pt(10, 4))
+            if self.filled:
+                p.setBrush(fill)
+                p.drawPolygon([pt(4.5, 4), pt(5.2, 14), pt(10.8, 14), pt(11.5, 4)])
+            else:
+                p.drawPolyline([pt(4.5, 4), pt(5.2, 14), pt(10.8, 14), pt(11.5, 4)])
         elif self.tab == "settings":
+            p.setBrush(fill)
             for y, x in ((4, 5), (12, 11)):
                 p.drawLine(pt(2, y), pt(14, y)); p.drawEllipse(pt(x, y), 2, 2)
         elif self.tab == "about":
-            p.drawEllipse(pt(8, 8), 6, 6); p.drawLine(pt(8, 7), pt(8, 11.5)); p.drawPoint(pt(8, 4.6))
+            p.setBrush(fill); p.drawEllipse(pt(8, 8), 6, 6)
+            if self.filled:
+                p.setPen(QPen(pal.color(QPalette.Highlight), self.STROKE, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.drawLine(pt(8, 7), pt(8, 11.5)); p.drawPoint(pt(8, 4.6))
+        p.end()
+
+
+class DimLayer(QWidget):
+    """A translucent black layer over a window while a modal dialog is open (so the page behind recedes). It never takes
+    focus or mouse input, follows the window size, and is not drawn in Windows High Contrast (the user's colours stay)."""
+
+    def __init__(self, window: QWidget):
+        super().__init__(window)
+        self._host = window
+        self.setObjectName("dimLayer")
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WA_NoSystemBackground, True)
+        window.installEventFilter(self)
+        self.setGeometry(window.rect())
+        self.raise_(); self.show()
+
+    def eventFilter(self, obj, e) -> bool:
+        if obj is self._host and e.type() == QEvent.Resize:
+            self.setGeometry(self._host.rect())
+        return False
+
+    def remove(self) -> None:
+        self._host.removeEventFilter(self)
+        self.hide(); self.deleteLater()
+
+    def paintEvent(self, _e) -> None:
+        if high_contrast_active():
+            return
+        theme = tokens.theme_from_palette(self.palette())
+        p = QPainter(self)
+        p.fillRect(self.rect(), QColor(0, 0, 0, round(255 * tokens.SCRIM_ALPHA[theme])))
+        p.end()
+
+
+class OptionCard(QFrame):
+    """One rounded surface holding option rows; a hairline separates the rows that are shown. Hidden while no row is
+    shown. Which options count is decided by ui_model.option_view, never by this container."""
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("optionCard")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self._lay = QVBoxLayout(self)
+        self._lay.setContentsMargins(tokens.SPACE[3], tokens.SPACE[2], tokens.SPACE[3], tokens.SPACE[2])
+        self._lay.setSpacing(tokens.SPACE[2])
+
+    def add_row(self, w: QWidget) -> None:
+        self._lay.addWidget(w)
+
+    def _shown_rows(self) -> list[QWidget]:
+        rows = [self._lay.itemAt(i).widget() for i in range(self._lay.count())]
+        return [w for w in rows if w is not None and not w.isHidden()]
+
+    def sync(self) -> None:
+        self.setVisible(bool(self._shown_rows()))
+
+    def paintEvent(self, e) -> None:
+        super().paintEvent(e)
+        rows = self._shown_rows()
+        if len(rows) < 2:
+            return
+        if high_contrast_active():
+            col = self.palette().color(QPalette.Mid)
+        else:
+            col = QColor(tokens.COLORS[tokens.theme_from_palette(self.palette())]["line"])
+        p = QPainter(self)
+        p.setPen(QPen(col, 1))
+        for w in rows[1:]:
+            y = w.geometry().top() - self._lay.spacing() // 2
+            p.drawLine(1, y, self.width() - 2, y)
+        p.end()
+
+
+class EmptyCard(QFrame):
+    """The empty-list drop surface: a file icon, a heading, one sentence, and the "Add files" / "Add folder" buttons side
+    by side. It is the drag target (`dropState` property, styled by the token sheet as QFrame#emptyDrop).
+
+    While the pointer is over it (and nothing is dragged, the system animation setting is on and High Contrast is off) a
+    faint radial glow follows the pointer. The glow is decoration only: it carries no information and no control depends on it.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("emptyDrop")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setMouseTracking(True)
+        self._head, self._sub = "", ""
+        self._glow: QPoint | None = None
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(tokens.SPACE[5], tokens.SPACE[5], tokens.SPACE[5], tokens.SPACE[5])
+        lay.setSpacing(tokens.SPACE[1])
+        lay.addStretch(1)
+        self.iconLabel = QLabel(); self.iconLabel.setAlignment(Qt.AlignCenter)
+        self.headLabel = QLabel(); self.headLabel.setObjectName("emptyHead"); self.headLabel.setAlignment(Qt.AlignCenter)
+        self.headLabel.setWordWrap(True)
+        self.subLabel = QLabel(); self.subLabel.setObjectName("emptySub"); self.subLabel.setAlignment(Qt.AlignCenter)
+        self.subLabel.setWordWrap(True)
+        for w in (self.iconLabel, self.headLabel, self.subLabel):
+            lay.addWidget(w)
+        self.addBtn = QPushButton(tr("&Add files...")); self.addBtn.setAccessibleName(tr("Add files"))
+        self.addBtn.setProperty("primary", True)
+        self.folderBtn = QPushButton(tr("Add folder...")); self.folderBtn.setAccessibleName(tr("Add folder"))
+        row = QHBoxLayout(); row.setSpacing(tokens.SPACE[2])
+        row.addStretch(1); row.addWidget(self.addBtn); row.addWidget(self.folderBtn); row.addStretch(1)
+        lay.addSpacing(tokens.SPACE[3]); lay.addLayout(row)
+        lay.addStretch(1)
+        for b in (self.addBtn, self.folderBtn):
+            b.setMinimumHeight(tokens.TARGET["button_h"])
+        for w in (self.iconLabel, self.headLabel, self.subLabel, self.addBtn, self.folderBtn):
+            w.setMouseTracking(True); w.installEventFilter(self)
+        self._paint_icon()
+
+    # -- texts: the heading and the sentence (the accessible name is both)
+    def set_texts(self, head: str, sub: str) -> None:
+        self._head, self._sub = head, sub
+        self.headLabel.setText(head); self.subLabel.setText(sub); self.subLabel.setVisible(bool(sub))
+        self.setAccessibleName(f"{head}. {sub}" if sub else head)
+
+    def text(self) -> str:
+        return f"{self._head}\n{self._sub}" if self._sub else self._head
+
+    def _paint_icon(self) -> None:
+        size, scale = 40, 2
+        pix = QPixmap(size * scale, size * scale); pix.fill(Qt.transparent); pix.setDevicePixelRatio(scale)
+        p = QPainter(pix); p.setRenderHint(QPainter.Antialiasing)
+        hc = high_contrast_active()
+        p.setPen(QPen(self.palette().color(QPalette.Text if hc else QPalette.PlaceholderText), 1.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        pt = QPointF
+        body = [pt(11, 5), pt(24, 5), pt(31, 12), pt(31, 35), pt(11, 35)]
+        p.drawPolygon(body)
+        p.drawPolyline([pt(24, 5), pt(24, 12), pt(31, 12)])
+        for y in (21, 27):
+            p.drawLine(pt(16, y), pt(26, y))
+        p.end()
+        self.iconLabel.setPixmap(pix)
+
+    def changeEvent(self, e) -> None:
+        if e.type() in (QEvent.PaletteChange, QEvent.StyleChange) and hasattr(self, "iconLabel"):
+            self._paint_icon()
+        super().changeEvent(e)
+
+    # -- cursor glow
+    def glow_allowed(self) -> bool:
+        return (not self.property("dropState") and self.isEnabled() and not high_contrast_active()
+                and animations_enabled())
+
+    def glow_pos(self) -> QPoint | None:
+        return self._glow if self.glow_allowed() else None
+
+    def _track(self, pos: QPoint) -> None:
+        self._glow = pos if self.glow_allowed() else None
+        self.update()
+
+    def mouseMoveEvent(self, e) -> None:
+        self._track(e.position().toPoint())
+        super().mouseMoveEvent(e)
+
+    def eventFilter(self, obj, e) -> bool:
+        if e.type() == QEvent.MouseMove and isinstance(obj, QWidget):
+            self._track(obj.mapTo(self, e.position().toPoint()))
+        return False
+
+    def enterEvent(self, e) -> None:
+        self._track(self.mapFromGlobal(self.cursor().pos()))
+        super().enterEvent(e)
+
+    def leaveEvent(self, e) -> None:
+        # the pointer may only have moved onto a child; leave the glow while it is still inside this card
+        if not self.rect().contains(self.mapFromGlobal(self.cursor().pos())):
+            self._glow = None; self.update()
+        super().leaveEvent(e)
+
+    def paintEvent(self, e) -> None:
+        super().paintEvent(e)
+        pos = self.glow_pos()
+        if pos is None:
+            return
+        theme = tokens.theme_from_palette(self.palette())
+        (r, g, b), alpha, radius = tokens.SPOTLIGHT[theme]
+        grad = QRadialGradient(QPointF(pos), radius)
+        grad.setColorAt(0.0, QColor(r, g, b, round(255 * alpha)))
+        grad.setColorAt(1.0, QColor(r, g, b, 0))
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), tokens.RADIUS["card"], tokens.RADIUS["card"])
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setClipPath(path)
+        p.fillRect(self.rect(), QBrush(grad))
         p.end()
 
 
@@ -143,7 +354,7 @@ class NavButton(QToolButton):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setAcceptDrops(True)
         lay = QHBoxLayout(self); lay.setContentsMargins(tokens.SPACE[3], 0, tokens.SPACE[3], 0); lay.setSpacing(tokens.SPACE[3])
-        icon = _NavIcon(tab)
+        icon = self.icon_widget = _NavIcon(tab)
         a = QLabel(dyn(title))
         for w in (icon, a):
             w.setAttribute(Qt.WA_TransparentForMouseEvents)
@@ -153,6 +364,7 @@ class NavButton(QToolButton):
         """Only the selected item takes Tab (focus ring only for keyboard users); the arrow keys still move between the
         items and select them. The description says which item is the current page."""
         self.setFocusPolicy(Qt.TabFocus if on else Qt.NoFocus)
+        self.icon_widget.set_filled(on)
         self.setAccessibleDescription(tr("Current page") if on else "")
 
     def _set_target(self, on: bool) -> None:
@@ -333,6 +545,19 @@ def high_contrast_active() -> bool:
         return bool(ok and hc.dwFlags & 1)                                                       # HCF_HIGHCONTRASTON
     except Exception:
         return False
+
+
+def animations_enabled() -> bool:
+    """The Windows "Animation effects" setting (client area animation); True where it cannot be read."""
+    if sys.platform != "win32":
+        return True
+    try:
+        import ctypes
+        on = ctypes.c_int(1)
+        ok = ctypes.windll.user32.SystemParametersInfoW(0x1042, 0, ctypes.byref(on), 0)   # SPI_GETCLIENTAREAANIMATION
+        return bool(on.value) if ok else True
+    except Exception:
+        return True
 
 
 def apply_theme(app: QApplication) -> str:

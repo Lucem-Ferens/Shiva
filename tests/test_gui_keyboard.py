@@ -97,7 +97,7 @@ def test_focus_after_run_back_and_clear(w, tmp_path):
     pg.primaryBtn.click()                                   # Back to list
     assert pg.mode == "list" and QApplication.focusWidget() is pg.addFilesBtn
     pg.clearBtn.setFocus(); pg.clearBtn.click()
-    assert QApplication.focusWidget() is pg.addFilesBtn
+    assert QApplication.focusWidget() is pg.emptyAddBtn   # the list is empty: the toolbar is hidden, the card button takes the focus
 
 
 def test_focus_returns_after_a_cancelled_confirmation(w, tmp_path, monkeypatch):

@@ -110,6 +110,8 @@ QTableWidget { border: 1px solid $line; border-radius: ${r_card}px; background: 
 QHeaderView::section { background: $surface_strong; color: $text_secondary; border: 0; border-bottom: 1px solid $line; padding: ${s1}px ${s2}px; font-weight: 600; }
 QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }
 QGroupBox { border: 0; margin-top: ${s4}px; padding: 0; font-weight: 600; }
+QGroupBox#nextStepsGroup { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; margin-top: ${s5}px; padding: ${s3}px; }
+QFrame#optionCard { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; }
 QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 0; padding: 0; }
 QLabel#confirmTitle { font-size: ${t_section}px; font-weight: 600; }
 QListWidget#confirmItems { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; padding: ${s1}px; }
@@ -117,9 +119,12 @@ QListWidget#confirmItems:focus { border: ${f_width}px solid $accent; }
 QPushButton#learnLink { color: $accent; text-decoration: underline; border: ${f_width}px solid transparent; background: transparent; padding: 0 ${s1}px; text-align: left; }
 QPushButton#learnLink:focus { border: ${f_width}px solid $accent; }
 QPushButton#learnLink[indent="true"] { padding-left: ${s5}px; }
-QLabel#emptyDrop { border: 1px dashed $border; border-radius: ${r_card}px; padding: ${s5}px; }
-QTableWidget[dropState="ok"], QLabel#emptyDrop[dropState="ok"] { border: 2px dashed $accent; border-radius: ${r_card}px; background: $selected; }
-QTableWidget[dropState="refused"], QLabel#emptyDrop[dropState="refused"] { border: 2px dashed $error; border-radius: ${r_card}px; background: $warning_bg; }
+QFrame#emptyDrop { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; }
+QFrame#emptyDrop QLabel { background: transparent; }
+QLabel#emptyHead { font-size: ${t_section}px; font-weight: 600; }
+QLabel#emptySub { color: $text_secondary; }
+QTableWidget[dropState="ok"], QFrame#emptyDrop[dropState="ok"] { border: 2px dashed $accent; border-radius: ${r_card}px; background: $selected; }
+QTableWidget[dropState="refused"], QFrame#emptyDrop[dropState="refused"] { border: 2px dashed $error; border-radius: ${r_card}px; background: $warning_bg; }
 QLabel#dropCue { color: $text; font-weight: 600; padding: ${s1}px; }
 QToolButton#nav[dropTarget="true"] { background: $surface_strong; border: 2px dashed $accent; }
 QLabel#resultBanner { background: $surface; border: 1px solid $line; border-left: ${s1}px solid $border; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }

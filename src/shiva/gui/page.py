@@ -18,7 +18,7 @@ from .. import creds, i18n, key_model as K, output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
 from .keypanel import KeyPanel
-from .widgets import Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
+from .widgets import EmptyCard, OptionCard, Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -175,19 +175,16 @@ class TabPage(QWidget):
         self.dropCue.setVisible(False)
         head, sub = _EMPTY[tab]
         head, sub = tr(head), tr(sub)
-        self.emptyState = QLabel(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
-        self.emptyState.setAlignment(Qt.AlignCenter); self.emptyState.setWordWrap(True)
-        self.emptyState.setObjectName("emptyDrop")
+        self.emptyState = EmptyCard()
+        self.emptyState.set_texts(head, sub)
         if high_contrast_active():
             self.emptyState.setStyleSheet(self._EMPTY_CSS)   # the token sheet is not applied: palette colours only
-        self.emptyState.setAccessibleName(f"{head}. {sub}")
         self.dropActive = False; self.dropState = ""
-        self.emptyView = QWidget(); ev = QVBoxLayout(self.emptyView)
+        self.emptyView = QWidget(); ev = QVBoxLayout(self.emptyView); ev.setContentsMargins(0, 0, 0, 0)
         ev.addWidget(self.emptyState, 1)
-        self.emptyAddBtn = QPushButton(tr("Add files...")); self.emptyAddBtn.setAccessibleName(tr("Add files"))
-        self.emptyAddBtn.setProperty("primary", True)
-        self.emptyAddBtn.setFocusPolicy(Qt.ClickFocus)     # the toolbar button does the same and is the keyboard stop
-        ev.addWidget(self.emptyAddBtn, 0, Qt.AlignHCenter)
+        # while the list is empty these two replace the toolbar buttons (the toolbar is hidden) and are the keyboard stops
+        self.emptyAddBtn, self.emptyFolderBtn = self.emptyState.addBtn, self.emptyState.folderBtn
+        self.emptyFolderBtn.setVisible(tab != "clean")        # shown only where it can be used
         self.fileTable = _Table(0, 5)
         self.fileTable.setHorizontalHeaderLabels([tr(x) for x in ("Status", "Name", "Type", "Size", "Note")])
         self.fileTable.setAccessibleName(tr("Files in this list: status, name, type, size, note"))
@@ -294,9 +291,11 @@ class TabPage(QWidget):
         for w in (self.shredAfterCheck, self.shredAfterReason):
             shred_host.addWidget(w)
         # "Show more options" and its children, indented under it
-        bl.addWidget(self.moreOptionsCheck)
+        self.moreCard = OptionCard(); self.moreCard.setVisible(False)    # "Show more options" and the output folder
+        bl.addWidget(self.moreCard)
+        self.moreCard.add_row(self.moreOptionsCheck)
         self.moreChildren, mcl = self._child_box()
-        bl.addWidget(self.moreChildren)
+        self.moreCard.add_row(self.moreChildren)
         for w in (self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore, self.keepOrientCheck,
                   self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.keepPartsHint):
             mcl.addWidget(w)
@@ -315,7 +314,7 @@ class TabPage(QWidget):
         for w in (*self._opt.values(), *self._opt_notes.values(), self.moreChildren):
             w.setVisible(False)
         self.moreOptionsCheck.setVisible(False)
-        bl.insertWidget(bl.indexOf(self.moreOptionsCheck), self.nextStepsGroup)
+        bl.insertWidget(bl.indexOf(self.moreCard), self.nextStepsGroup)
 
         # --- optional output folder (off by default; results otherwise go next to the originals)
         self.outCheck = WrapCheckBox(tr("Save results in another folder")); self.outCheck.setAccessibleName(tr("Save results in another folder"))
@@ -332,7 +331,7 @@ class TabPage(QWidget):
         self._opt["out"] = self.outCheck
         if tab == "encrypt":
             self._opt["own_key"] = None       # set when the credentials group is built
-        bl.addWidget(self.outCheck); bl.addWidget(self.outChildren)
+        self.moreCard.add_row(self.outCheck); self.moreCard.add_row(self.outChildren)
         for w in (self.outBox, self.outNoteLabel):
             ocl.addWidget(w)
         for w in (self.outCheck, self.outChildren, self.outBox, self.outNoteLabel):
@@ -366,7 +365,7 @@ class TabPage(QWidget):
         if tab == "encrypt":
             self._build_credentials(bl)
         else:
-            bl.insertWidget(bl.indexOf(self.moreOptionsCheck), self.pwBlock)     # the required input comes before the optional ones
+            bl.insertWidget(bl.indexOf(self.moreCard), self.pwBlock)     # the required input comes before the optional ones
         bl.addStretch(1)       # spare height goes below the options, not into the check boxes
         # the options and the passphrase scroll only when the page is too short for them; hidden while a run or its
         # results show (what an option does comes from ui_model.option_view, never from this container's visibility)
@@ -393,7 +392,7 @@ class TabPage(QWidget):
         brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
         outer.addLayout(brow)
 
-        order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.modeEncBtn, self.modeDecBtn,
+        order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.emptyFolderBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.showFolderBtn, self.copyBtn, self.detailPane,
                  self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
                  self.shredAfterCheck, self.pwEdit, self.pwConfirmEdit, self.moreOptionsCheck,
@@ -410,6 +409,7 @@ class TabPage(QWidget):
 
         self.addFilesBtn.clicked.connect(self.win.pick_files)
         self.emptyAddBtn.clicked.connect(self.win.pick_files)
+        self.emptyFolderBtn.clicked.connect(self.win.pick_folder)
         self.addFolderBtn.clicked.connect(self.win.pick_folder)
         self.clearBtn.clicked.connect(self.clear_list)
         self.removeSelectedBtn.clicked.connect(self.remove_selected)
@@ -577,9 +577,9 @@ class TabPage(QWidget):
         self.resultTable.setColumnWidth(1, 150 if narrow else 200)
         self._fit_result_rows()       # the Result column takes what is left
 
-    _EMPTY_CSS = "QLabel#emptyDrop { border: 1px dashed palette(mid); padding: 24px; }"
-    _HC_DROP_CSS = {"ok": "QTableWidget[dropState], QLabel#emptyDrop[dropState] { border: 3px dashed palette(highlight); }",
-                    "refused": "QTableWidget[dropState], QLabel#emptyDrop[dropState] { border: 3px dotted palette(window-text); }"}
+    _EMPTY_CSS = "QFrame#emptyDrop { border: 1px dashed palette(mid); }"
+    _HC_DROP_CSS = {"ok": "QTableWidget[dropState], QFrame#emptyDrop[dropState] { border: 3px dashed palette(highlight); }",
+                    "refused": "QTableWidget[dropState], QFrame#emptyDrop[dropState] { border: 3px dotted palette(window-text); }"}
 
     def set_drop_active(self, on: bool, refused: bool = False) -> None:
         """Drag-over feedback: a dashed accent border plus a text cue ("Drop files to add them"), or, when the
@@ -603,7 +603,7 @@ class TabPage(QWidget):
             head, sub = cue, ""
         elif self.tab == "encrypt" and self.cryptMode == "decrypt":
             head, sub = tr("Add .age files to decrypt"), tr("Drop files ending in .age here.\nYou need the password or key file they were encrypted with.")
-        self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
+        self.emptyState.set_texts(head, sub)
 
     def _selection_changed(self) -> None:
         self.removeSelectedBtn.setEnabled(self.mode == "list" and not self.win.busy
@@ -616,6 +616,8 @@ class TabPage(QWidget):
         self.rows = [r for r in self.rows if r.key not in gone]
         self.fileTable.clearSelection()   # the rows below move up; a kept selection would now point at other files
         self.refresh_rows()
+        if self.view.currentIndex() == 0:
+            self.restore_focus()          # the last row is gone: the toolbar is hidden, the card's Add files button takes the focus
         self.win.set_status("Ready")      # "Added 1 item" no longer describes the list
 
     def clear_list(self) -> None:
@@ -635,11 +637,25 @@ class TabPage(QWidget):
         if self.win.view() != self.tab:
             return
         first = {"running": self.cancelBtn, "results": self.resultTable if self._results else self.primaryBtn}.get(
-            self.mode, prefer or self.addFilesBtn)
-        for w in (first, self.primaryBtn, self.addFilesBtn):
+            self.mode, prefer or self.add_button())
+        for w in (first, self.primaryBtn, self.add_button()):
             if w.isEnabled() and not w.isHidden():
                 w.setFocus(Qt.OtherFocusReason)
                 return
+
+    def add_button(self) -> QPushButton:
+        """The visible "Add files" button: the one in the empty card while the list is empty, else the toolbar's."""
+        return self.emptyAddBtn if self.mode == "list" and self.view.currentIndex() == 0 else self.addFilesBtn
+
+    def _show_view(self, index: int) -> None:
+        """Switch between the empty card, the file table and the results. The toolbar is hidden while the card shows;
+        keyboard focus that sat on a card button moves to the toolbar button when the first file arrives."""
+        card_focus = self.emptyAddBtn.hasFocus() or self.emptyFolderBtn.hasFocus()
+        self.view.setCurrentIndex(index)
+        for b in (self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn):
+            b.setVisible(not (self.mode == "list" and index == 0))
+        if card_focus and index != 0:
+            self.addFilesBtn.setFocus(Qt.OtherFocusReason)
 
     def _set_mode(self, mode: str) -> None:
         """Options and passphrase are on screen only in the list; a run or its results get the whole height."""
@@ -743,8 +759,7 @@ class TabPage(QWidget):
         head, sub = (("Add .age files to decrypt", "Drop files ending in .age here.\n"
                       "You need the password or key file they were encrypted with.") if mode == "decrypt" else _EMPTY["encrypt"])
         head, sub = tr(head), tr(sub)
-        self.emptyState.setText(f"<b>{head}</b><br>{sub.replace(chr(10), '<br>')}")
-        self.emptyState.setAccessibleName(f"{head}. {sub}")
+        self.emptyState.set_texts(head, sub)
         self.refresh_rows()
 
     def refresh_rows(self) -> None:
@@ -760,7 +775,7 @@ class TabPage(QWidget):
             r.info = m.row_info(r.facts, self.tab, self.ticked(), r.key in over, mode)
         if self.mode == "list":
             self._fill_file_table()
-            self.view.setCurrentIndex(1 if self.rows else 0)
+            self._show_view(1 if self.rows else 0)
             self._cap_view()
         if self.outCheck.isChecked() and self.mode == "list":
             self._out_changed()      # the listed folders may have changed; re-check the output folder (calls update_controls)
@@ -832,6 +847,8 @@ class TabPage(QWidget):
         for name, w in self._opt_notes.items():
             w.setVisible(v.shown[name])
         self.moreChildren.setVisible(v.live["more"])
+        self.nextStepsGroup.setVisible(self.tab != "shred" and any(
+            not w.isHidden() for w in (self.encryptCleanedCheck, self.shredAfterCheck)))
         key_enc = self.key_mode() and self.cryptMode == "encrypt"
         reason_text = dyn((K.shred_after_reason(self.keyPanel.cred_state()) if key_enc else None)
                           or m.shred_after_reason(self.tab))
@@ -880,6 +897,7 @@ class TabPage(QWidget):
         self.primaryBtn.setAccessibleName(self.primaryBtn.text().replace("...", ""))
         self.primaryBtn.setAccessibleDescription(reason or ps.match_text if reason is not None else "")
         self.clearBtn.setEnabled(bool(self.rows))
+        self.moreCard.sync()
         self._selection_changed()
         self.pageStateChanged.emit()
         self.win.pageStateChanged.emit()
@@ -1009,7 +1027,7 @@ class TabPage(QWidget):
 
     def set_running(self, run_rows: list[_Row]) -> None:
         self._set_mode("running"); self._run_rows = list(run_rows); self._cap_view()
-        self.view.setCurrentIndex(1)
+        self._show_view(1)
         self.primaryBtn.setVisible(False); self.cancelBtn.setVisible(True); self.cancelBtn.setEnabled(True)
         self.reasonLabel.setVisible(False)
         # one item: a busy bar (no byte progress is reported); several: N of M. Elapsed seconds show after 1 s.
@@ -1101,7 +1119,7 @@ class TabPage(QWidget):
         self._set_banner(m.summary_level(statuses, bool(risk)), m.summary_text(statuses, tab), m.risk_causes(risk))
         self.statuses = statuses
         self._set_mode("results"); self._cap_view()
-        self.view.setCurrentIndex(2)
+        self._show_view(2)
         self._stop_ticker()
         self.progressBar.setVisible(False); self.progressLabel.setVisible(False)
         self.cancelBtn.setVisible(False); self.primaryBtn.setVisible(True)

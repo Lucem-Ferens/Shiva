@@ -23,7 +23,7 @@ from ..i18n import dyn, tr
 from .dialogs import AboutShreddingDialog, ConfirmDialog, PdfDialog
 from .info_pages import AboutPage, SettingsPage
 from .page import _Row, TabPage
-from .widgets import NavButton, _announce, _urls, apply_theme
+from .widgets import DimLayer, NavButton, _announce, _urls, apply_theme
 
 _OFFICE_FMTS = ("docx", "xlsx", "pptx", "odt", "ods", "odp")   # formats with an Office category dialog
 
@@ -358,7 +358,11 @@ class MainWindow(QMainWindow):
         dlg = ConfirmDialog(self, title, body, items, notes, do, trailer=m.TRAILER if risky else "",
                             learn_link=m.WHY_LINK, item_tips=item_tips)
         dlg.learnRequested.connect(self.show_about_shredding)
-        return dlg.exec() == QDialog.Accepted
+        layer = DimLayer(self)        # the page behind the question recedes; removed again whatever happens
+        try:
+            return dlg.exec() == QDialog.Accepted
+        finally:
+            layer.remove()
 
     # ---- run preparation
     def _scan_responsively(self, p: Path) -> list[dict]:
@@ -555,7 +559,7 @@ def main() -> int:
     # SHIVA_LANG=en|zh_TW overrides the saved choice, which overrides the OS language; English when no catalog is found
     i18n.install(None if os.environ.get("SHIVA_LANG") or saved == "system" else saved)
     w = MainWindow(); _KEEP.append(w); w.show()
-    w.pages[w.current_tab()].addFilesBtn.setFocus()   # start on the main action, not on a navigation button
+    w.pages[w.current_tab()].add_button().setFocus()   # start on the main action, not on a navigation button
     if "--smoke" in sys.argv:
         print("SMOKE_OK", flush=True)
         return 0
