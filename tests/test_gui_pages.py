@@ -119,8 +119,8 @@ def test_build_options_per_tab(w, tmp_path):
     assert key(c.build_options()) == (True, False, False, False)
     e.shredAfterCheck.setChecked(True)
     assert key(e.build_options()) == (False, True, True, True)
-    e.set_crypt_mode("decrypt")                              # decrypt mode: the option is greyed out, un-ticked and inert
-    assert e.shredAfterCheck.isVisibleTo(e) and not e.shredAfterCheck.isEnabled() and not e.shredAfterCheck.isChecked()
+    e.set_crypt_mode("decrypt")                              # decrypt mode: the option is not shown, un-ticked and inert
+    assert not e.shredAfterCheck.isVisibleTo(e) and not e.shredAfterCheck.isChecked()
     assert key(e.build_options()) == (False, True, False, True)
 
 

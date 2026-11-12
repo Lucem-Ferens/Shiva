@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFile
 from .. import agecli, key_model as K, recipients as rcp, tokens
 from ..i18n import dyn, tr, trf
 from .createkey import CreateKeyDialog
-from .widgets import WrapCheckBox, _Table, _announce, link_button
+from .widgets import WrapCheckBox, _Table, _announce, _urls, link_button
 
 _MAX_RECIPIENT_FILE = 1 << 20
 
@@ -47,7 +47,9 @@ class KeyFileRow(QWidget):
         self.captionLabel = QLabel(tr("Your key file (optional)"))
         self.helperLabel = _label(tr("Used to verify the encrypted copy (required for shredding) and to encrypt to your own key."))
         row = QHBoxLayout()
+        self.setAcceptDrops(True)       # a key file dropped here is the key file, not a file to process
         self.keyFileEdit = QLineEdit(); self.keyFileEdit.setReadOnly(True); self.keyFileEdit.setFocusPolicy(Qt.NoFocus)
+        self.keyFileEdit.setAcceptDrops(False)      # so the drop reaches this row
         self.keyFileEdit.setAccessibleName(tr("Key file path"))
         self.keyFileBtn = QPushButton(tr("Choose key file...")); self.keyFileBtn.setAccessibleName(tr("Choose key file"))
         self.removeKeyFileBtn = QPushButton(tr("Remove key file")); self.removeKeyFileBtn.setAccessibleName(tr("Remove key file"))
@@ -149,6 +151,26 @@ class KeyFileRow(QWidget):
         finally:
             QApplication.restoreOverrideCursor()
         self._set_state(K.KF_UNLOCKED)
+
+    def _dropped_file(self, mime) -> Path | None:
+        paths = _urls(mime)
+        return paths[0] if len(paths) == 1 and paths[0].is_file() else None
+
+    def dragEnterEvent(self, e) -> None:
+        if self.isEnabled() and self._dropped_file(e.mimeData()) is not None:
+            e.acceptProposedAction()
+        else:
+            e.ignore()
+
+    dragMoveEvent = dragEnterEvent
+
+    def dropEvent(self, e) -> None:
+        path = self._dropped_file(e.mimeData())
+        if path is None or not self.isEnabled():
+            return e.ignore()
+        e.acceptProposedAction()
+        self.keyPwEdit.setText("")
+        self.set_path(path)
 
     def choose(self) -> None:
         path = self._pick(self)

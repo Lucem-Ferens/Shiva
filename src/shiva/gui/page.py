@@ -858,7 +858,7 @@ class TabPage(QWidget):
         cred_reason = None
         if self.tab == "encrypt":
             keys = self.key_mode()
-            self.credGroup.setVisible(encrypting or decrypting)
+            self.credGroup.setVisible(encrypting or decrypting or self.cryptMode == "decrypt")   # the key file can be chosen before any file is listed
             self.credStack.setCurrentIndex(1 if keys else 0)
             self.pwBlock.setVisible(not keys)
             if keys:

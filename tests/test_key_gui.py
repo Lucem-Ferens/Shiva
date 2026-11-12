@@ -313,3 +313,40 @@ def test_taking_the_key_for_a_run_does_not_announce_options_turned_off(win, tmp_
     msgs = []; kp.status.connect(msgs.append)
     p.take_credential()
     assert not any("turned off" in m for m in msgs)
+
+
+def test_decrypt_credentials_stay_while_the_list_is_empty(win, tmp_path):
+    win.set_tab("encrypt"); p = win.pages["encrypt"]
+    p.modeDecBtn.click(); QApplication.processEvents()
+    assert p.credGroup.isVisibleTo(p)                 # the key file can be chosen before any file is listed
+    f = tmp_path / "x.txt"; f.write_bytes(b"x")
+    win.add_paths([f], "encrypt"); win.wait_for_probes()
+    p.fileTable.selectRow(0); p.removeSelectedBtn.click(); QApplication.processEvents()
+    assert not p.rows and p.credGroup.isVisibleTo(p)  # removing a wrong file must not change the options
+    p.modeEncBtn.click(); QApplication.processEvents()
+    assert not p.credGroup.isVisibleTo(p)             # Encrypt mode keeps showing it once there is something to encrypt
+
+
+def test_next_steps_for_encrypting_are_not_offered_when_decrypting(win, tmp_path):
+    p, _ = _page(win, tmp_path)
+    assert p.shredAfterCheck.isVisibleTo(p)
+    p.modeDecBtn.click(); QApplication.processEvents()
+    assert not p.shredAfterCheck.isVisibleTo(p) and not p.shredAfterReason.isVisibleTo(p)
+
+
+def test_a_key_file_dropped_on_the_key_file_row_becomes_the_key_file(win, tmp_path):
+    from PySide6.QtCore import QMimeData, QPoint, Qt, QUrl
+    from PySide6.QtGui import QDragEnterEvent, QDropEvent
+    key = tmp_path / "k.agekey"
+    agecli.write_new_file(key, agecli.generate_identity(False))
+    p, _ = _page(win, tmp_path)
+    p.modeDecBtn.click(); _keymode(p)
+    row = p.keyPanel.keyFile
+    md = QMimeData(); md.setUrls([QUrl.fromLocalFile(str(key))])
+    ev = QDragEnterEvent(QPoint(5, 5), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+    row.dragEnterEvent(ev); assert ev.isAccepted()
+    row.dropEvent(QDropEvent(QPoint(5, 5), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier))
+    assert row.state == K.KF_UNLOCKED and row.keyFileEdit.text() == str(key)
+    two = QMimeData(); two.setUrls([QUrl.fromLocalFile(str(key)), QUrl.fromLocalFile(str(key))])
+    ev2 = QDragEnterEvent(QPoint(5, 5), Qt.CopyAction, two, Qt.LeftButton, Qt.NoModifier)
+    row.dragEnterEvent(ev2); assert not ev2.isAccepted()          # more than one file is not a key file choice

@@ -307,7 +307,7 @@ def option_view(tab: str, crypt_mode: str, ticks, facts: OptionFacts = OptionFac
         put("shred_after", True, live["encrypt_cleaned"])
     else:
         # in key mode the trial decrypt needs the user's key file, so shredding waits for it
-        put("shred_after", tab == "encrypt", crypt_mode == "encrypt" and (not facts.key_mode or facts.key_ready))
+        put("shred_after", tab == "encrypt" and crypt_mode == "encrypt", not facts.key_mode or facts.key_ready)
     extra = set()
     if live["encrypt_cleaned"]:
         extra.add("encrypt")
