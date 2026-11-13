@@ -47,7 +47,7 @@ def test_clean_never_overwrites_in_out_dir(dirs):
     a = src / "a.jpg"; _jpeg(a)
     (out / "a.cleaned.jpg").write_bytes(b"mine")
     res = runner.clean_file(a, out_dir=out)
-    assert res.output.name == "a.cleaned (2).jpg" and (out / "a.cleaned.jpg").read_bytes() == b"mine"
+    assert res.output.name == "a.cleaned (1).jpg" and (out / "a.cleaned.jpg").read_bytes() == b"mine"
 
 
 def test_bad_out_dir_is_refused_clearly(dirs):
@@ -88,7 +88,7 @@ def test_encrypt_never_overwrites_in_out_dir(dirs):
     f = src / "t.txt"; f.write_bytes(b"hello")
     (out / "t.txt.age").write_bytes(b"mine")
     r = jobs.run_jobs([f], "pw-long-enough", False, out_dir=out)[0]
-    assert r.ok and r.created == out / "t (2).txt.age" and r.renamed
+    assert r.ok and r.created == out / "t (1).txt.age" and r.renamed
     assert (out / "t.txt.age").read_bytes() == b"mine" and f.read_bytes() == b"hello"
     _no_parts(src, out)
 

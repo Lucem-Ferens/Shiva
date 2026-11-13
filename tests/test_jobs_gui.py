@@ -32,7 +32,7 @@ def test_decrypt_does_not_overwrite_existing(tmp_path: Path):
     a = tmp_path / "a.bin"; a.write_bytes(b"x")
     jobs.run_jobs([a], "pw", shred_original=False)
     res = jobs.run_jobs([tmp_path / "a.bin.age"], "pw", shred_original=False)
-    assert res[0].ok and res[0].created == tmp_path / "a (2).bin" and res[0].renamed
+    assert res[0].ok and res[0].created == tmp_path / "a (1).bin" and res[0].renamed
     assert a.read_bytes() == b"x" and res[0].created.read_bytes() == b"x" and res[0].usual == a
 
 

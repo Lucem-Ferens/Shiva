@@ -253,12 +253,13 @@ def intact(published: Path, ident: tuple[int, int]) -> bool:
 
 
 def numbered_name(stem: str, tail: str, n: int) -> str:
-    """`stem + tail` for n = 1, else `stem (n) + tail`: the number goes before the extension Shiva appends."""
-    return stem + tail if n == 1 else f"{stem} ({n}){tail}"
+    """Name for attempt n: `stem + tail` for n = 1, else `stem (n-1) + tail` (the first taken name gets (1)); the number goes
+    before the extension Shiva appends."""
+    return stem + tail if n == 1 else f"{stem} ({n - 1}){tail}"
 
 
 def publish_numbered(part: Path, folder: Path, stem: str, tail: str, limit: int = 9999) -> tuple[Path, bool]:
-    """Move a finished part file to `folder/stem+tail`, or to `stem (2)+tail`, `stem (3)+tail` ... when the name is
+    """Move a finished part file to `folder/stem+tail`, or to `stem (1)+tail`, `stem (2)+tail` ... when the name is
     taken. Returns (the path actually written, whether a number was added); callers use that path for everything
     that follows. The rename itself is the claim: Windows refuses it when the target exists (file, folder or a name
     differing only in case), so an existing item is never replaced and no placeholder file is needed. Only

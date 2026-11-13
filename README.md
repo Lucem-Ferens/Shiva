@@ -46,7 +46,7 @@ originals after a verified encryption) ask for confirmation, in a window that na
 
 Cleaned copies are saved as `NAME.cleaned.EXT`, or into another folder you choose. A file that cannot be cleaned is
 refused or reported, never copied through silently. When there is nothing to remove, no copy is saved and the result says
-so. A taken name gets a number (`photo.cleaned (2).jpg`); an existing file is never overwritten.
+so. A taken name gets a number (`photo.cleaned (1).jpg`); an existing file is never overwritten.
 
 | Type | Formats |
 |---|---|
@@ -92,7 +92,7 @@ choose the key file for each run, and nothing about keys is saved.
 - Decrypting uses the password, or a key file (a password-protected key file is unlocked first).
 - Optional: shred the originals (best effort), but only after a trial decrypt matches the original's hash. In key mode this
   needs your key file; without it nothing is shredded. If verification fails, everything is kept.
-- Existing output files are never overwritten; a taken name gets a number (`notes (2).txt.age`).
+- Existing output files are never overwritten; a taken name gets a number (`notes (1).txt.age`).
 - A password file is not labelled post-quantum: how well it resists guessing, including by future quantum computers,
   depends on how strong the password is. Opening a post-quantum file needs age 1.3.0 or later.
 

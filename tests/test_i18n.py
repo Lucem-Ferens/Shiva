@@ -233,9 +233,9 @@ def _scenario_texts() -> list[str]:
                    dict(path=P("C:/x/a.txt.age"), created=P("C:/x/a.txt")),
                    dict(unchanged=True), dict(unchanged=True, kept=["colour profile (ICC)"]),
                    dict(unchanged=True, kept=[steps.KEPT_UNCLEAN], warnings=["a.txt was kept unchanged and may leak metadata"]),
-                   dict(created=P("C:/x/a.cleaned (2).jpg"), renamed=True, usual=P("C:/x/a.cleaned.jpg")),
-                   dict(created=P("C:/x/a.cleaned (2).jpg"), renamed=True),
-                   dict(path=P("C:/x/a.txt.age"), created=P("C:/x/a (2).txt"), renamed=True, usual=P("C:/x/a.txt")),
+                   dict(created=P("C:/x/a.cleaned (1).jpg"), renamed=True, usual=P("C:/x/a.cleaned.jpg")),
+                   dict(created=P("C:/x/a.cleaned (1).jpg"), renamed=True),
+                   dict(path=P("C:/x/a.txt.age"), created=P("C:/x/a (1).txt"), renamed=True, usual=P("C:/x/a.txt")),
                    dict(created=P("C:/x/a.cleaned.jpg.age"), unchanged=True),
                    dict(original_removed=True, shred_attempted=True)):
             kw.setdefault("path", P("C:/x/a.jpg")); kw.setdefault("ok", True); kw.setdefault("message", "msg")

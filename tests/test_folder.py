@@ -90,7 +90,7 @@ def test_decrypt_never_overwrites_existing_folder(tmp_path: Path):
     src = tmp_path / "d"; src.mkdir(); make_tree(src)
     out, _, _ = folder.encrypt_folder_verify_shred(src, "pw", shred_original=False)
     back = folder.decrypt_folder(out, "pw")
-    assert back.name == "d (2)" and (back / "a.txt").read_bytes() == b"alpha"
+    assert back.name == "d (1)" and (back / "a.txt").read_bytes() == b"alpha"
     assert (src / "a.txt").read_bytes() == b"alpha" and not any(p.name.startswith(".") for p in tmp_path.iterdir())
 
 

@@ -93,7 +93,7 @@ def test_existing_part_or_output_is_not_overwritten(tmp_path: Path):
     src = tmp_path / "doc.bin"; src.write_bytes(b"data")
     (tmp_path / "doc.bin.age").write_bytes(b"precious")
     out, _ = pipeline.encrypt_verify_shred(src, "pw")       # a taken name gets a number; the existing file is untouched
-    assert out.name == "doc (2).bin.age" and (tmp_path / "doc.bin.age").read_bytes() == b"precious"
+    assert out.name == "doc (1).bin.age" and (tmp_path / "doc.bin.age").read_bytes() == b"precious"
     # raw age wrapper itself also refuses an existing destination
     with pytest.raises(FileExistsError):
         agecli.encrypt_passphrase(src, tmp_path / "doc.bin.age", "pw")

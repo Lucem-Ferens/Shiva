@@ -28,31 +28,31 @@ def test_publish_numbers_a_taken_name_and_keeps_the_existing_file(tmp_path):
     (tmp_path / "a.txt").write_bytes(b"precious")
     part = _part(tmp_path)
     final, renamed = output.publish_numbered(part, tmp_path, "a", ".txt")
-    assert final == tmp_path / "a (2).txt" and renamed and final.read_bytes() == b"new"
+    assert final == tmp_path / "a (1).txt" and renamed and final.read_bytes() == b"new"
     assert (tmp_path / "a.txt").read_bytes() == b"precious" and not part.exists()
-    # (2) taken too -> (3)
+    # (1) taken too -> (2)
     part = _part(tmp_path, b"third")
     final, _ = output.publish_numbered(part, tmp_path, "a", ".txt")
-    assert final.name == "a (3).txt" and (tmp_path / "a (2).txt").read_bytes() == b"new"
+    assert final.name == "a (2).txt" and (tmp_path / "a (1).txt").read_bytes() == b"new"
 
 
 def test_the_number_goes_before_the_extension_that_shiva_appends(tmp_path):
     (tmp_path / "notes.txt.age").write_bytes(b"old")
     final, _ = output.publish_numbered(_part(tmp_path), tmp_path, "notes", ".txt.age")
-    assert final.name == "notes (2).txt.age"
+    assert final.name == "notes (1).txt.age"
     (tmp_path / "README.age").write_bytes(b"old")
     final, _ = output.publish_numbered(_part(tmp_path), tmp_path, "README", ".age")
-    assert final.name == "README (2).age"
+    assert final.name == "README (1).age"
 
 
 def test_a_folder_or_a_name_differing_in_case_counts_as_taken(tmp_path):
     (tmp_path / "a.txt").mkdir()
     final, _ = output.publish_numbered(_part(tmp_path), tmp_path, "a", ".txt")
-    assert final.name == "a (2).txt" and (tmp_path / "a.txt").is_dir()
+    assert final.name == "a (1).txt" and (tmp_path / "a.txt").is_dir()
     if os.name == "nt":
         (tmp_path / "B.TXT").write_bytes(b"upper")
         final, _ = output.publish_numbered(_part(tmp_path), tmp_path, "b", ".txt")
-        assert final.name == "b (2).txt" and (tmp_path / "B.TXT").read_bytes() == b"upper"
+        assert final.name == "b (1).txt" and (tmp_path / "B.TXT").read_bytes() == b"upper"
 
 
 def test_a_name_that_appears_after_the_first_try_moves_on_to_the_next_number(tmp_path, monkeypatch):
@@ -68,7 +68,7 @@ def test_a_name_that_appears_after_the_first_try_moves_on_to_the_next_number(tmp
         return real(src, dst)
     monkeypatch.setattr(os, "rename", racing)
     final, renamed = output.publish_numbered(part, tmp_path, "a", ".txt")
-    assert final.name == "a (2).txt" and renamed and len(calls) == 2
+    assert final.name == "a (1).txt" and renamed and len(calls) == 2
     assert (tmp_path / "a.txt").read_bytes() == b"created a moment ago" and final.read_bytes() == b"new"
 
 
@@ -84,11 +84,11 @@ def test_only_file_exists_means_taken_other_errors_propagate_and_keep_the_part(t
 
 
 def test_running_out_of_numbers_raises_and_keeps_the_part(tmp_path):
-    (tmp_path / "a.txt").write_bytes(b"1"); (tmp_path / "a (2).txt").write_bytes(b"2")
+    (tmp_path / "a.txt").write_bytes(b"1"); (tmp_path / "a (1).txt").write_bytes(b"2")
     part = _part(tmp_path)
     with pytest.raises(FileExistsError):
         output.publish_numbered(part, tmp_path, "a", ".txt", limit=2)
-    assert part.exists() and (tmp_path / "a.txt").read_bytes() == b"1" and (tmp_path / "a (2).txt").read_bytes() == b"2"
+    assert part.exists() and (tmp_path / "a.txt").read_bytes() == b"1" and (tmp_path / "a (1).txt").read_bytes() == b"2"
 
 
 def test_concurrent_publishes_to_one_name_all_land_with_their_own_data(tmp_path):

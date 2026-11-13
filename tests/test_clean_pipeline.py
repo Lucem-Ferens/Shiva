@@ -140,4 +140,4 @@ def test_existing_output_not_overwritten(tmp_path):
     first = clean_encrypt_verify_shred(src, PW)
     first_bytes = first.output.read_bytes()
     second = clean_encrypt_verify_shred(src, PW)
-    assert second.output.name == "a.cleaned (2).jpg.age" and first.output.read_bytes() == first_bytes
+    assert second.output.name == "a.cleaned (1).jpg.age" and first.output.read_bytes() == first_bytes

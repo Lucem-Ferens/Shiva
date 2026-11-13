@@ -97,7 +97,7 @@ def test_clean_cancel_has_its_own_exception_and_half_shredded_uses_the_error_ico
 
 
 def test_clean_only_row_says_when_a_number_was_added(tmp_path):
-    r = jobs.JobResult(tmp_path / "a.jpg", True, "m", created=tmp_path / "a.cleaned (2).jpg", renamed=True,
+    r = jobs.JobResult(tmp_path / "a.jpg", True, "m", created=tmp_path / "a.cleaned (1).jpg", renamed=True,
                        usual=tmp_path / "a.cleaned.jpg")
     text = ui_model.result_row(r, "clean").text
     assert "a.cleaned.jpg already exists and was not overwritten" in text and "A number was added" in text

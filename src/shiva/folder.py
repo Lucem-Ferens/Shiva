@@ -359,7 +359,7 @@ def _extract(reader, staging: Path, free: int) -> None:
 
 def decrypt_folder(src: Path, passphrase: str, cancel: threading.Event | None = None,
                    out_dir: Path | None = None) -> Path:
-    """Restore NAME.tar.age into a new folder NAME next to it (or in out_dir); a taken name gets a number (NAME (2)).
+    """Restore NAME.tar.age into a new folder NAME next to it (or in out_dir); a taken name gets a number (NAME (1)).
     Never overwrites or merges."""
     src = Path(src)
     if not src.name.lower().endswith(".tar.age"):

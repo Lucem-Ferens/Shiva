@@ -52,13 +52,13 @@ def test_encrypt_file_numbers_the_name_and_uses_the_written_file(tmp_path, monke
     monkeypatch.setattr(os, "stat", lambda p, *a, **k: (stat_calls.append(Path(p).name), real_stat(p, *a, **k))[1])
     r = jobs.run_jobs([src], PW, shred)[0]
     monkeypatch.undo()
-    assert r.ok and r.created == tmp_path / "notes (2).txt.age" and r.renamed and r.usual == old
+    assert r.ok and r.created == tmp_path / "notes (1).txt.age" and r.renamed and r.usual == old
     assert old.read_bytes() == b"an older encryption"
-    assert "notes (2).txt.age" in stat_calls and "notes.txt.age" not in stat_calls   # the check looked at the written file
+    assert "notes (1).txt.age" in stat_calls and "notes.txt.age" not in stat_calls   # the check looked at the written file
     assert agecli.decrypt_hash_passphrase(r.created, PW) == hashlib.sha256(b"current content" * 50).hexdigest()
     assert (not src.exists()) == shred
     text = m.result_row(r, "encrypt", frozenset({"shred"}) if shred else frozenset()).text
-    assert "notes.txt.age already exists and was not overwritten" in text and "Saved as notes (2).txt.age" in text
+    assert "notes.txt.age already exists and was not overwritten" in text and "Saved as notes (1).txt.age" in text
 
 
 @needs_age
@@ -86,11 +86,11 @@ def test_clean_and_encrypt_numbers_before_the_extensions(tmp_path, use_out_dir):
     base = out if use_out_dir else tmp_path
     (base / "photo.cleaned.jpg.age").write_bytes(b"older")
     r = run_steps([src], PW, StepOptions(clean=True, encrypt=True, out_dir=out if use_out_dir else None))[0]
-    assert r.ok and r.created == base / "photo.cleaned (2).jpg.age" and r.renamed and r.usual == base / "photo.cleaned.jpg.age"
+    assert r.ok and r.created == base / "photo.cleaned (1).jpg.age" and r.renamed and r.usual == base / "photo.cleaned.jpg.age"
     assert (base / "photo.cleaned.jpg.age").read_bytes() == b"older"
     (tmp_path / "dec").mkdir()
     back = pipeline.decrypt_file(r.created, PW, out_dir=tmp_path / "dec")
-    assert back.name == "photo.cleaned (2).jpg" and b"TestCam" not in back.read_bytes()
+    assert back.name == "photo.cleaned (1).jpg" and b"TestCam" not in back.read_bytes()
 
 
 @needs_age
@@ -98,11 +98,11 @@ def test_encrypt_folder_numbers_and_the_result_is_still_restored_as_a_folder(tmp
     src = tmp_path / "Photos"; src.mkdir(); (src / "a.txt").write_bytes(b"alpha")
     (tmp_path / "Photos.tar.age").write_bytes(b"older")
     r = jobs.run_jobs([src], PW, False)[0]
-    assert r.ok and r.created == tmp_path / "Photos (2).tar.age" and r.renamed
+    assert r.ok and r.created == tmp_path / "Photos (1).tar.age" and r.renamed
     assert (tmp_path / "Photos.tar.age").read_bytes() == b"older"
     back = jobs.run_jobs([r.created], PW, False)[0]
     assert back.ok and back.created.is_dir() and (back.created / "a.txt").read_bytes() == b"alpha"
-    assert back.created.name == "Photos (2)" and (src / "a.txt").read_bytes() == b"alpha"
+    assert back.created.name == "Photos (1)" and (src / "a.txt").read_bytes() == b"alpha"
 
 
 @needs_age
@@ -111,36 +111,36 @@ def test_decrypt_file_numbers_the_plaintext_and_leaves_both_other_files(tmp_path
     enc = pipeline.encrypt_verify_shred(src, PW, shred_original=False)[0]
     enc_bytes = enc.read_bytes()
     r = jobs.run_jobs([enc], PW, False)[0]
-    assert r.ok and r.created == tmp_path / "notes (2).txt" and r.renamed and r.usual == src
+    assert r.ok and r.created == tmp_path / "notes (1).txt" and r.renamed and r.usual == src
     assert r.created.read_bytes() == b"hello" and src.read_bytes() == b"hello" and enc.read_bytes() == enc_bytes
     assert "notes.txt already exists and was not overwritten" in m.result_row(r, "encrypt").text
     bad = jobs.run_jobs([enc], "wrong passphrase", False)[0]
-    assert not bad.ok and _names(tmp_path) == ["notes (2).txt", "notes.txt", "notes.txt.age"]
+    assert not bad.ok and _names(tmp_path) == ["notes (1).txt", "notes.txt", "notes.txt.age"]
 
 
 @needs_age
 def test_decrypt_folder_numbering(tmp_path, monkeypatch):
     src = tmp_path / "Photos"; src.mkdir(); (src / "a.txt").write_bytes(b"alpha")
     arch = folder.encrypt_folder_verify_shred(src, PW, shred_original=False)[0]
-    # the folder exists: the restore takes (2) and leaves the existing one alone
+    # the folder exists: the restore takes (1) and leaves the existing one alone
     first = folder.decrypt_folder(arch, PW)
-    assert first.name == "Photos (2)" and (first / "a.txt").read_bytes() == b"alpha"
+    assert first.name == "Photos (1)" and (first / "a.txt").read_bytes() == b"alpha"
     # a staging folder of that number is taken: the next number is used and the foreign folder is left alone
-    (tmp_path / ".Photos (3).shiva-part").mkdir()
+    (tmp_path / ".Photos (2).shiva-part").mkdir()
     second = folder.decrypt_folder(arch, PW)
-    assert second.name == "Photos (4)" and (tmp_path / ".Photos (3).shiva-part").is_dir()
+    assert second.name == "Photos (3)" and (tmp_path / ".Photos (2).shiva-part").is_dir()
     # the final name appears during the restore: the next number, not RestoreIncomplete
     real = folder._extract
     made = []
 
     def late(reader, staging, free):
         real(reader, staging, free)
-        target = tmp_path / "Photos (5)"
+        target = tmp_path / "Photos (4)"
         target.mkdir(); made.append(target)
     monkeypatch.setattr(folder, "_extract", late)
     third = folder.decrypt_folder(arch, PW)
-    assert made and third.name == "Photos (6)" and (third / "a.txt").read_bytes() == b"alpha"
-    assert not list(tmp_path.glob(".*shiva-part")) or [p.name for p in tmp_path.glob(".*shiva-part")] == [".Photos (3).shiva-part"]
+    assert made and third.name == "Photos (5)" and (third / "a.txt").read_bytes() == b"alpha"
+    assert not list(tmp_path.glob(".*shiva-part")) or [p.name for p in tmp_path.glob(".*shiva-part")] == [".Photos (2).shiva-part"]
 
 
 @needs_age
@@ -149,7 +149,7 @@ def test_two_sources_with_one_name_in_one_out_dir(tmp_path):
     a = tmp_path / "A"; b = tmp_path / "B"; a.mkdir(); b.mkdir()
     (a / "notes.txt").write_bytes(b"from A"); (b / "notes.txt").write_bytes(b"from B")
     ra, rb = jobs.run_jobs([a / "notes.txt", b / "notes.txt"], PW, False, out_dir=out)
-    assert ra.created == out / "notes.txt.age" and rb.created == out / "notes (2).txt.age"
+    assert ra.created == out / "notes.txt.age" and rb.created == out / "notes (1).txt.age"
     assert not ra.renamed and rb.renamed and rb.usual == ra.created
     assert f"File: {b / 'notes.txt'}" in m.result_row(rb, "encrypt").details
 
@@ -166,11 +166,11 @@ def test_the_part_file_collision_still_fails_and_keeps_the_users_file(tmp_path, 
 
 def test_row_text_names_the_existing_item_on_every_page(tmp_path):
     p = tmp_path / "a.txt"
-    r = jobs.JobResult(p, True, "m", created=tmp_path / "a (2).txt.age", renamed=True, usual=tmp_path / "a.txt.age")
+    r = jobs.JobResult(p, True, "m", created=tmp_path / "a (1).txt.age", renamed=True, usual=tmp_path / "a.txt.age")
     for tab, ticked in (("encrypt", frozenset()), ("encrypt", frozenset({"shred"})), ("clean", frozenset({"encrypt"}))):
         t = _row(r, tab, ticked).text
         assert "a.txt.age already exists and was not overwritten. A number was added to the new name." in t, (tab, t)
-    d = jobs.JobResult(tmp_path / "a.txt.age", True, "m", created=tmp_path / "a (2).txt", renamed=True, usual=tmp_path / "a.txt")
+    d = jobs.JobResult(tmp_path / "a.txt.age", True, "m", created=tmp_path / "a (1).txt", renamed=True, usual=tmp_path / "a.txt")
     assert "a.txt already exists and was not overwritten" in _row(d, "encrypt").text
 
 
@@ -274,7 +274,7 @@ def test_reencoded_jpeg_cleaned_twice_saves_a_numbered_copy_the_second_time(tmp_
     second = _clean_only(first.created)
     assert not second.unchanged and second.created == tmp_path / "a.cleaned.cleaned.jpg"     # re-encoded again: never "nothing to remove"
     third = _clean_only(j)
-    assert third.created == tmp_path / "a.cleaned (2).jpg" and third.renamed and third.usual == first.created
+    assert third.created == tmp_path / "a.cleaned (1).jpg" and third.renamed and third.usual == first.created
     assert "a.cleaned.jpg already exists and was not overwritten" in _row(third).text
 
 

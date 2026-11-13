@@ -31,7 +31,7 @@ def test_never_overwrites_existing_output(tmp_path):
     first = runner.clean_file(src).output
     second = runner.clean_file(src).output
     assert first != second and first.exists() and second.exists()
-    assert second.name == "a.cleaned (2).jpg"
+    assert second.name == "a.cleaned (1).jpg"
 
 
 def test_unsupported_is_refused_not_copied(tmp_path):
