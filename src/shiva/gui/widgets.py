@@ -303,7 +303,7 @@ class EmptyCard(QFrame):
             lay.addWidget(w)
         self.addBtn = QPushButton(tr("&Add files...")); self.addBtn.setAccessibleName(tr("Add files"))
         self.addBtn.setProperty("primary", True)
-        self.folderBtn = QPushButton(tr("Add folder...")); self.folderBtn.setAccessibleName(tr("Add folder"))
+        self.folderBtn = QPushButton(tr("Add &folder...")); self.folderBtn.setAccessibleName(tr("Add folder"))
         row = QHBoxLayout(); row.setSpacing(tokens.SPACE[2])
         row.addStretch(1); row.addWidget(self.addBtn); row.addWidget(self.folderBtn); row.addStretch(1)
         lay.addSpacing(tokens.SPACE[3]); lay.addLayout(row)

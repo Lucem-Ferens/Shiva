@@ -140,7 +140,7 @@ class TabPage(QWidget):
         self.body = QWidget(); bl = QVBoxLayout(self.body); bl.setContentsMargins(0, 0, 0, 0)
         tools = QHBoxLayout()
         self.addFilesBtn = QPushButton(tr("&Add files...")); self.addFilesBtn.setAccessibleName(tr("Add files"))
-        self.addFolderBtn = QPushButton(tr("Add folder...")); self.addFolderBtn.setAccessibleName(tr("Add folder"))
+        self.addFolderBtn = QPushButton(tr("Add &folder...")); self.addFolderBtn.setAccessibleName(tr("Add folder"))
         self.clearBtn = QPushButton(tr("Clear list")); self.clearBtn.setAccessibleName(tr("Clear list"))
         self.removeSelectedBtn = QPushButton(tr("Remove selected"))
         self.removeSelectedBtn.setAccessibleName(tr("Remove selected")); self.removeSelectedBtn.setEnabled(False)

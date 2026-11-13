@@ -175,3 +175,10 @@ def test_removing_the_last_row_puts_the_focus_on_the_card_button(w, tmp_path):
     pg.fileTable.selectRow(0); pg.removeSelectedBtn.setFocus(); QApplication.processEvents()
     pg.removeSelectedBtn.click(); QApplication.processEvents()
     assert pg.view.currentIndex() == 0 and QApplication.focusWidget() is pg.emptyAddBtn
+
+
+def test_both_add_buttons_have_an_access_key(w):
+    pg = w.pages["encrypt"]
+    assert "&" in pg.addFilesBtn.text() and "&" in pg.addFolderBtn.text()
+    assert "&" in pg.emptyAddBtn.text() and "&" in pg.emptyFolderBtn.text()
+    assert pg.addFilesBtn.text().split("&")[1][0].lower() != pg.addFolderBtn.text().split("&")[1][0].lower()

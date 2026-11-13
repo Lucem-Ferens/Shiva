@@ -62,7 +62,7 @@ _many({
     "Shred the originals after a verified encryption": "加密並驗證無誤後，銷毀原始檔",
     "Ready": "就緒",
     "Encrypt files": "加密檔案", "Decrypt .age files": "解密 .age 檔案",
-    "&Add files...": "加入檔案(&A)...", "Add files": "加入檔案", "Add folder...": "加入資料夾...",
+    "&Add files...": "加入檔案(&A)...", "Add files": "加入檔案", "Add &folder...": "加入資料夾(&F)...",
     "Add folder": "加入資料夾", "Clear list": "清除清單", "Remove selected": "移除所選", "Show technical details": "顯示技術細節", "Old data of the original may stay on the drive.": "原始檔的舊資料可能留在磁碟上。", "More": "更多", "Language": "語言", "System default": "系統預設", "Not available yet.": "尚未提供。", "Reset saved choices": "重設已儲存的選擇", "Saved choices were reset.": "已儲存的選擇已重設。", "Saved choices could not be reset.": "無法重設已儲存的選擇。", "Clean file metadata, encrypt and decrypt with age, and shred files (best effort).": "清理檔案中繼資料、用 age 加密與解密，以及銷毀檔案（盡力而為）。", "Free software, licence GPL-3.0-or-later.": "自由軟體，授權為 GPL-3.0-or-later。", "Warning:": "警告：", "Failed:": "失敗：", "Result of the run": "執行結果", "Drop files to add them": "拖放檔案即可加入",
     "Folders can't be cleaned yet.": "目前還不能清理資料夾。",
     "Add files to clean": "加入要清理的檔案",

@@ -431,6 +431,9 @@ class KeyPanel(QWidget):
                else trf("Added %1 keys from %2.", len(res.keys), p.name))
         if dups:
             msg += " " + trf("%1 already in the list.", dups)
+        bad = [x.line for x in res.problems if x.code != "duplicate"]
+        if bad:
+            msg += " " + trf("Line %1 isn't a key and was skipped.", min(bad))
         self._render_table(); self.status.emit(msg); self.changed.emit()
 
     def remove_selected(self) -> None:

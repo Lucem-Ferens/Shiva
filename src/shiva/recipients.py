@@ -18,6 +18,12 @@ _INVISIBLE = {0x200B: None, 0x200C: None, 0x200D: None, 0x2060: None, 0xFEFF: No
 _PLUGIN_NAME =frozenset("abcdefghijklmnopqrstuvwxyz0123456789-_.")   # ASCII only
 _SECRET_PREFIX ="AGE-SECRET-KEY-"
 _SSH_PREFIXES = ("ssh-", "ecdsa-", "sk-ssh-", "sk-ecdsa-")
+_PEM_SECRET = "PRIVATE KEY-----"     # the end of "-----BEGIN OPENSSH PRIVATE KEY-----" and its RSA / EC / encrypted variants
+
+
+def _has_secret(text: str) -> bool:
+    t = text.translate(_INVISIBLE).upper()
+    return _SECRET_PREFIX in t or _PEM_SECRET in t
 
 
 @dataclass(frozen=True)
@@ -41,12 +47,12 @@ class ParseResult:
 
 def is_secret_key(text: str) -> bool:
     """True when any line looks like a private key, so the caller can refuse and clear it."""
-    return _SECRET_PREFIX in text.translate(_INVISIBLE).upper()
+    return _has_secret(text)
 
 
 def classify(line: str) -> str:
     """Return STANDARD, POST_QUANTUM, or a problem code for one trimmed, non-comment line."""
-    if _SECRET_PREFIX in line.translate(_INVISIBLE).upper():       # anywhere in the line: quoted, labelled, in backticks
+    if _has_secret(line):       # anywhere in the line: quoted, labelled, in backticks
         return "secret_key"
     if line.startswith(_SSH_PREFIXES):
         return "ssh_key"

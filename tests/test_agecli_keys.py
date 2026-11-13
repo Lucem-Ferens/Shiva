@@ -243,3 +243,24 @@ def test_cancel_stops_a_blocked_consumer_read(tmp_path):
         reader.read()
     with pytest.raises(agecli.Cancelled):
         agecli.decrypt_consume_identity(enc, ident, slow, cancel=cancel)
+
+
+def test_a_protected_ssh_key_fails_at_once_instead_of_waiting_for_a_console(tmp_path, monkeypatch):
+    """age asks for such a key's passphrase on the console; with a key on stdin the run has none, so it must fail fast."""
+    import shutil
+    import subprocess
+    import time
+    keygen = shutil.which("ssh-keygen")
+    if not keygen:
+        pytest.skip("ssh-keygen absent")
+    key = tmp_path / "k"
+    subprocess.run([keygen, "-q", "-t", "ed25519", "-N", "pw-for-test", "-f", str(key)], check=True, capture_output=True)
+    pub = (tmp_path / "k.pub").read_text().split()
+    src = tmp_path / "p.txt"; src.write_bytes(PLAIN)
+    enc = tmp_path / "p.txt.age"
+    agecli.encrypt_recipients(src, enc, [" ".join(pub[:2])])
+    monkeypatch.setattr(agecli, "_check_identity", lambda identity: None)       # let the key reach age
+    t0 = time.monotonic()
+    with pytest.raises(agecli.AgeError):
+        agecli.decrypt_hash_identity(enc, key.read_bytes())
+    assert time.monotonic() - t0 < 5

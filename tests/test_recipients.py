@@ -91,3 +91,9 @@ def test_age_refuses_to_mix_standard_and_post_quantum(tmp_path):
     r = subprocess.run([str(_AGE), "-r", std, "-r", pq, "-o", str(tmp_path / "m.age"), str(src)],
                        capture_output=True, text=True)
     assert r.returncode != 0
+
+
+def test_ssh_private_keys_are_treated_as_secrets():
+    for head in ("-----BEGIN OPENSSH PRIVATE KEY-----", "-----BEGIN RSA PRIVATE KEY-----", "-----BEGIN ENCRYPTED PRIVATE KEY-----"):
+        assert R.is_secret_key(head + "\nb3BlbnNzaC1rZXk=\n") and R.classify(head) == "secret_key"
+    assert not R.is_secret_key("-----BEGIN PUBLIC KEY-----")

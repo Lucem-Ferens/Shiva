@@ -350,3 +350,15 @@ def test_a_key_file_dropped_on_the_key_file_row_becomes_the_key_file(win, tmp_pa
     two = QMimeData(); two.setUrls([QUrl.fromLocalFile(str(key)), QUrl.fromLocalFile(str(key))])
     ev2 = QDragEnterEvent(QPoint(5, 5), Qt.CopyAction, two, Qt.LeftButton, Qt.NoModifier)
     row.dragEnterEvent(ev2); assert not ev2.isAccepted()          # more than one file is not a key file choice
+
+
+def test_recipients_file_reports_lines_that_were_skipped(win, tmp_path):
+    p, _ = _page(win, tmp_path)
+    _keymode(p); kp = p.keyPanel
+    _, _, a = _pair(False, tmp_path, "a.txt")
+    rf = tmp_path / "keys.txt"
+    rf.write_text(f"ecdsa-sha2-nistp256 AAAAE2VjZHNh probe\n{a}\n", encoding="utf-8")
+    kp._pick_recipients = lambda _: str(rf)
+    msgs = []; kp.status.connect(msgs.append)
+    kp.addKeyFileBtn.click()
+    assert kp.recipientTable.rowCount() == 1 and "Line 1 isn't a key and was skipped." in msgs[-1]

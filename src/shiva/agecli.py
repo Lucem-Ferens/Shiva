@@ -21,6 +21,9 @@ from pathlib import Path
 from . import winjob
 
 _CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+# A run with a private key gets no console at all: age asks a protected SSH key for its passphrase on the console, and with a hidden
+# console that question waits for ever; without one it fails at once.
+_DETACHED = 0x00000008 if os.name == "nt" else 0
 _CHUNK = 1 << 20
 
 
@@ -148,7 +151,7 @@ def _run(args: list[str], src: Path | None, dst: Path | None, passphrase: str | 
         proc = subprocess.Popen(
             [str(exe), *args], env=env, stdin=in_f if direct_stdin else subprocess.PIPE,
             stdout=out_f if out_f is not None else subprocess.PIPE,
-            stderr=subprocess.PIPE, creationflags=_CREATE_NO_WINDOW)
+            stderr=subprocess.PIPE, creationflags=_DETACHED if identity is not None else _CREATE_NO_WINDOW)
         try:
             if not winjob.adopt(proc):
                 # without the kill-on-close job, age could outlive Shiva and keep writing the part file

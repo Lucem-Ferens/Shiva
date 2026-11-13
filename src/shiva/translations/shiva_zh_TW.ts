@@ -43,7 +43,7 @@
     <message><source>Decrypt .age files</source><translation>解密 .age 檔案</translation></message>
     <message><source>&amp;Add files...</source><translation>加入檔案(&amp;A)...</translation></message>
     <message><source>Add files</source><translation>加入檔案</translation></message>
-    <message><source>Add folder...</source><translation>加入資料夾...</translation></message>
+    <message><source>Add &amp;folder...</source><translation>加入資料夾(&amp;F)...</translation></message>
     <message><source>Add folder</source><translation>加入資料夾</translation></message>
     <message><source>Clear list</source><translation>清除清單</translation></message>
     <message><source>Remove selected</source><translation>移除所選</translation></message>
