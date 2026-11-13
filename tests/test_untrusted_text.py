@@ -52,7 +52,8 @@ def test_status_line_and_reason_texts_from_the_helper_stay_text(canary, monkeypa
     monkeypatch.setattr(storage, "assess", lambda p: storage.StorageInfo(p, drive_kind="hdd", filesystem="exFAT"))
     win = MainWindow(); win.show()
     win.set_status(canary)
-    assert win.statusLine.text().endswith(">") and win.statusLine.sizeHint().height() < 60
+    assert win.statusLine.textFormat() == Qt.PlainText and win.statusLine.text() == canary     # shown as text, unchanged
+    # (the size of the label depends on the font and on how the long path wraps, so it is not a test of this; the first test compares against a label that does load the image)
     d = PdfDialog(win, "doc.pdf", [{"key": "k", "label": "L", "detail": "d", "content_changing": False,
                                     "selectable": False, "reason": canary}], 0, "pdf")
     why = [lab for lab in d.findChildren(QLabel) if lab.text() == canary]
