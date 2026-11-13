@@ -117,6 +117,8 @@ choose the key file for each run, and nothing about keys is saved.
 
 ## Honest limits
 
+What Shiva protects against and what it does not: [`docs/threat-model.md`](docs/threat-model.md).
+
 - **Shredding is best-effort.** On SSDs (wear levelling), NTFS (journal), volumes with shadow copies, and cloud-synced
   folders, overwritten data can survive elsewhere. Full-disk encryption is the reliable protection.
 - **Cleaning removes what it knows about.** It does not remove visible content, watermarks, pixel-noise fingerprints,
