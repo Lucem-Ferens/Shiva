@@ -8,7 +8,7 @@ Please report security problems privately, not in a public issue. Use the reposi
 If that option is not available, open an issue that only says you have a security report, without technical details,
 and a maintainer will arrange a private channel.
 
-Shiva is an early version (0.0.x) and is maintained by one person, so replies may take days.
+Shiva is an early version (before 1.0) and is maintained by one person, so replies may take days.
 
 ## What counts
 

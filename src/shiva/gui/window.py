@@ -563,7 +563,7 @@ _KEEP: list = []     # windows made by a language switch stay referenced until t
 
 
 def main() -> int:
-    app = QApplication(sys.argv)
+    app = QApplication(sys.argv[:1])   # Qt would apply -reverse, -platformpluginpath etc.
     apply_theme(app)
     from .. import i18n
     saved = settings.load().get("language", "system")
