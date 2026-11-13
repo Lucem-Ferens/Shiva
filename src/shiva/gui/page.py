@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QC
                                QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
-from .. import creds, i18n, key_model as K, output, steps, storage, tokens
+from .. import creds, i18n, key_model as K, output, settings, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
 from .keypanel import KeyPanel
@@ -474,7 +474,7 @@ class TabPage(QWidget):
         self.pwEdit.returnPressed.connect(self._enter)
         self.pwGenerateBtn.clicked.connect(self._generate_password)
         self._pwEditGuard = SecretFieldGuard(self.pwEdit)
-        self._confirmGuard = SecretFieldGuard(self.pwConfirmEdit, paste_allowed=lambda: not self._generated_active(),
+        self._confirmGuard = SecretFieldGuard(self.pwConfirmEdit, paste_allowed=lambda: not self._paste_off(),
                                               on_refused=lambda: self.win.set_status("Can't paste here. Type the password."))
         self.pwConfirmEdit.returnPressed.connect(self._enter)
         self.refresh_rows()
@@ -563,12 +563,17 @@ class TabPage(QWidget):
         on = bool(self._generated)
         self.pwGeneratedLabel.setText(trf("Randomness: about %1 bits.", self._generated_bits) if on else "")
         self.pwGeneratedLabel.setVisible(on and self.confirmBox.isVisibleTo(self.pwBlock))
-        self.pwConfirmEdit.setPlaceholderText(tr("Type the password. Pasting is off.") if on else "")
-        self.pwConfirmEdit.setAccessibleDescription(tr("Type the password. Pasting is off.") if on else "")
+        off = self._paste_off()
+        self.pwConfirmEdit.setPlaceholderText(tr("Type the password. Pasting is off.") if off else "")
+        self.pwConfirmEdit.setAccessibleDescription(tr("Type the password. Pasting is off.") if off else "")
 
     def _generated_active(self) -> bool:
-        """True while the password field still holds exactly the generated text: the repeat must then be typed (no paste)."""
+        """True while the password field still holds exactly the generated text."""
         return bool(self._generated) and self.pwEdit.text() == self._generated
+
+    def _paste_off(self) -> bool:
+        """Pasting into the repeat field is refused only when the user chose that in Settings and the password is a generated one."""
+        return self._generated_active() and settings.current().get("generated_paste") == "block"
 
     def take_passphrase(self) -> str:
         """Return the passphrase and empty the fields. Show is switched off FIRST and setText('') is used

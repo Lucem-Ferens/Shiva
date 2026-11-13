@@ -917,6 +917,9 @@
     <message><source>characters</source><translation>個字元</translation></message>
     <message><source>Look-alike letters (i, l, o, I, L, O) are left out.</source><translation>容易看錯的字母（i、l、o、I、L、O）不會出現。</translation></message>
     <message><source>The password is made on this computer.</source><translation>密碼在這台電腦上產生。</translation></message>
+    <message><source>Password generator</source><translation>密碼產生器</translation></message>
+    <message><source>Type a generated password again instead of pasting it</source><translation>重新輸入產生的密碼，不用貼上</translation></message>
+    <message><source>Applies only to a password made with Generate.</source><translation>只適用於用「產生」做出的密碼。</translation></message>
     <message><source>Wait for the run to finish.</source><translation>等這次執行結束。</translation></message>
     <message><source>Anyone who guesses the password can open the file.</source><translation>猜中密碼的人就能開啟檔案。</translation></message>
     <message><source>This replaces the password you typed.</source><translation>這會取代您輸入的密碼。</translation></message>

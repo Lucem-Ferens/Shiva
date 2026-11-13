@@ -13,7 +13,9 @@ from pathlib import Path
 
 FILE_NAME = "shiva-settings.ini"
 SECTION = "choices"
-ALLOWED = {"language": {"system", "en", "zh_TW"}}      # key -> allowed values
+ALLOWED = {"language": {"system", "en", "zh_TW"},       # key -> allowed values
+           "generated_paste": {"allow", "block"}}       # may a generated password be pasted into the repeat field
+_SESSION: dict[str, str] = {}                           # a choice also holds for this run when it cannot be written
 
 
 def settings_path() -> Path | None:
@@ -47,6 +49,7 @@ def save(key: str, value: str) -> bool:
     """False when the key or value is not allowed or the folder is read-only (the choice then lasts for this run only)."""
     if key not in ALLOWED or value not in ALLOWED[key]:
         return False
+    _SESSION[key] = value
     p = settings_path()
     if p is None:
         return False
@@ -61,13 +64,18 @@ def save(key: str, value: str) -> bool:
     return True
 
 
+def current() -> dict[str, str]:
+    """The saved choices plus the ones made in this run."""
+    return {**load(), **_SESSION}
+
+
 def reset() -> bool:
     """Delete the settings file. True when nothing is left (also when there was none)."""
     p = settings_path()
-    if p is None or not p.exists():
-        return True
-    try:
-        p.unlink()
-    except OSError:
-        return False
+    if p is not None and p.exists():
+        try:
+            p.unlink()
+        except OSError:
+            return False                    # the file stays, so the choices made in this run stay too
+    _SESSION.clear()
     return True

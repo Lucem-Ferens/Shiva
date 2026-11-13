@@ -905,6 +905,8 @@ _many({
     "Space": "空格", "Period (.)": "句點 (.)", "Length": "長度", "characters": "個字元",
     "Look-alike letters (i, l, o, I, L, O) are left out.": "容易看錯的字母（i、l、o、I、L、O）不會出現。",
     "The password is made on this computer.": "密碼在這台電腦上產生。",
+    "Password generator": "密碼產生器", "Type a generated password again instead of pasting it": "重新輸入產生的密碼，不用貼上",
+    "Applies only to a password made with Generate.": "只適用於用「產生」做出的密碼。",
     "Wait for the run to finish.": "等這次執行結束。",
     "Anyone who guesses the password can open the file.": "猜中密碼的人就能開啟檔案。",
     "This replaces the password you typed.": "這會取代您輸入的密碼。",

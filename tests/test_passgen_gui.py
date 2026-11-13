@@ -11,13 +11,23 @@ from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication, QWidget  # noqa: E402
 
-from shiva import passgen, tokens  # noqa: E402
+from shiva import passgen, settings, tokens  # noqa: E402
 from shiva.gui import MainWindow  # noqa: E402
 from shiva.gui import clipboard as clip  # noqa: E402
 from shiva.gui import page as page_mod  # noqa: E402
 from shiva.gui.passgen import PasswordGeneratorDialog  # noqa: E402
 
 QApplication.instance() or QApplication([])
+
+
+@pytest.fixture(autouse=True)
+def fresh_session_choices(monkeypatch):
+    monkeypatch.setattr(settings, "_SESSION", {})        # no choice leaks between tests
+    yield
+
+
+def block_paste():
+    assert settings.save("generated_paste", "block") is False      # from source nothing is written: the choice holds for this run
 
 
 @pytest.fixture(autouse=True)
@@ -29,8 +39,33 @@ def fresh_guard(monkeypatch):
     QApplication.clipboard().clear()
 
 
+_OPEN: list = []
+
+
+@pytest.fixture(autouse=True)
+def close_dialogs():
+    """A dialog left open (it is modal) would block input in tests that run after this file."""
+    yield
+    while _OPEN:
+        d = _OPEN.pop()
+        d.close(); d.deleteLater()
+    QApplication.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def release_modifiers():
+    """QTest.keyClick with Ctrl leaves Qt believing Ctrl is still held, which makes selectRow() in later tests toggle
+    instead of select: one plain key without a modifier resets it."""
+    yield
+    from PySide6.QtWidgets import QLineEdit
+    e = QLineEdit(); e.show()
+    QTest.keyClick(e, Qt.Key_A)
+    e.close(); e.deleteLater()
+
+
 def dlg(current=""):
     d = PasswordGeneratorDialog(None, current_text=current)
+    _OPEN.append(d)
     d.show(); QApplication.processEvents()
     return d
 
@@ -175,6 +210,7 @@ def w(monkeypatch):
     win.show(); QApplication.processEvents()
     yield win
     win._pool.shutdown(wait=False, cancel_futures=True)
+    win.close(); win.deleteLater(); QApplication.processEvents()
 
 
 def mk(tmp_path: Path, name: str) -> Path:
@@ -215,13 +251,13 @@ def test_use_fills_only_the_password_field(w, tmp_path, monkeypatch):
     assert p.pwEdit.text() == _Stub.pw and p.pwConfirmEdit.text() == "" and p.pwReveal.isChecked()
     assert p.reasonLabel.text() == "Repeat the password." and not p.primaryBtn.isEnabled()
     assert p.pwGeneratedLabel.isVisibleTo(p) and "about 77 bits" in p.pwGeneratedLabel.text()
-    assert p.pwConfirmEdit.placeholderText() == "Type the password. Pasting is off."
     assert "Type it again under Repeat password" in w.statusLine.text() and "shown" in w.statusLine.text()
     assert _Stub.pw not in w.statusLine.text() and _Stub.pw not in p.results_text()
     assert all(_Stub.pw not in x.accessibleDescription() for x in p.findChildren(QWidget))
 
 
 def test_editing_the_password_ends_the_paste_rule(w, tmp_path, monkeypatch):
+    block_paste()
     monkeypatch.setattr(page_mod, "PasswordGeneratorDialog", _Stub)
     w.set_tab("encrypt"); p = w.pages["encrypt"]
     w.add_paths([mk(tmp_path, "t.txt")]); w.wait_for_probes()
@@ -305,8 +341,19 @@ def test_typing_and_paste_into_the_password_field_still_work(w, tmp_path, monkey
     assert p.pwEdit.text() == "typed-pasted"                                  # the password field accepts a paste
 
 
-def test_the_repeat_refuses_paste_by_origin_while_generated(w, tmp_path, monkeypatch):
+def test_paste_into_the_repeat_is_allowed_by_default(w, tmp_path, monkeypatch):
     p = _generated_page(w, tmp_path, monkeypatch)
+    assert p.pwConfirmEdit.placeholderText() == ""
+    QApplication.clipboard().setText(_Stub.pw)
+    p.pwConfirmEdit.setFocus()
+    QTest.keyClick(p.pwConfirmEdit, Qt.Key_V, Qt.ControlModifier)
+    assert p.pwConfirmEdit.text() == _Stub.pw and p.primaryBtn.isEnabled()
+
+
+def test_the_repeat_refuses_paste_by_origin_when_settings_say_so(w, tmp_path, monkeypatch):
+    block_paste()
+    p = _generated_page(w, tmp_path, monkeypatch)
+    assert p.pwConfirmEdit.placeholderText() == "Type the password. Pasting is off."
     QApplication.clipboard().setText(_Stub.pw)
     p.pwConfirmEdit.setFocus()
     QTest.keyClick(p.pwConfirmEdit, Qt.Key_V, Qt.ControlModifier)
@@ -334,6 +381,7 @@ def _commit(text):
 def test_the_repeat_ignores_drag_events_while_generated(w, tmp_path, monkeypatch):
     """A synthetic drop does not insert text into a QLineEdit offscreen, so what can be tested is the filter's answer:
     it ignores the drag events while the value is generated and lets them through afterwards (a real drop is a native check)."""
+    block_paste()
     p = _generated_page(w, tmp_path, monkeypatch)
     from PySide6.QtCore import QEvent, QMimeData, QPointF
     from PySide6.QtGui import QDragEnterEvent
@@ -343,3 +391,17 @@ def test_the_repeat_ignores_drag_events_while_generated(w, tmp_path, monkeypatch
     p.pwEdit.setText("mine")
     ev2 = QDragEnterEvent(QPointF(5, 5).toPoint(), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
     assert p._confirmGuard.eventFilter(p.pwConfirmEdit, ev2) is False
+
+
+# ---------------------------------------------------------------- the Settings choice
+def test_settings_choice_for_pasting(w):
+    sp = w.settingsPage
+    assert not sp.pasteBlockCheck.isChecked() and settings.current().get("generated_paste") is None
+    sp.pasteBlockCheck.setChecked(True)
+    assert settings.current()["generated_paste"] == "block"
+    sp.pasteBlockCheck.setChecked(False)
+    assert settings.current()["generated_paste"] == "allow"
+    sp.pasteBlockCheck.setChecked(True)
+    w.reset_saved_choices()                                  # "Reset saved choices" puts it back to the default
+    assert not sp.pasteBlockCheck.isChecked() and "generated_paste" not in settings.current()
+    assert sp.pasteBlockCheck.accessibleName() or sp.pasteBlockCheck.text()

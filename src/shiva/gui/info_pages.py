@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QLabel, QPushButton, QRadi
 from .. import settings, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import link_button
+from .widgets import WrapCheckBox, link_button
 
 LANGUAGES = (("system", "System default"), ("en", "English"), ("zh_TW", "繁體中文"))
 NOTICES_NAME = "THIRD_PARTY_NOTICES.md"
@@ -68,6 +68,16 @@ class SettingsPage(QWidget):
         gl.addLayout(row)
         outer.addWidget(self.languageGroup)
 
+        self.generatorGroup = QGroupBox(tr("Password generator")); self.generatorGroup.setAccessibleName(tr("Password generator"))
+        gg = QVBoxLayout(self.generatorGroup); gg.setContentsMargins(0, 0, 0, tokens.SPACE[3]); gg.setSpacing(tokens.SPACE[2])
+        self.pasteBlockCheck = WrapCheckBox(tr("Type a generated password again instead of pasting it"))
+        self.pasteBlockCheck.setObjectName("pasteBlockCheck")
+        self.pasteBlockCheck.setChecked(settings.current().get("generated_paste") == "block")
+        self.pasteBlockCheck.toggled.connect(lambda on: settings.save("generated_paste", "block" if on else "allow"))
+        pasteNote = QLabel(tr("Applies only to a password made with Generate.")); pasteNote.setObjectName("pageScope"); pasteNote.setWordWrap(True)
+        gg.addWidget(self.pasteBlockCheck); gg.addWidget(pasteNote)
+        outer.addWidget(self.generatorGroup)
+
         self.choicesGroup = QGroupBox(tr("Saved choices")); self.choicesGroup.setAccessibleName(tr("Saved choices"))
         cl = QHBoxLayout(self.choicesGroup); cl.setContentsMargins(0, 0, 0, 0)
         self.resetBtn = QPushButton(tr("Reset saved choices"))
@@ -94,6 +104,7 @@ class SettingsPage(QWidget):
         """The saved language is gone (back to the system default): the radios show that."""
         self._saved = "system"
         self.languageRadios["system"].setChecked(True)
+        self.pasteBlockCheck.blockSignals(True); self.pasteBlockCheck.setChecked(False); self.pasteBlockCheck.blockSignals(False)
         self._update_apply()
 
     def apply(self) -> None:
