@@ -25,8 +25,6 @@ jobs:
       attestations: write
     env:
       PYTHONUTF8: "1"
-      # Nuitka downloads Dependency Walker on every run (empty cache) without a hash check: seed it from a verified copy
-      NUITKA_CACHE_DIR_DOWNLOADS: ${{ runner.temp }}\nuitka-downloads
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -39,9 +37,12 @@ jobs:
       - name: Fetch the pinned age binaries (SHA-256 checked)
         run: python tools/fetch_third_party.py
       - name: Seed Nuitka's Dependency Walker download (SHA-256 checked)
+        # Nuitka downloads Dependency Walker on every run (empty cache) without a hash check: seed it from a verified copy
         shell: pwsh
         run: |
-          $dir = Join-Path $env:NUITKA_CACHE_DIR_DOWNLOADS "depends\x86_64"
+          $cache = Join-Path $env:RUNNER_TEMP "nuitka-downloads"
+          "NUITKA_CACHE_DIR_DOWNLOADS=$cache" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $dir = Join-Path $cache "depends\x86_64"
           New-Item -ItemType Directory -Force $dir | Out-Null
           $zip = Join-Path $dir "depends22_x64.zip"
           Invoke-WebRequest -Uri "https://dependencywalker.com/depends22_x64.zip" -OutFile $zip
