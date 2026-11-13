@@ -31,7 +31,14 @@ jobs:
       - name: Run the tests
         shell: bash
         run: |
-          code=0
-          python -X faulthandler -m pytest -q || code=$?
+          set +e          # the step's shell runs with -e: keep going after a failure, to report it
+          python -X faulthandler -m pytest -q 2>&1 | tee pytest.log
+          code=${PIPESTATUS[0]}
           echo "pytest exit code: $code"
+          if [ "$code" -ne 0 ]; then
+            # failed test names as annotations: readable on the run page without signing in
+            grep -E '^(FAILED|ERROR) ' pytest.log | head -10 | sed 's/%/%25/g' | while IFS= read -r line; do
+              echo "::error title=pytest::${line}"
+            done
+          fi
           exit $code
