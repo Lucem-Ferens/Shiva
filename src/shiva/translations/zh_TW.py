@@ -227,7 +227,7 @@ _many({
     "Drive type unknown": "磁碟類型不明",
     "File larger than %1 MB cannot be cleaned yet": "大於 %1 MB 的檔案目前還不能清理",
     # passphrase block
-    "Enter a password.": "輸入密碼。", "Repeat the password.": "再輸入一次密碼。",
+    "Enter a password.": "輸入密碼。", "Repeat the password.": "再次輸入密碼。",
     "Length: %U": "長度：%U",
     "⚠ Warning: short password. Use 8 or more characters.": "⚠ 警告：密碼太短。使用 8 個字元以上。",
     "✓ Passwords match": "✓ 兩次密碼相符", "✗ Passwords do not match": "✗ 兩次密碼不相符",
@@ -891,3 +891,46 @@ _many({
     "Error: Shiva could not create the key. Nothing was created.": "錯誤：Shiva 無法建立金鑰。沒有建立任何東西。",
     "Public key saved: %1": "已儲存公開金鑰：%1", "Backup saved: %1": "已儲存備份：%1",
 })
+
+
+# ------------------------------------------------------------------ password generator
+_many({
+    "&Generate...": "產生(&G)...", "Generate a password": "產生密碼", "Generate a password (Alt+G)": "產生密碼 (Alt+G)",
+    "Password randomness": "密碼的隨機程度", "Randomness: about %1 bits.": "隨機程度：約 %1 位元。",
+    "Copy": "複製", "Cut": "剪下", "Paste": "貼上", "Select all": "全選", "Made from": "組成方式", "Random words": "隨機單字", "Random characters": "隨機字元",
+    "Generated password": "產生的密碼", "Generate &new": "重新產生(&N)", "&Copy": "複製(&C)", "&Use this password": "使用這組密碼(&U)",
+    "Number of words": "單字數", "Separator": "分隔符號", "Words": "單字數", "Capitalize each word": "單字首字母大寫",
+    "Add a digit after each word": "每個單字後加一位數字", "Password length in characters": "密碼長度（字元數）",
+    "Capital letters": "大寫字母", "Digits (0-9)": "數字 (0-9)", "Symbols (!@#$%^&*)": "符號 (!@#$%^&*)", "Hyphen (-)": "連字號 (-)",
+    "Space": "空格", "Period (.)": "句點 (.)", "Length": "長度", "characters": "個字元",
+    "Look-alike letters (i, l, o, I, L, O) are left out.": "容易看錯的字母（i、l、o、I、L、O）不會出現。",
+    "The password is made on this computer.": "密碼在這台電腦上產生。",
+    "Wait for the run to finish.": "等這次執行結束。",
+    "Anyone who guesses the password can open the file.": "猜中密碼的人就能開啟檔案。",
+    "This replaces the password you typed.": "這會取代您輸入的密碼。",
+    "The clipboard still holds it for about %1 seconds.": "剪貼簿還會保留約 %1 秒。",
+})
+_s("Opens a window that makes a random password. Nothing changes until you choose Use this password.",
+   "開啟一個產生隨機密碼的視窗。", "在您選擇「使用這組密碼」之前，不會有任何變更。")
+_s("Copies the password to the clipboard. Other programs can read it while it is there.",
+   "把密碼複製到剪貼簿。", "在剪貼簿中，其他程式能讀取它。")
+_s("Each extra bit doubles the guesses needed. Assumes the attacker knows how Shiva makes passwords.",
+   "每多 1 位元，需要猜的次數就加倍。", "此數字假設攻擊者知道 Shiva 的產生方式。")
+_s("Password filled in and shown. Type it again under Repeat password.", "已填入並顯示密碼。", "在「再次輸入密碼」欄輸入同一組密碼。")
+_s("Type the password. Pasting is off.", "輸入密碼。", "無法貼上。")
+_s("Can't paste here. Type the password.", "這裡無法貼上。", "輸入密碼。")
+_s("New password. About %1 bits of randomness.", "新的密碼。", "隨機程度約 %1 位元。")
+_s("Copied. Shiva clears it from the clipboard in %1 seconds.", "已複製。", "Shiva 會在 %1 秒後從剪貼簿清除。")
+_s("Warning: Shiva can't recover this password. Without it, files encrypted with it can't be opened.",
+   "警告：Shiva 無法找回這個密碼。", "沒有它，就打不開用它加密的檔案。")
+_s("Warning: Copying lets other programs read the password. Windows may also keep it in clipboard history (Win+V) or sync it to "
+   "other devices. Shiva asks Windows not to, and removes the password from the clipboard after %1 seconds if it is still there.",
+   "警告：複製後，其他程式能讀取這個密碼。", "Windows 也可能把它保留在剪貼簿歷程記錄 (Win+V)，或同步到其他裝置。",
+   "Shiva 會要求 Windows 不要這樣做；若密碼仍在剪貼簿中，會在 %1 秒後清除。")
+_s("The word list is missing or damaged. Use random characters.", "單字表遺失或已損毀。", "改用隨機字元。")
+_s("Error: The word list is missing or damaged. Use random characters.", "錯誤：單字表遺失或已損毀。", "改用隨機字元。")
+_s("The words are English (EFF large word list). To type them, switch to an English keyboard.",
+   "單字為英文（來自 EFF 大型單字表）。", "輸入時，切換為英文輸入法。")
+_s("Error: Couldn't make a password. Try again.", "錯誤：無法產生密碼。", "再試一次。")
+_s("Warning: Under %1 bits. Add more words.", "警告：低於 %1 位元。", "增加單字數。")
+_s("Warning: Under %1 bits. Add more characters.", "警告：低於 %1 位元。", "增加字元數。")

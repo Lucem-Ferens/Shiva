@@ -153,7 +153,7 @@ def test_secondary_buttons_rely_on_their_label_not_on_the_edge():
         assert t.contrast(c["text"], c["surface-strong"]) >= 4.5, theme
         assert t.contrast(c["line"], c["surface"]) < 3.0       # a hairline, decoration only
         assert f"QPushButton {{ border: 1px solid {c['line']}" in t.stylesheet(theme)
-        assert f"QLineEdit, QPlainTextEdit {{ border: 1px solid {c['border']}" in t.stylesheet(theme)
+        assert f"QLineEdit, QSpinBox, QComboBox, QPlainTextEdit {{ border: 1px solid {c['border']}" in t.stylesheet(theme)
 
 
 def test_status_text_stays_readable_on_the_side_and_selected_fills():

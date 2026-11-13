@@ -31,6 +31,7 @@ FONT_FAMILY = '"Segoe UI Variable", "Segoe UI", "Microsoft JhengHei UI", sans-se
 FEEDBACK_MS = 100       # a visible reaction to a click
 BUSY_AFTER_MS = 1000    # show a working indicator after this
 LONG_RUN_S = 10         # show N of M and Cancel beyond this
+CLIPBOARD_CLEAR_S = 30  # a copied generated password is cleared from the clipboard after this many seconds
 CONFIRM_DELAY_MS = 500  # the destructive button of a confirmation stays disabled this long
 
 COLORS = {
@@ -106,9 +107,9 @@ QPushButton[danger="true"]:disabled { background: $surface_strong; color: $disab
 QPushButton[primary="true"][kbFocus="true"]:focus { border: ${f_width}px solid $on_accent; }
 QPushButton[danger="true"][kbFocus="true"]:focus { border: ${f_width}px solid $on_error; }
 QPushButton:flat { border: 0; background: transparent; padding: 0; }
-QPushButton, QLineEdit { min-height: ${ctl_h}px; }
-QLineEdit, QPlainTextEdit { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s2}px; background: $surface; color: $text; }
-QLineEdit:focus, QPlainTextEdit:focus { border: ${f_width}px solid $accent; }
+QPushButton, QLineEdit, QSpinBox, QComboBox { min-height: ${ctl_h}px; }
+QLineEdit, QSpinBox, QComboBox, QPlainTextEdit { border: 1px solid $border; border-radius: ${r_control}px; padding: ${s1}px ${s2}px; background: $surface; color: $text; }
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus { border: ${f_width}px solid $accent; }
 QTableWidget { border: 1px solid $line; border-radius: ${r_card}px; background: $surface; gridline-color: $line; selection-background-color: $selected; selection-color: $text; }
 QHeaderView::section { background: $surface_strong; color: $text_secondary; border: 0; border-bottom: 1px solid $line; padding: ${s1}px ${s2}px; font-weight: 600; }
 QLabel#keepQualityHint, QLabel#keepPartsHint, QLabel#uncleanHint, QLabel#warningNote { background: $warning_bg; color: $text; border: 1px solid $warning; border-radius: ${r_control}px; padding: ${s2}px ${s3}px; }

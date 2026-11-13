@@ -130,7 +130,7 @@ def _covered(text: str) -> bool:
 
 
 GUI_FILES = sorted((ROOT / "src" / "shiva" / "gui").glob("*.py"))
-GUI_WRAPPED_LITERALS = 298  # total over the package; a split or a move must not lose a file or a literal
+GUI_WRAPPED_LITERALS = 363  # total over the package; a split or a move must not lose a file or a literal
 
 
 def test_every_literal_wrapped_in_gui_has_an_entry(zh):

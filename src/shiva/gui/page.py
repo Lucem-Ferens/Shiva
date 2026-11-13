@@ -18,6 +18,8 @@ from .. import creds, i18n, key_model as K, output, steps, storage, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
 from .keypanel import KeyPanel
+from .clipboard import SecretFieldGuard, guard
+from .passgen import PasswordGeneratorDialog
 from .widgets import DisclosureRow, EmptyCard, OptionCard, Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
@@ -359,17 +361,29 @@ class TabPage(QWidget):
 
         # --- passphrase block
         self.pwBlock = QWidget(); pl = QVBoxLayout(self.pwBlock); pl.setContentsMargins(0, 0, 0, 0)
-        pwLabel = QLabel(tr("Password")); pwLabel.setObjectName("fieldLabel"); pl.addWidget(pwLabel)
+        pwLabel = QLabel(tr("Password")); pwLabel.setObjectName("fieldLabel")
+        lrow = QHBoxLayout(); lrow.setContentsMargins(0, 0, 0, 0)      # the button sits in the label row: both fields keep the same width
+        lrow.addWidget(pwLabel, 1)
+        pl.addLayout(lrow)
         prow = QHBoxLayout()
         self.pwEdit = QLineEdit(); self.pwEdit.setEchoMode(QLineEdit.Password)
         self.pwEdit.setAccessibleName(tr("Password"))
         prow.addWidget(self.pwEdit, 1)
+        self.pwGenerateBtn = QPushButton(tr("&Generate...")); self.pwGenerateBtn.setObjectName("pwGenerateBtn")
+        self.pwGenerateBtn.setAccessibleName(tr("Generate a password"))
+        self.pwGenerateBtn.setToolTip(tr("Generate a password (Alt+G)"))
+        self._generated, self._generated_bits = "", 0
+        lrow.addWidget(self.pwGenerateBtn)
         pl.addLayout(prow)
         self.strengthLabel = QLabel("")
         self.pwWarnLabel = QLabel(""); self.pwWarnLabel.setAccessibleName(tr("Password warning"))
         self.pwWarnLabel.setObjectName("statusWarning")
         self.strengthLabel.setAccessibleName(tr("Password length"))
-        pl.addWidget(self.strengthLabel); pl.addWidget(self.pwWarnLabel)
+        self.pwGeneratedLabel = QLabel(""); self.pwGeneratedLabel.setAccessibleName(tr("Password randomness"))
+        _bits_tip = tr("Each extra bit doubles the guesses needed. Assumes the attacker knows how Shiva makes passwords.")
+        self.pwGeneratedLabel.setToolTip(_bits_tip); self.pwGeneratedLabel.setAccessibleDescription(_bits_tip)
+        self.pwGeneratedLabel.setVisible(False)
+        pl.addWidget(self.strengthLabel); pl.addWidget(self.pwGeneratedLabel); pl.addWidget(self.pwWarnLabel)
         self.confirmBox = QWidget(); cl = QVBoxLayout(self.confirmBox); cl.setContentsMargins(0, 0, 0, 0)
         repeatLabel = QLabel(tr("Repeat password")); repeatLabel.setObjectName("fieldLabel"); cl.addWidget(repeatLabel)
         self.pwConfirmEdit = QLineEdit(); self.pwConfirmEdit.setEchoMode(QLineEdit.Password)
@@ -417,12 +431,12 @@ class TabPage(QWidget):
         order = [self.addFilesBtn, self.addFolderBtn, self.removeSelectedBtn, self.clearBtn, self.emptyAddBtn, self.emptyFolderBtn, self.modeEncBtn, self.modeDecBtn,
                  self.fileTable, self.resultTable, self.showTechCheck, self.showFolderBtn, self.copyBtn, self.detailPane,
                  self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
-                 self.shredAfterCheck, self.pwEdit, self.pwConfirmEdit, self.moreOptionsRow,
+                 self.shredAfterCheck, self.pwGenerateBtn, self.pwEdit, self.pwConfirmEdit, self.moreOptionsRow,
                  self.keepQualityCheck, self.keepQualityMore, self.keepOrientCheck,
                  self.chroma420Check, self.keepIccCheck, self.abortPartsRadio, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
                  self.primaryBtn, self.cancelBtn]
         if tab == "encrypt":        # the credentials come before the optional steps
-            moved = (self.pwEdit, self.pwConfirmEdit)
+            moved = (self.pwGenerateBtn, self.pwEdit, self.pwConfirmEdit)
             order = [w for w in order if w not in moved]
             i = order.index(self.encryptCleanedCheck)
             order[i:i] = [self.credPasswordRadio, self.credKeysRadio, *moved, *self.keyPanel.tab_widgets()]
@@ -458,6 +472,10 @@ class TabPage(QWidget):
         self.pwEdit.textChanged.connect(self.update_controls)
         self.pwConfirmEdit.textChanged.connect(self.update_controls)
         self.pwEdit.returnPressed.connect(self._enter)
+        self.pwGenerateBtn.clicked.connect(self._generate_password)
+        self._pwEditGuard = SecretFieldGuard(self.pwEdit)
+        self._confirmGuard = SecretFieldGuard(self.pwConfirmEdit, paste_allowed=lambda: not self._generated_active(),
+                                              on_refused=lambda: self.win.set_status("Can't paste here. Type the password."))
         self.pwConfirmEdit.returnPressed.connect(self._enter)
         self.refresh_rows()
 
@@ -517,10 +535,46 @@ class TabPage(QWidget):
         allow = self._allow_unclean()
         return [r for r in self.rows if r.info.run or (allow and r.info.can_unclean)]
 
+    # ---- the password generator
+    def _generate_password(self) -> None:
+        dlg = PasswordGeneratorDialog(self.win, current_text=self.pwEdit.text())
+        accepted = dlg.exec() == dlg.DialogCode.Accepted
+        pw, bits = (dlg.password(), dlg.bits()) if accepted else ("", 0)
+        dlg.deleteLater()
+        if not accepted or not pw:
+            self.pwGenerateBtn.setFocus()
+            return
+        self._generated, self._generated_bits = pw, bits
+        self.pwEdit.setText(pw)                   # textChanged -> update_controls -> _sync_generated keeps the marker
+        self.pwConfirmEdit.setText("")
+        self.pwReveal.setChecked(True)            # the user must be able to read it to type it again
+        self.pwConfirmEdit.setFocus()
+        left = guard().remaining_seconds()
+        text = "Password filled in and shown. Type it again under Repeat password."
+        if left:                                  # the copied password is still on the clipboard
+            text += f" The clipboard still holds it for about {left} seconds."
+        self.win.set_status(text)
+        _announce(self.pwConfirmEdit, tr(text.split(". ")[0] + "."))
+
+    def _sync_generated(self) -> None:
+        """The generated marker lives only while the password field still holds exactly the generated text."""
+        if self._generated and self.pwEdit.text() != self._generated:
+            self._generated, self._generated_bits = "", 0
+        on = bool(self._generated)
+        self.pwGeneratedLabel.setText(trf("Randomness: about %1 bits.", self._generated_bits) if on else "")
+        self.pwGeneratedLabel.setVisible(on and self.confirmBox.isVisibleTo(self.pwBlock))
+        self.pwConfirmEdit.setPlaceholderText(tr("Type the password. Pasting is off.") if on else "")
+        self.pwConfirmEdit.setAccessibleDescription(tr("Type the password. Pasting is off.") if on else "")
+
+    def _generated_active(self) -> bool:
+        """True while the password field still holds exactly the generated text: the repeat must then be typed (no paste)."""
+        return bool(self._generated) and self.pwEdit.text() == self._generated
+
     def take_passphrase(self) -> str:
         """Return the passphrase and empty the fields. Show is switched off FIRST and setText('') is used
         (clear() leaves an undo history that Ctrl+Z could bring back once the field is shown again)."""
         pw = self.pwEdit.text()
+        self._generated = ""                      # the marker goes first: the fields' change handlers then see a user's value
         self.pwReveal.setChecked(False)
         self.pwEdit.setText(""); self.pwConfirmEdit.setText("")
         if self.tab == "encrypt":
@@ -911,6 +965,11 @@ class TabPage(QWidget):
         self.strengthLabel.setText(dyn(ps.strength_text)); self.strengthLabel.setVisible(bool(ps.strength_text))
         self.pwWarnLabel.setText(dyn(ps.warning)); self.pwWarnLabel.setVisible(bool(ps.warning))
         self.matchLabel.setText(dyn(ps.match_text)); self.matchLabel.setVisible(bool(ps.match_text))
+        self.pwGenerateBtn.setVisible(ps.show_confirm)
+        self.pwGenerateBtn.setEnabled(not self.win.busy)
+        self.pwGenerateBtn.setAccessibleDescription(tr("Wait for the run to finish.") if self.win.busy else
+                                                    tr("Opens a window that makes a random password. Nothing changes until you choose Use this password."))
+        self._sync_generated()
         # reason, label, button
         pw_reason = cred_reason if (self.tab == "encrypt" and self.key_mode()) else ps.reason
         reason = m.disable_reason(self.tab, ticked, len(self.rows), len(run_rows), out_reason or pw_reason,

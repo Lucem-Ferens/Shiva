@@ -93,6 +93,11 @@ choose the key file for each run, and nothing about keys is saved.
 - Optional: shred the originals (best effort), but only after a trial decrypt matches the original's hash. In key mode this
   needs your key file; without it nothing is shredded. If verification fails, everything is kept.
 - Existing output files are never overwritten; a taken name gets a number (`notes (1).txt.age`).
+- Optional **Generate...** next to the password: random words (from the EFF large word list) or random characters, made with
+  the operating system's random source. Shiva shows how many bits of randomness it picked, does not keep the password, and
+  you still type it again to confirm (pasting into that field is off for a generated password). Copying asks Windows not to
+  keep it in clipboard history, and Shiva removes the password from the clipboard after 30 seconds, or when it closes
+  normally, if it is still there; until then other programs can read it.
 - A password file is not labelled post-quantum: how well it resists guessing, including by future quantum computers,
   depends on how strong the password is. Opening a post-quantum file needs age 1.3.0 or later.
 

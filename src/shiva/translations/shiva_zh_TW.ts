@@ -255,7 +255,7 @@
     <message><source>Drive type unknown</source><translation>磁碟類型不明</translation></message>
     <message><source>File larger than %1 MB cannot be cleaned yet</source><translation>大於 %1 MB 的檔案目前還不能清理</translation></message>
     <message><source>Enter a password.</source><translation>輸入密碼。</translation></message>
-    <message><source>Repeat the password.</source><translation>再輸入一次密碼。</translation></message>
+    <message><source>Repeat the password.</source><translation>再次輸入密碼。</translation></message>
     <message><source>Length: %U</source><translation>長度：%U</translation></message>
     <message><source>⚠ Warning: short password. Use 8 or more characters.</source><translation>⚠ 警告：密碼太短。使用 8 個字元以上。</translation></message>
     <message><source>✓ Passwords match</source><translation>✓ 兩次密碼相符</translation></message>
@@ -885,5 +885,71 @@
     <message><source>Error: Shiva could not create the key. Nothing was created.</source><translation>錯誤：Shiva 無法建立金鑰。沒有建立任何東西。</translation></message>
     <message><source>Public key saved: %1</source><translation>已儲存公開金鑰：%1</translation></message>
     <message><source>Backup saved: %1</source><translation>已儲存備份：%1</translation></message>
+    <message><source>&amp;Generate...</source><translation>產生(&amp;G)...</translation></message>
+    <message><source>Generate a password</source><translation>產生密碼</translation></message>
+    <message><source>Generate a password (Alt+G)</source><translation>產生密碼 (Alt+G)</translation></message>
+    <message><source>Password randomness</source><translation>密碼的隨機程度</translation></message>
+    <message><source>Randomness: about %1 bits.</source><translation>隨機程度：約 %1 位元。</translation></message>
+    <message><source>Copy</source><translation>複製</translation></message>
+    <message><source>Cut</source><translation>剪下</translation></message>
+    <message><source>Paste</source><translation>貼上</translation></message>
+    <message><source>Select all</source><translation>全選</translation></message>
+    <message><source>Made from</source><translation>組成方式</translation></message>
+    <message><source>Random words</source><translation>隨機單字</translation></message>
+    <message><source>Random characters</source><translation>隨機字元</translation></message>
+    <message><source>Generated password</source><translation>產生的密碼</translation></message>
+    <message><source>Generate &amp;new</source><translation>重新產生(&amp;N)</translation></message>
+    <message><source>&amp;Copy</source><translation>複製(&amp;C)</translation></message>
+    <message><source>&amp;Use this password</source><translation>使用這組密碼(&amp;U)</translation></message>
+    <message><source>Number of words</source><translation>單字數</translation></message>
+    <message><source>Separator</source><translation>分隔符號</translation></message>
+    <message><source>Words</source><translation>單字數</translation></message>
+    <message><source>Capitalize each word</source><translation>單字首字母大寫</translation></message>
+    <message><source>Add a digit after each word</source><translation>每個單字後加一位數字</translation></message>
+    <message><source>Password length in characters</source><translation>密碼長度（字元數）</translation></message>
+    <message><source>Capital letters</source><translation>大寫字母</translation></message>
+    <message><source>Digits (0-9)</source><translation>數字 (0-9)</translation></message>
+    <message><source>Symbols (!@#$%^&amp;*)</source><translation>符號 (!@#$%^&amp;*)</translation></message>
+    <message><source>Hyphen (-)</source><translation>連字號 (-)</translation></message>
+    <message><source>Space</source><translation>空格</translation></message>
+    <message><source>Period (.)</source><translation>句點 (.)</translation></message>
+    <message><source>Length</source><translation>長度</translation></message>
+    <message><source>characters</source><translation>個字元</translation></message>
+    <message><source>Look-alike letters (i, l, o, I, L, O) are left out.</source><translation>容易看錯的字母（i、l、o、I、L、O）不會出現。</translation></message>
+    <message><source>The password is made on this computer.</source><translation>密碼在這台電腦上產生。</translation></message>
+    <message><source>Wait for the run to finish.</source><translation>等這次執行結束。</translation></message>
+    <message><source>Anyone who guesses the password can open the file.</source><translation>猜中密碼的人就能開啟檔案。</translation></message>
+    <message><source>This replaces the password you typed.</source><translation>這會取代您輸入的密碼。</translation></message>
+    <message><source>The clipboard still holds it for about %1 seconds.</source><translation>剪貼簿還會保留約 %1 秒。</translation></message>
+    <message><source>Opens a window that makes a random password.</source><translation>開啟一個產生隨機密碼的視窗。</translation></message>
+    <message><source>Nothing changes until you choose Use this password.</source><translation>在您選擇「使用這組密碼」之前，不會有任何變更。</translation></message>
+    <message><source>Copies the password to the clipboard.</source><translation>把密碼複製到剪貼簿。</translation></message>
+    <message><source>Other programs can read it while it is there.</source><translation>在剪貼簿中，其他程式能讀取它。</translation></message>
+    <message><source>Each extra bit doubles the guesses needed.</source><translation>每多 1 位元，需要猜的次數就加倍。</translation></message>
+    <message><source>Assumes the attacker knows how Shiva makes passwords.</source><translation>此數字假設攻擊者知道 Shiva 的產生方式。</translation></message>
+    <message><source>Password filled in and shown.</source><translation>已填入並顯示密碼。</translation></message>
+    <message><source>Type it again under Repeat password.</source><translation>在「再次輸入密碼」欄輸入同一組密碼。</translation></message>
+    <message><source>Type the password.</source><translation>輸入密碼。</translation></message>
+    <message><source>Pasting is off.</source><translation>無法貼上。</translation></message>
+    <message><source>Can't paste here.</source><translation>這裡無法貼上。</translation></message>
+    <message><source>New password.</source><translation>新的密碼。</translation></message>
+    <message><source>About %1 bits of randomness.</source><translation>隨機程度約 %1 位元。</translation></message>
+    <message><source>Copied.</source><translation>已複製。</translation></message>
+    <message><source>Shiva clears it from the clipboard in %1 seconds.</source><translation>Shiva 會在 %1 秒後從剪貼簿清除。</translation></message>
+    <message><source>Warning: Shiva can't recover this password.</source><translation>警告：Shiva 無法找回這個密碼。</translation></message>
+    <message><source>Without it, files encrypted with it can't be opened.</source><translation>沒有它，就打不開用它加密的檔案。</translation></message>
+    <message><source>Warning: Copying lets other programs read the password.</source><translation>警告：複製後，其他程式能讀取這個密碼。</translation></message>
+    <message><source>Windows may also keep it in clipboard history (Win+V) or sync it to other devices.</source><translation>Windows 也可能把它保留在剪貼簿歷程記錄 (Win+V)，或同步到其他裝置。</translation></message>
+    <message><source>Shiva asks Windows not to, and removes the password from the clipboard after %1 seconds if it is still there.</source><translation>Shiva 會要求 Windows 不要這樣做；若密碼仍在剪貼簿中，會在 %1 秒後清除。</translation></message>
+    <message><source>The word list is missing or damaged.</source><translation>單字表遺失或已損毀。</translation></message>
+    <message><source>Use random characters.</source><translation>改用隨機字元。</translation></message>
+    <message><source>Error: The word list is missing or damaged.</source><translation>錯誤：單字表遺失或已損毀。</translation></message>
+    <message><source>The words are English (EFF large word list).</source><translation>單字為英文（來自 EFF 大型單字表）。</translation></message>
+    <message><source>To type them, switch to an English keyboard.</source><translation>輸入時，切換為英文輸入法。</translation></message>
+    <message><source>Error: Couldn't make a password.</source><translation>錯誤：無法產生密碼。</translation></message>
+    <message><source>Try again.</source><translation>再試一次。</translation></message>
+    <message><source>Warning: Under %1 bits.</source><translation>警告：低於 %1 位元。</translation></message>
+    <message><source>Add more words.</source><translation>增加單字數。</translation></message>
+    <message><source>Add more characters.</source><translation>增加字元數。</translation></message>
 </context>
 </TS>

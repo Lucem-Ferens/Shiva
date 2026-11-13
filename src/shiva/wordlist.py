@@ -2,8 +2,8 @@
 
 Source: https://www.eff.org/dice (eff_large_wordlist.txt, SHA-256 addd35536511597a02fa0a9ff1e5284677b8883b83e986e43f15a3db996b903e).
 The list is copyright the Electronic Frontier Foundation, licensed under the Creative Commons Attribution 4.0
-International License (https://creativecommons.org/licenses/by/4.0/); it is shipped unchanged apart from the layout
-of this file (the words without their dice numbers, one per line, compressed with zlib and written as base64), and stays
+International License (https://creativecommons.org/licenses/by/4.0/). The words are unchanged; the dice numbers in front
+of them are removed, and the words (one per line) are compressed with zlib and written as base64. The list stays
 under that licence, not under the licence of the rest of the program. `passgen` checks the decoded words against a pinned
 SHA-256 before it uses them.
 """

@@ -20,8 +20,8 @@ This software is based in part on the work of the Independent JPEG Group.
 Passwords: the character sets of random-character passwords follow the password generator of Proton Pass
 (https://github.com/protonpass/proton-pass-common, GPL-3.0-or-later). The passphrase word list is the "EFF Large Wordlist for
 Passphrases" by the Electronic Frontier Foundation (Joseph Bonneau), https://www.eff.org/dice, licensed under the Creative
-Commons Attribution 4.0 International License, https://creativecommons.org/licenses/by/4.0/. It is shipped unchanged, as its
-own module inside the program (`shiva/wordlist.py`, whose header repeats this notice), and stays under that licence.
+Commons Attribution 4.0 International License, https://creativecommons.org/licenses/by/4.0/. The words are unchanged; the dice numbers in front of them are removed and the list is stored compressed. It is shipped as its
+own module inside the program (`shiva/wordlist.py`, whose header repeats this notice) and stays under that licence.
 
 ## Your rights under the GPL and LGPL
 
