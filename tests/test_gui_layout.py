@@ -124,6 +124,8 @@ def test_spare_height_is_not_spread_into_the_mode_row_or_between_password_rows(w
     assert gap < 120      # the password block sat in a stack as tall as the key panel and its rows drifted apart
 
 
-def test_status_text_keeps_clear_of_the_window_edge(win):
+def test_status_text_lines_up_with_the_page_content(win):
     w = win; _show(w, (953, 662))
-    assert w.statusLine.contentsMargins().left() >= 8
+    w.set_status('Added 1 item.')
+    page = w.pages['clean']
+    assert w.statusLine.mapTo(page, w.statusLine.rect().topLeft()).x() == page.pageTitle.mapTo(page, page.pageTitle.rect().topLeft()).x()

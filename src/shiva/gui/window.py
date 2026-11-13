@@ -105,9 +105,10 @@ class MainWindow(QMainWindow):
         root = QWidget(); rl = QHBoxLayout(root); rl.setContentsMargins(0, 0, 0, 0); rl.setSpacing(0)
         rl.addWidget(self.tabBar); rl.addWidget(self.stack, 1)
         self.setCentralWidget(root)
-        self.statusLine = QLabel(tr("Ready")); self.statusLine.setAccessibleName(tr("Status"))
-        self.statusLine.setContentsMargins(tokens.SPACE[3], 0, 0, 0)    # the first character must not touch the window edge
-        self.statusBar().addWidget(self.statusLine, 1)
+        # one status line for the window; it moves into the page that is showing, next to that page's action button
+        self.statusLine = QLabel(tr("Ready")); self.statusLine.setAccessibleName(tr("Status")); self.statusLine.setWordWrap(True)
+        self._status_slot = None
+        self._move_status(m.TABS[0])
         QWidget.setTabOrder(self.nav["clean"], self.nav["encrypt"])
         QWidget.setTabOrder(self.nav["encrypt"], self.nav["shred"])
         QWidget.setTabOrder(self.nav["shred"], self.nav["settings"])
@@ -173,8 +174,17 @@ class MainWindow(QMainWindow):
     def current_page(self) -> TabPage:
         return self.pages[self.current_tab()]
 
+    def _move_status(self, tab: str) -> None:
+        page = self.pages.get(tab) or (self.settingsPage if tab == "settings" else self.aboutPage)
+        if self._status_slot is not None:
+            self._status_slot.removeWidget(self.statusLine)
+        page.statusSlot.addWidget(self.statusLine)
+        self._status_slot = page.statusSlot
+        self.statusLine.setVisible(self.statusLine.text() not in ("", tr("Ready")))      # "Ready" says nothing: no line
+
     def _select(self, tab: str) -> None:
         self.stack.setCurrentIndex((m.TABS + m.INFO_KEYS).index(tab))
+        self._move_status(tab)
         if tab in self.pages:
             self._last_tab = tab
             self.pages[tab].update_controls()
@@ -197,6 +207,7 @@ class MainWindow(QMainWindow):
     def set_status(self, text: str) -> None:
         text = dyn(text)
         self.statusLine.setText(text)
+        self.statusLine.setVisible(text not in ("", tr("Ready")))
         _announce(self.statusLine, text)
 
     def _say_busy(self) -> None:

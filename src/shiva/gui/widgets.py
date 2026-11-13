@@ -463,9 +463,21 @@ class WrapCheckBox(QCheckBox):
         super().setText(text)
         self.updateGeometry()
 
+    def setDescription(self, text: str) -> None:
+        """A second line in secondary text under the label: what the option does or costs. Also the accessible description."""
+        self._desc = text
+        self.setAccessibleDescription(text)
+        self.updateGeometry(); self.update()
+
+    _desc = ""
+    _DESC_GAP, _DESC_BOTTOM = 2, 6
+
     def _label_left(self) -> int:
         st = self.style()
         return st.pixelMetric(QStyle.PM_IndicatorWidth) + st.pixelMetric(QStyle.PM_CheckBoxLabelSpacing)
+
+    def _line_h(self, text: str, w: int) -> int:
+        return self.fontMetrics().boundingRect(QRect(0, 0, max(1, w), 10000), int(self._FLAGS), text).height()
 
     def _text_top(self) -> int:
         """Top of the first text line: the line is centred in a one-row box, the same centre line as the indicator."""
@@ -475,11 +487,16 @@ class WrapCheckBox(QCheckBox):
         return True
 
     def heightForWidth(self, w: int) -> int:
-        r = self.fontMetrics().boundingRect(QRect(0, 0, max(1, w - self._label_left()), 10000), int(self._FLAGS), self.text())
-        return max(tokens.TARGET["check_h"], r.height() + 2 * self._text_top())
+        avail = w - self._label_left()
+        h = self._line_h(self.text(), avail)
+        if self._desc:
+            return max(tokens.TARGET["check_h"], self._text_top() + h + self._DESC_GAP + self._line_h(self._desc, avail)
+                       + self._DESC_BOTTOM)
+        return max(tokens.TARGET["check_h"], h + 2 * self._text_top())
 
     def sizeHint(self) -> QSize:
-        w = self._label_left() + self.fontMetrics().horizontalAdvance(self.text())
+        fm = self.fontMetrics()
+        w = self._label_left() + max(fm.horizontalAdvance(self.text()), fm.horizontalAdvance(self._desc))
         return QSize(w, self.heightForWidth(w))
 
     def minimumSizeHint(self) -> QSize:
@@ -499,6 +516,10 @@ class WrapCheckBox(QCheckBox):
         top = self._text_top()
         trect = QRect(left, top, self.width() - left, self.height() - top)
         st.drawItemText(p, trect, int(self._FLAGS), opt.palette, bool(opt.state & QStyle.State_Enabled), text, QPalette.WindowText)
+        if self._desc:
+            drect = QRect(left, top + self._line_h(text, self.width() - left) + self._DESC_GAP, self.width() - left, self.height())
+            st.drawItemText(p, drect, int(self._FLAGS), opt.palette, bool(opt.state & QStyle.State_Enabled), self._desc,
+                            QPalette.Text if high_contrast_active() else QPalette.PlaceholderText)
         if self.hasFocus():
             f = QStyleOptionFocusRect(); f.initFrom(self); f.rect = trect
             st.drawPrimitive(QStyle.PE_FrameFocusRect, f, p, self)

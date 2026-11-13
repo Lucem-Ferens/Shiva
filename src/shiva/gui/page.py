@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPalette
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QGroupBox, QHBoxLayout, QHeaderView,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QFileDialog, QGroupBox, QHBoxLayout, QHeaderView,
                                QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
                                QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QStyledItemDelegate, QStyleOptionViewItem,
                                QTableWidget, QTableWidgetItem,
@@ -89,6 +89,7 @@ class _FitScroll(QScrollArea):
         super().__init__()
         self.setWidgetResizable(True); self.setFrameShape(QScrollArea.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); self.setWidget(content)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)      # the gutter is there with or without a scroll range
         self.setFocusPolicy(Qt.NoFocus)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         content.installEventFilter(self)
@@ -137,7 +138,11 @@ class TabPage(QWidget):
         self.pageScope = QLabel(dyn(scope)); self.pageScope.setObjectName("pageScope")
         outer.addWidget(self.pageTitle); outer.addWidget(self.pageScope)
         # body: toolbar and file table keep their height; only the options below them scroll
-        self.body = QWidget(); bl = QVBoxLayout(self.body); bl.setContentsMargins(0, 0, 0, 0)
+        # The options scroll bar always has its own gutter on the right (empty while nothing scrolls), and the toolbar and the file
+        # table keep the same gutter, so every right edge on the page lines up and nothing jumps when the bar appears.
+        self.body = QWidget(); body_lay = QVBoxLayout(self.body); body_lay.setContentsMargins(0, 0, 0, 0)
+        self.listPane = QWidget(); bl = QVBoxLayout(self.listPane); bl.setContentsMargins(0, 0, tokens.SCROLLBAR_W, 0)
+        body_lay.addWidget(self.listPane, 100)
         tools = QHBoxLayout()
         self.addFilesBtn = QPushButton(tr("&Add files...")); self.addFilesBtn.setAccessibleName(tr("Add files"))
         self.addFolderBtn = QPushButton(tr("Add &folder...")); self.addFolderBtn.setAccessibleName(tr("Add folder"))
@@ -258,11 +263,13 @@ class TabPage(QWidget):
 
         # --- options (not shown or not enabled means un-ticked, so they never stay active invisibly)
         self.moreOptionsRow = DisclosureRow(tr("Show more options"))
-        self.keepOrientCheck = WrapCheckBox(tr("JPEG: keep the rotation tag (only rotation is kept)"))
+        self.keepOrientCheck = WrapCheckBox(tr("JPEG: keep the rotation tag"))
+        self.keepOrientCheck.setDescription(tr("Other Exif data is still removed."))
         self.keepIccCheck = WrapCheckBox(tr("Keep the colour profile"))
-        self.keepQualityCheck = WrapCheckBox(tr("JPEG and WebP: keep the image data as it is (no re-encoding)"))
+        self.keepQualityCheck = WrapCheckBox(tr("JPEG and WebP: keep the image data as it is"))
+        self.keepQualityCheck.setDescription(tr("No re-encoding. Hidden bytes may stay."))
         self.chroma420Check = WrapCheckBox(tr("JPEG: reduce colour detail (smaller files)"))
-        self.keepQualityHint = QLabel("⚠ " + tr("Warning: hidden bytes and compression tables in the image data stay."))
+        self.keepQualityHint = QLabel("⚠ " + tr("Warning: hidden bytes and compression tables in the image data can stay."))
         self.keepQualityHint.setObjectName("keepQualityHint")
         self._keep_quality_help = tr("The picture itself is not touched, but the image data is copied as it is. It can "
                                      "still hold leftover pixels beyond the image edge (for example from cropping), "
@@ -272,15 +279,26 @@ class TabPage(QWidget):
         self.keepQualityMore.setToolTip(self._keep_quality_help)
         self.keepQualityMore.clicked.connect(
             lambda: QMessageBox.information(self, tr("Learn more"), self._keep_quality_help))
-        self.omitPartsCheck = WrapCheckBox(tr("Archives: leave out parts that can't be cleaned (they are missing from the copy)"))
-        self.keepPartsCheck = WrapCheckBox(tr("Archives: keep parts that cannot be cleaned (may leak metadata)"))
-        self.allowUncleanCheck = WrapCheckBox(tr("Encrypt files that can't be cleaned (their metadata stays)"))
+        # archive parts that can't be cleaned: three outcomes, one choice (stop is the default; it is the state with no flag set)
+        self.partsLabel = QLabel(tr("When an archive part can't be cleaned")); self.partsLabel.setObjectName("fieldLabel")
+        self.abortPartsRadio = QRadioButton(tr("Don't clean the archive"))
+        self.omitPartsCheck = QRadioButton(tr("Leave the part out of the copy"))
+        self.keepPartsCheck = QRadioButton(tr("Copy the part as it is"))
+        self.partsGroup = QButtonGroup(self)      # one tab stop and the arrow keys, like any radio group
+        for r in (self.abortPartsRadio, self.omitPartsCheck, self.keepPartsCheck):
+            self.partsGroup.addButton(r)
+            r.setMinimumHeight(tokens.TARGET["radio_h"]); r.setAccessibleDescription(self.partsLabel.text())
+        self.abortPartsRadio.setChecked(True)
+        self.allowUncleanCheck = WrapCheckBox(tr("Encrypt files that can't be cleaned"))
+        self.allowUncleanCheck.setDescription(tr("Their metadata stays."))
         self.keepPartsHint = QLabel("⚠ " + tr("Warning: parts that can't be cleaned are copied as they are and may still "
                                               "hold personal metadata."))
         self.uncleanHint = QLabel("⚠ " + tr("Warning: these files keep their metadata inside the encrypted copy, and their "
                                             "originals are not deleted."))
+        self.omitPartsHint = QLabel("⚠ " + tr("Warning: the cleaned copy won't contain these parts."))
         self.keepPartsHint.setObjectName("keepPartsHint"); self.uncleanHint.setObjectName("uncleanHint")
-        for hint in (self.keepPartsHint, self.uncleanHint, self.keepQualityHint):
+        self.omitPartsHint.setObjectName("keepPartsHint")        # the same warning box
+        for hint in (self.keepPartsHint, self.omitPartsHint, self.uncleanHint, self.keepQualityHint):
             hint.setWordWrap(True)
         self.chroma420Check.setToolTip(tr("By default, full colour detail is kept if the original had it. This option "
                                           "saves less colour detail instead; files get smaller and thin coloured lines "
@@ -297,10 +315,11 @@ class TabPage(QWidget):
         self.moreChildren, mcl = self._child_box()
         self.moreCard.add_row(self.moreChildren)
         for w in (self.keepQualityCheck, self.keepQualityHint, self.keepQualityMore, self.keepOrientCheck,
-                  self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.keepPartsHint):
+                  self.chroma420Check, self.keepIccCheck, self.partsLabel, self.abortPartsRadio, self.omitPartsCheck,
+                  self.keepPartsCheck, self.keepPartsHint, self.omitPartsHint):
             mcl.addWidget(w)
         for w in (self.moreOptionsRow, self.keepQualityCheck, self.keepOrientCheck, self.chroma420Check,
-                  self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.allowUncleanCheck):
+                  self.keepIccCheck, self.abortPartsRadio, self.omitPartsCheck, self.keepPartsCheck, self.allowUncleanCheck):
             w.setAccessibleName(w.text().replace("&", ""))
         # option name (ui_model.option_view) -> widget; update_controls sets shown/enabled from the view
         self._opt = {"encrypt_cleaned":self.encryptCleanedCheck, "shred_after": self.shredAfterCheck,
@@ -311,7 +330,8 @@ class TabPage(QWidget):
         self._opt_notes = {"keep_quality_hint": self.keepQualityHint, "keep_quality_more": self.keepQualityMore,
                            "keep_parts_hint": self.keepPartsHint, "unclean_hint": self.uncleanHint,
                            "shred_after_reason": self.shredAfterReason, "reencode_hint": self.reencodeHint}
-        for w in (*self._opt.values(), *self._opt_notes.values(), self.moreChildren):
+        for w in (*self._opt.values(), *self._opt_notes.values(), self.moreChildren, self.partsLabel, self.abortPartsRadio,
+                  self.omitPartsHint):
             w.setVisible(False)
         self.moreOptionsRow.setVisible(False)
         bl.insertWidget(bl.indexOf(self.moreCard), self.nextStepsGroup)
@@ -387,7 +407,9 @@ class TabPage(QWidget):
         # read-only list of the steps of one item (two or more steps only); not a tab stop
         outer.addWidget(self.runStages)
         outer.addWidget(self.progressLabel); outer.addWidget(self.progressBar)
-        brow = QHBoxLayout(); brow.addWidget(self.reasonLabel, 1)
+        self.statusSlot = QVBoxLayout(); self.statusSlot.setContentsMargins(0, 0, 0, 0)    # the window's status line sits here while this page shows
+        outer.addLayout(self.statusSlot)
+        brow = QHBoxLayout(); brow.setContentsMargins(0, 0, tokens.SCROLLBAR_W, 0); brow.addWidget(self.reasonLabel, 1)     # same right edge as the table
         brow.addStretch(0)        # with no reason the buttons stay at the right instead of filling the row
         brow.addWidget(self.primaryBtn); brow.addWidget(self.cancelBtn)
         outer.addLayout(brow)
@@ -397,7 +419,7 @@ class TabPage(QWidget):
                  self.aboutShredLink, self.encryptCleanedCheck, self.allowUncleanCheck,
                  self.shredAfterCheck, self.pwEdit, self.pwConfirmEdit, self.moreOptionsRow,
                  self.keepQualityCheck, self.keepQualityMore, self.keepOrientCheck,
-                 self.chroma420Check, self.keepIccCheck, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
+                 self.chroma420Check, self.keepIccCheck, self.abortPartsRadio, self.omitPartsCheck, self.keepPartsCheck, self.outCheck, self.outEdit, self.outBtn,
                  self.primaryBtn, self.cancelBtn]
         if tab == "encrypt":        # the credentials come before the optional steps
             moved = (self.pwEdit, self.pwConfirmEdit)
@@ -431,8 +453,6 @@ class TabPage(QWidget):
         for w in (self.keepOrientCheck, self.keepIccCheck, self.allowUncleanCheck, self.keepQualityCheck,
                   self.chroma420Check):
             w.toggled.connect(self.update_controls)
-        self.omitPartsCheck.toggled.connect(lambda on: on and self.keepPartsCheck.setChecked(False))
-        self.keepPartsCheck.toggled.connect(lambda on: on and self.omitPartsCheck.setChecked(False))
         self.omitPartsCheck.toggled.connect(self.update_controls)
         self.keepPartsCheck.toggled.connect(self.update_controls)
         self.pwEdit.textChanged.connect(self.update_controls)
@@ -840,12 +860,18 @@ class TabPage(QWidget):
         for name, w in self._opt.items():
             v = self._option_view()
             if w.isChecked() and not v.live[name]:
-                w.setChecked(False)
+                if w in (self.omitPartsCheck, self.keepPartsCheck):
+                    self.abortPartsRadio.setChecked(True)      # a radio group cannot be emptied: the reset goes to the default
+                else:
+                    w.setChecked(False)
         v = self._option_view()
         for name, w in self._opt.items():
             w.setVisible(v.shown[name]); w.setEnabled(v.enabled[name])
         for name, w in self._opt_notes.items():
             w.setVisible(v.shown[name])
+        for w in (self.partsLabel, self.abortPartsRadio):         # the first outcome and the question follow the other two
+            w.setVisible(v.shown["omit_parts"]); w.setEnabled(v.enabled["omit_parts"])
+        self.omitPartsHint.setVisible(v.shown["omit_parts"] and self.omitPartsCheck.isChecked())
         self.moreChildren.setVisible(v.live["more"])
         self.nextStepsGroup.setVisible(self.tab != "shred" and any(
             not w.isHidden() for w in (self.encryptCleanedCheck, self.shredAfterCheck)))

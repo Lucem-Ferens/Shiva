@@ -96,8 +96,8 @@ _ALWAYS_KEPT = {
     "numbering": ("Numbering definitions", "list and heading numbering styles",
                   "Always kept: holds no personal data and removing it can break lists and numbering."),
 }
-_BLOCKING_REASON = ("Shiva can't clean these parts, so the file is refused. To continue, tick \"Archives: leave out "
-                    "parts...\" or \"Archives: keep parts...\" under \"Show more options\".")
+_BLOCKING_REASON = ("Shiva can't clean these parts, so the file is refused. To continue, choose \"Leave the part out "
+                    "of the copy\" or \"Copy the part as it is\" under \"Show more options\".")
 _THEME_RE = re.compile(r'^(?:word|ppt|xl)/theme/(?:theme|themeOverride)[0-9]*\.xml$')
 _THEME_RELS_RE = re.compile(r'^(?:word|ppt|xl)/theme/_rels/(?:theme|themeOverride)[0-9]*\.xml\.rels$')
 _NUMBERING_RE = re.compile(r'^(?:word|ppt|xl)/numbering\.xml$')

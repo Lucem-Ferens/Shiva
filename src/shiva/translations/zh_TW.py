@@ -85,7 +85,8 @@ _many({
     "Optional next steps": "選用的後續步驟",
     "Tick \"Encrypt the cleaned copies\" first.": "先勾選「加密清理後的副本」。",
     "Available when you encrypt.": "加密時才能使用。",
-    "JPEG: keep the rotation tag (only rotation is kept)": "JPEG：保留旋轉標記（只保留旋轉資訊）",
+    "JPEG: keep the rotation tag": "JPEG：保留旋轉標記",
+    "Other Exif data is still removed.": "其他 Exif 資料仍會移除。",
     "Keep the colour profile": "保留色彩描述檔",
     "padding, compression tables and hidden bytes in the image data": "影像資料中的填充、壓縮表與隱藏的位元組",
     "JPEG re-encoded (lossy)": "JPEG 已重新編碼（有損）",
@@ -93,9 +94,10 @@ _many({
     "hidden bytes in the image data": "影像資料內的隱藏位元組",
     "image rotated to match its Exif orientation": "圖片已依 Exif 旋轉方向轉正",
     "Changed: %T1": "已變更：%1",
-    "JPEG and WebP: keep the image data as it is (no re-encoding)": "JPEG 與 WebP：保留影像資料原樣（不重新編碼）",
+    "JPEG and WebP: keep the image data as it is": "JPEG 與 WebP：原樣保留影像資料",
+    "No re-encoding. Hidden bytes may stay.": "不重新編碼。隱藏的位元組可能保留。",
     "JPEG: reduce colour detail (smaller files)": "JPEG：降低色彩細節（檔案較小）",
-    "Warning: hidden bytes and compression tables in the image data stay.": "警告：影像資料中隱藏的位元組與壓縮表會保留。",
+    "Warning: hidden bytes and compression tables in the image data can stay.": "警告：影像資料中隱藏的位元組與壓縮表可能保留。",
     "Learn more": "了解更多",
     "Current page": "目前的頁面", "Shortcut: Ctrl+Enter": "快速鍵：Ctrl+Enter",
     "Add files (Ctrl+O)": "加入檔案（Ctrl+O）", "Add folder (Ctrl+Shift+O)": "加入資料夾（Ctrl+Shift+O）",
@@ -109,9 +111,13 @@ _many({
     "saves less colour detail instead; files get smaller and thin coloured lines "
     "may blur.":
         "預設會在原始檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。",
-    "Archives: leave out parts that can't be cleaned (they are missing from the copy)": "壓縮檔：排除無法清理的部分（副本中不會有這些部分）",
-    "Archives: keep parts that cannot be cleaned (may leak metadata)": "壓縮檔：保留無法清理的部分（可能洩漏中繼資料）",
-    "Encrypt files that can't be cleaned (their metadata stays)": "加密無法清理的檔案（其中繼資料會保留）",
+    "When an archive part can't be cleaned": "壓縮檔中有無法清理的部分時",
+    "Don't clean the archive": "不清理該壓縮檔",
+    "Leave the part out of the copy": "從副本排除該部分",
+    "Copy the part as it is": "原樣複製該部分",
+    "Warning: the cleaned copy won't contain these parts.": "警告：清理後的副本不會包含這些部分。",
+    "Encrypt files that can't be cleaned": "加密無法清理的檔案",
+    "Their metadata stays.": "它們的中繼資料會保留。",
     "Save results in another folder": "將結果存到其他資料夾", "Folder for the results": "存放結果的資料夾",
     "Output folder": "輸出資料夾", "Choose folder...": "選擇資料夾...", "Choose output folder": "選擇輸出資料夾",
     "Output folder note": "輸出資料夾說明",
@@ -362,10 +368,10 @@ _many({
     "Rename or move it, or choose another output folder.": "重新命名或移走它，或改選其他輸出資料夾。",
     "Failed. Contains a part that cannot be cleaned. Original unchanged. Learn more":
         "失敗。內含無法清理的部分。原始檔未更動。了解更多",
-    ("The archive holds a part whose format cannot be cleaned (named under Reason), so nothing was written. "
-     "Under \"Show more options\" you can leave such parts out (they are missing from the copy) or keep them "
-     "(they may leak metadata)."):
-        "壓縮檔內有格式無法清理的部分（名稱見「原因」），因此沒有寫出任何檔案。在「顯示更多選項」中，可以選擇排除這些部分（複本中會缺少它們），或保留它們（可能洩漏中繼資料）。",
+    ("The archive holds a part whose format can't be cleaned (named under Reason), so nothing was written. "
+     "Under \"Show more options\", choose \"When an archive part can't be cleaned\" to leave such parts out of the copy "
+     "or copy them as they are. Copied parts may still hold metadata."):
+        "壓縮檔內有格式無法清理的部分（名稱見「原因」），因此沒有寫出任何檔案。在「顯示更多選項」的「壓縮檔中有無法清理的部分時」，可以選擇從副本排除這些部分，或原樣複製它們。複製的部分可能仍含有中繼資料。",
     "Shredded (best effort).": "已銷毀（盡力而為）。",
     "See details for limits at this location.": "此位置的限制請見詳細資料。",
     "Part of the original may remain.": "原始檔可能還有一部分殘留。",
@@ -586,7 +592,7 @@ for _k, (_zl, _zd, _zr) in {
 _add("Parts that cannot be cleaned", "無法清理的部分")
 _s(office._BLOCKING_REASON,
    "Shiva 無法清理這些部分，所以整個檔案會被拒絕。",
-   "要繼續，在「顯示更多選項」中勾選「壓縮檔：排除…」或「壓縮檔：保留…」。")
+   "要繼續，在「顯示更多選項」中選擇「從副本排除該部分」或「原樣複製該部分」。")
 for _k, (_lab, _det, _cc) in office.CATEGORIES.items():
     if _cc:
         _add(f"{_lab} kept ({_det})", f"{CATALOG[_lab]}已保留（{CATALOG[_det]}）")

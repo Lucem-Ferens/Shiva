@@ -91,7 +91,8 @@
     <message><source>Optional next steps</source><translation>選用的後續步驟</translation></message>
     <message><source>Tick "Encrypt the cleaned copies" first.</source><translation>先勾選「加密清理後的副本」。</translation></message>
     <message><source>Available when you encrypt.</source><translation>加密時才能使用。</translation></message>
-    <message><source>JPEG: keep the rotation tag (only rotation is kept)</source><translation>JPEG：保留旋轉標記（只保留旋轉資訊）</translation></message>
+    <message><source>JPEG: keep the rotation tag</source><translation>JPEG：保留旋轉標記</translation></message>
+    <message><source>Other Exif data is still removed.</source><translation>其他 Exif 資料仍會移除。</translation></message>
     <message><source>Keep the colour profile</source><translation>保留色彩描述檔</translation></message>
     <message><source>padding, compression tables and hidden bytes in the image data</source><translation>影像資料中的填充、壓縮表與隱藏的位元組</translation></message>
     <message><source>JPEG re-encoded (lossy)</source><translation>JPEG 已重新編碼（有損）</translation></message>
@@ -99,9 +100,10 @@
     <message><source>hidden bytes in the image data</source><translation>影像資料內的隱藏位元組</translation></message>
     <message><source>image rotated to match its Exif orientation</source><translation>圖片已依 Exif 旋轉方向轉正</translation></message>
     <message><source>Changed: %T1</source><translation>已變更：%1</translation></message>
-    <message><source>JPEG and WebP: keep the image data as it is (no re-encoding)</source><translation>JPEG 與 WebP：保留影像資料原樣（不重新編碼）</translation></message>
+    <message><source>JPEG and WebP: keep the image data as it is</source><translation>JPEG 與 WebP：原樣保留影像資料</translation></message>
+    <message><source>No re-encoding. Hidden bytes may stay.</source><translation>不重新編碼。隱藏的位元組可能保留。</translation></message>
     <message><source>JPEG: reduce colour detail (smaller files)</source><translation>JPEG：降低色彩細節（檔案較小）</translation></message>
-    <message><source>Warning: hidden bytes and compression tables in the image data stay.</source><translation>警告：影像資料中隱藏的位元組與壓縮表會保留。</translation></message>
+    <message><source>Warning: hidden bytes and compression tables in the image data can stay.</source><translation>警告：影像資料中隱藏的位元組與壓縮表可能保留。</translation></message>
     <message><source>Learn more</source><translation>了解更多</translation></message>
     <message><source>Current page</source><translation>目前的頁面</translation></message>
     <message><source>Shortcut: Ctrl+Enter</source><translation>快速鍵：Ctrl+Enter</translation></message>
@@ -109,9 +111,13 @@
     <message><source>Add folder (Ctrl+Shift+O)</source><translation>加入資料夾（Ctrl+Shift+O）</translation></message>
     <message><source>The picture itself is not touched, but the image data is copied as it is. It can still hold leftover pixels beyond the image edge (for example from cropping), compression tables that can identify the camera or program, and extra bytes inside the image data. Data hidden in the pixels themselves stays too.</source><translation>圖片本身不會被更動，但影像資料會原樣複製，因此可能仍留有超出圖片邊緣的殘餘像素（例如裁切後留下的）、可辨識相機或程式的壓縮表，以及影像資料內多餘的位元組。藏在像素本身的資料也會保留。</translation></message>
     <message><source>By default, full colour detail is kept if the original had it. This option saves less colour detail instead; files get smaller and thin coloured lines may blur.</source><translation>預設會在原始檔具有完整色彩細節時保留。此選項改存較少的色彩細節，檔案較小，但細的彩色線條可能變模糊。</translation></message>
-    <message><source>Archives: leave out parts that can't be cleaned (they are missing from the copy)</source><translation>壓縮檔：排除無法清理的部分（副本中不會有這些部分）</translation></message>
-    <message><source>Archives: keep parts that cannot be cleaned (may leak metadata)</source><translation>壓縮檔：保留無法清理的部分（可能洩漏中繼資料）</translation></message>
-    <message><source>Encrypt files that can't be cleaned (their metadata stays)</source><translation>加密無法清理的檔案（其中繼資料會保留）</translation></message>
+    <message><source>When an archive part can't be cleaned</source><translation>壓縮檔中有無法清理的部分時</translation></message>
+    <message><source>Don't clean the archive</source><translation>不清理該壓縮檔</translation></message>
+    <message><source>Leave the part out of the copy</source><translation>從副本排除該部分</translation></message>
+    <message><source>Copy the part as it is</source><translation>原樣複製該部分</translation></message>
+    <message><source>Warning: the cleaned copy won't contain these parts.</source><translation>警告：清理後的副本不會包含這些部分。</translation></message>
+    <message><source>Encrypt files that can't be cleaned</source><translation>加密無法清理的檔案</translation></message>
+    <message><source>Their metadata stays.</source><translation>它們的中繼資料會保留。</translation></message>
     <message><source>Save results in another folder</source><translation>將結果存到其他資料夾</translation></message>
     <message><source>Folder for the results</source><translation>存放結果的資料夾</translation></message>
     <message><source>Output folder</source><translation>輸出資料夾</translation></message>
@@ -378,7 +384,7 @@
     <message><source>The output file %1 already exists in %2.</source><translation>%2 中已有輸出檔案 %1。</translation></message>
     <message><source>Rename or move it, or choose another output folder.</source><translation>重新命名或移走它，或改選其他輸出資料夾。</translation></message>
     <message><source>Failed. Contains a part that cannot be cleaned. Original unchanged. Learn more</source><translation>失敗。內含無法清理的部分。原始檔未更動。了解更多</translation></message>
-    <message><source>The archive holds a part whose format cannot be cleaned (named under Reason), so nothing was written. Under "Show more options" you can leave such parts out (they are missing from the copy) or keep them (they may leak metadata).</source><translation>壓縮檔內有格式無法清理的部分（名稱見「原因」），因此沒有寫出任何檔案。在「顯示更多選項」中，可以選擇排除這些部分（複本中會缺少它們），或保留它們（可能洩漏中繼資料）。</translation></message>
+    <message><source>The archive holds a part whose format can't be cleaned (named under Reason), so nothing was written. Under "Show more options", choose "When an archive part can't be cleaned" to leave such parts out of the copy or copy them as they are. Copied parts may still hold metadata.</source><translation>壓縮檔內有格式無法清理的部分（名稱見「原因」），因此沒有寫出任何檔案。在「顯示更多選項」的「壓縮檔中有無法清理的部分時」，可以選擇從副本排除這些部分，或原樣複製它們。複製的部分可能仍含有中繼資料。</translation></message>
     <message><source>Shredded (best effort).</source><translation>已銷毀（盡力而為）。</translation></message>
     <message><source>See details for limits at this location.</source><translation>此位置的限制請見詳細資料。</translation></message>
     <message><source>Part of the original may remain.</source><translation>原始檔可能還有一部分殘留。</translation></message>
@@ -586,7 +592,7 @@
     <message><source>Always kept: holds no personal data and removing it can break lists and numbering.</source><translation>一律保留：不含個人資料，移除可能破壞清單與編號。</translation></message>
     <message><source>Parts that cannot be cleaned</source><translation>無法清理的部分</translation></message>
     <message><source>Shiva can't clean these parts, so the file is refused.</source><translation>Shiva 無法清理這些部分，所以整個檔案會被拒絕。</translation></message>
-    <message><source>To continue, tick "Archives: leave out parts..." or "Archives: keep parts..." under "Show more options".</source><translation>要繼續，在「顯示更多選項」中勾選「壓縮檔：排除…」或「壓縮檔：保留…」。</translation></message>
+    <message><source>To continue, choose "Leave the part out of the copy" or "Copy the part as it is" under "Show more options".</source><translation>要繼續，在「顯示更多選項」中選擇「從副本排除該部分」或「原樣複製該部分」。</translation></message>
     <message><source>comments kept (comments and replies, with their authors)</source><translation>註解已保留（註解與回覆，含其作者）</translation></message>
     <message><source>tracked changes (insertions accepted, deletions removed) kept (who changed what; the text keeps the latest version)</source><translation>追蹤修訂（接受插入、移除刪除）已保留（誰改了什麼；文字會保留最新版本）</translation></message>
     <message><source>glossary (building blocks) kept (saved building blocks (AutoText, quick parts))</source><translation>詞彙庫（建置組塊）已保留（已儲存的建置組塊（自動圖文集、快速組件））</translation></message>

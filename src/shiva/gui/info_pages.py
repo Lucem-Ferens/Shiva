@@ -75,6 +75,7 @@ class SettingsPage(QWidget):
         cl.addWidget(self.resetBtn); cl.addStretch(1)
         outer.addWidget(self.choicesGroup)
         outer.addStretch(1)
+        self.statusSlot = QVBoxLayout(); self.statusSlot.setContentsMargins(0, 0, 0, 0); outer.addLayout(self.statusSlot)
         self._saved = saved
         self._update_apply()
 
@@ -131,6 +132,7 @@ class AboutPage(QWidget):
         self.noticesBtn.setVisible(notices_path().is_file())
         outer.addWidget(self.noticesBtn, 0, Qt.AlignLeft)
         outer.addStretch(1)
+        self.statusSlot = QVBoxLayout(); self.statusSlot.setContentsMargins(0, 0, 0, 0); outer.addLayout(self.statusSlot)
 
     def open_notices(self) -> None:
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(notices_path()))):

@@ -142,6 +142,7 @@ QScrollBar:horizontal { background: transparent; height: ${sb}px; margin: 0; }
 QScrollBar::handle:vertical { background: $border; border-radius: ${r_control}px; min-height: 24px; margin: 2px; }
 QScrollBar::handle:horizontal { background: $border; border-radius: ${r_control}px; min-width: 24px; margin: 2px; }
 QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover, QScrollBar::handle:vertical:pressed, QScrollBar::handle:horizontal:pressed { background: $text_secondary; }
+QScrollBar::handle:vertical:disabled, QScrollBar::handle:horizontal:disabled { background: transparent; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: none; border: none; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
 QLabel#fieldLabel { font-weight: 600; }

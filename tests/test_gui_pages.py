@@ -13,7 +13,7 @@ from PySide6.QtGui import QDropEvent, QShortcut  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from shiva import agecli, jobs, steps  # noqa: E402
+from shiva import agecli, jobs, steps, tokens  # noqa: E402
 from shiva import ui_model as m  # noqa: E402
 from shiva.gui import ConfirmDialog, MainWindow, PdfDialog  # noqa: E402
 
@@ -286,7 +286,7 @@ def test_keep_parts_option_has_an_inline_warning(w, tmp_path):
     assert (not c.keepPartsHint.isVisibleTo(c))
     c.keepPartsCheck.setChecked(True)
     assert c.keepPartsHint.isVisibleTo(c) and c.keepPartsHint.text().startswith("⚠ Warning:")
-    c.keepPartsCheck.setChecked(False)
+    c.abortPartsRadio.setChecked(True)          # choosing another outcome ends "keep"
     assert (not c.keepPartsHint.isVisibleTo(c))
 
 
@@ -749,3 +749,54 @@ def test_the_password_fields_are_as_wide_as_each_other(w):
     p = w.pages["encrypt"]
     p.credPasswordRadio.click(); p.pwEdit.setText("a"); QApplication.processEvents()
     assert abs(p.pwEdit.width() - p.pwConfirmEdit.width()) <= 2
+
+
+def test_archive_part_outcomes_are_one_radio_group_with_stop_as_the_default(w, tmp_path):
+    p = w.pages["clean"]
+    p.moreOptionsRow.setChecked(True)
+    f = tmp_path / "a.zip"
+    import zipfile
+    with zipfile.ZipFile(f, "w") as z:
+        z.writestr("a.txt", "x")
+    p.add_paths([f]); QApplication.processEvents()
+    a, o, k = p.abortPartsRadio, p.omitPartsCheck, p.keepPartsCheck
+    assert a.isVisibleTo(p) and p.partsLabel.isVisibleTo(p)
+    assert a.isChecked() and not o.isChecked() and not k.isChecked() and p.build_options().unknown_members == "abort"
+    o.setChecked(True)
+    assert not a.isChecked() and p.build_options().unknown_members == "omit" and p.omitPartsHint.isVisibleTo(p) and not p.keepPartsHint.isVisibleTo(p)
+    k.setChecked(True)
+    assert not o.isChecked() and not a.isChecked() and p.build_options().unknown_members == "keep" and p.keepPartsHint.isVisibleTo(p)
+    k.click()                                                # a click on the chosen radio keeps the choice, as in any radio group
+    assert k.isChecked() and p.build_options().unknown_members == "keep"
+    a.click()
+    assert a.isChecked() and not k.isChecked() and p.build_options().unknown_members == "abort" and not p.keepPartsHint.isVisibleTo(p)
+    assert p.partsGroup.exclusive() and len(p.partsGroup.buttons()) == 3
+    p.moreOptionsRow.setChecked(False)                       # hidden options are reset
+    assert not p.abortPartsRadio.isVisibleTo(p) and p.build_options().unknown_members == "abort"
+
+
+def test_a_long_option_has_a_short_label_and_a_second_line(w):
+    c = w.pages["clean"].keepQualityCheck
+    assert "(" not in c.text() and c.accessibleDescription() and c.heightForWidth(600) > tokens.TARGET["check_h"]
+
+
+def test_the_window_has_no_status_bar_and_the_status_line_follows_the_page(w):
+    from PySide6.QtWidgets import QStatusBar
+    assert w.findChild(QStatusBar) is None
+    w.nav["clean"].setChecked(True); QApplication.processEvents()
+    w.set_status("Added 1 item.")
+    assert w.statusLine.isVisibleTo(w) and w.pages["clean"].isAncestorOf(w.statusLine)
+    w.nav["settings"].setChecked(True); QApplication.processEvents()
+    assert w.statusLine.isVisibleTo(w) and w.settingsPage.isAncestorOf(w.statusLine)
+    w.set_status("Ready")
+    assert not w.statusLine.isVisibleTo(w)
+
+
+def test_toolbar_table_options_and_buttons_share_the_right_edge(w):
+    from PySide6.QtCore import QPoint
+    from shiva.gui.window import apply_theme
+    apply_theme(QApplication.instance()); w.resize(960, 760); w.show(); QApplication.processEvents()      # the gutter is the style sheet scroll bar width
+    p = w.pages["clean"]
+    def right(x):
+        return x.mapTo(w, QPoint(x.width(), 0)).x()
+    assert right(p.view) == right(p.optionsScroll.viewport()) == right(p.primaryBtn)

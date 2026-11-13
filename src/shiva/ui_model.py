@@ -556,9 +556,9 @@ STATUS_KIND = {"Done": "ok", "Processed": "ok", "Warning": "warning", "Can't be 
                "Checking...": "working", "Working...": "working", "Waiting": "pending", "Ready": "ready"}
 
 
-ARCHIVE_PART_TIP = ("The archive holds a part whose format cannot be cleaned (named under Reason), so nothing was "
-                    "written. Under \"Show more options\" you can leave such parts out (they are missing from the "
-                    "copy) or keep them (they may leak metadata).")
+ARCHIVE_PART_TIP = ("The archive holds a part whose format can't be cleaned (named under Reason), so nothing was "
+                    "written. Under \"Show more options\", choose \"When an archive part can't be cleaned\" to leave such "
+                    "parts out of the copy or copy them as they are. Copied parts may still hold metadata.")
 
 
 @dataclass
