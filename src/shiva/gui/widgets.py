@@ -330,11 +330,10 @@ class EmptyCard(QFrame):
         hc = high_contrast_active()
         p.setPen(QPen(self.palette().color(QPalette.Text if hc else QPalette.PlaceholderText), 1.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         pt = QPointF
-        body = [pt(11, 5), pt(24, 5), pt(31, 12), pt(31, 35), pt(11, 35)]
-        p.drawPolygon(body)
-        p.drawPolyline([pt(24, 5), pt(24, 12), pt(31, 12)])
-        for y in (21, 27):
-            p.drawLine(pt(16, y), pt(26, y))
+        # a down arrow onto a line (a 24-unit drawing scaled to 40): "drop it here"
+        p.drawLine(pt(20, 7), pt(20, 25))
+        p.drawPolyline([pt(11.7, 18.3), pt(20, 26.7), pt(28.3, 18.3)])
+        p.drawLine(pt(8.3, 33.3), pt(31.7, 33.3))
         p.end()
         self.iconLabel.setPixmap(pix)
 
