@@ -92,8 +92,10 @@ def test_layer_is_black_with_the_theme_opacity(w):
 
 
 def test_layer_is_not_drawn_in_high_contrast(w, monkeypatch):
+    monkeypatch.setattr(widgets, "high_contrast_active", lambda: True)      # first: the page itself looks different in High Contrast
+    for _ in range(3):                  # the page settles over a few passes (scroll bar and list sizes); measure after that
+        w.grab(); QApplication.processEvents()
     plain = w.grab().toImage().pixelColor(480, 320)
-    monkeypatch.setattr(widgets, "high_contrast_active", lambda: True)
     layer = DimLayer(w); QApplication.processEvents()
     assert w.grab().toImage().pixelColor(480, 320) == plain
     layer.remove()
