@@ -1,0 +1,78 @@
+name: release-build
+# Builds the portable folder from a tag on a GitHub-hosted Windows runner and attaches a build provenance attestation
+# to the zip. A manual run (main branch only) builds the same way but is not attested and must never be published.
+# The workflow only produces a workflow artifact; it never creates or edits a Release.
+# Check a downloaded zip (the attestation records the tag and this workflow; check both):
+#   gh attestation verify Shiva-<version>-win64.zip -R <owner>/<repo> \
+#     --source-ref refs/tags/v<version> \
+#     --signer-workflow <owner>/<repo>/.github/workflows/release-build.yml --deny-self-hosted-runners
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write       # keyless signing of the attestation
+      attestations: write
+    env:
+      PYTHONUTF8: "1"
+      # Nuitka downloads Dependency Walker on every run (empty cache) without a hash check: seed it from a verified copy
+      NUITKA_CACHE_DIR_DOWNLOADS: ${{ runner.temp }}\nuitka-downloads
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.13.17"
+      - name: Install the pinned packages (hashes are checked)
+        run: python -m pip install --require-hashes -r requirements/lock.txt
+      - name: Fetch the pinned age binaries (SHA-256 checked)
+        run: python tools/fetch_third_party.py
+      - name: Seed Nuitka's Dependency Walker download (SHA-256 checked)
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:NUITKA_CACHE_DIR_DOWNLOADS "depends\x86_64"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $zip = Join-Path $dir "depends22_x64.zip"
+          Invoke-WebRequest -Uri "https://dependencywalker.com/depends22_x64.zip" -OutFile $zip
+          $want = "35db68a613874a2e8c1422eb0ea7861f825fc71717d46dabf1f249ce9634b4f1"
+          $got = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($got -ne $want) { throw "depends22_x64.zip hash $got differs from $want" }
+      - name: The tag must match the version in the source
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          v=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          tag=${GITHUB_REF#refs/tags/v}; tag=${tag/-rc./rc}
+          test "$tag" = "$v" || { echo "tag $GITHUB_REF does not match version $v"; exit 1; }
+      - name: Build, self-test and zip
+        run: python tools/build.py
+      - name: List the result
+        shell: bash
+        run: |
+          ls -l dist/*.zip dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
+      - name: Attest the build provenance (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-path: dist/Shiva-*-win64.zip
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: shiva-win64
+          path: |
+            dist/Shiva-*-win64.zip
+            dist/SHA256SUMS.txt
+            dist/Shiva-*-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 7

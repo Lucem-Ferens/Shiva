@@ -153,6 +153,8 @@ def compile_app(build_dir: Path) -> Path:
            "--product-name=Shiva", "--file-description=Shiva: clean metadata, encrypt and shred files",
            f"--file-version={numeric}", f"--product-version={numeric}", "--copyright=GPL-3.0-or-later",
            "--output-filename=Shiva.exe", f"--output-dir={build_dir}"]
+    if os.environ.get("GITHUB_ACTIONS"):
+        cmd.append("--msvc=latest")   # without it Nuitka may pip-install an unpinned compiler package when none is found
     pdfium_files()   # Nuitka's dll-files plugin and package-data support copy pdfium.dll and version.json; checked after the build
     cmd += [f"--include-data-files={e}=age/{e.name}" for e in exes]
     cmd += [f"--include-data-files={AGE_DIR / 'LICENSE'}=age/LICENSE", str(ROOT / "src" / "shiva_launcher.py")]
