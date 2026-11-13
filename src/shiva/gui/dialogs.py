@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton,
+from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton,
                                QTextBrowser, QVBoxLayout)
 
 from .. import tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, button_icon, status_icon
+from .widgets import QLabel, safe_tip, WrapCheckBox, button_icon, status_icon
 
 # ------------------------------------------------------------------ dialogs
 class ConfirmDialog(QDialog):
@@ -46,7 +46,7 @@ class ConfirmDialog(QDialog):
         for i, tip in enumerate(item_tips or []):      # full path as tooltip and accessible text (the line may be shortened)
             if tip and i < self.itemList.count():
                 it = self.itemList.item(i)
-                it.setToolTip(tip); it.setData(Qt.AccessibleTextRole, tip)
+                it.setToolTip(safe_tip(tip)); it.setData(Qt.AccessibleTextRole, tip)
         self.itemList.setMaximumHeight(140)             # taller lists scroll
         self.itemList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # long lines wrap, so no row is cut off
         self.itemList.setWordWrap(True)

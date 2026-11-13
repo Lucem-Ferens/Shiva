@@ -9,13 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QHBoxLayout, QHeaderView, QLabel,
-                               QLineEdit, QPlainTextEdit, QPushButton, QTableWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QFileDialog, QHBoxLayout, QHeaderView, QLineEdit, QPlainTextEdit, QPushButton, QTableWidgetItem, QVBoxLayout, QWidget)
 
 from .. import agecli, key_model as K, recipients as rcp, tokens
 from ..i18n import dyn, tr, trf
 from .createkey import CreateKeyDialog
-from .widgets import Reveal, WrapCheckBox, _Table, _announce, _urls, link_button
+from .widgets import QLabel, Reveal, WrapCheckBox, _Table, _announce, _urls, link_button, safe_tip
 
 _MAX_RECIPIENT_FILE = 1 << 20
 
@@ -471,7 +470,7 @@ class KeyPanel(QWidget):
             cells = (kind, rcp.shorten(r.text), src)
             for c, text in enumerate(cells):
                 it = QTableWidgetItem(text)
-                it.setToolTip(trf("%1, %2 characters, %3", kind, len(r.text), src))        # never the whole key
+                it.setToolTip(safe_tip(trf("%1, %2 characters, %3", kind, len(r.text), src)))        # never the whole key
                 it.setData(Qt.AccessibleTextRole, trf("%1 key, %2 characters, starts %3, ends %4, from %5", kind,
                                                       len(r.text), r.text[:9], r.text[-6:], src))
                 if r.source == "Your key file":

@@ -954,5 +954,7 @@
     <message><source>Warning: Under %1 bits.</source><translation>警告：低於 %1 位元。</translation></message>
     <message><source>Add more words.</source><translation>增加單字數。</translation></message>
     <message><source>Add more characters.</source><translation>增加字元數。</translation></message>
+    <message><source>The cleaning helper returned far more data than expected and was stopped; the file was not changed</source><translation>清理程序回傳的資料遠多於預期，已被停止；檔案沒有變更</translation></message>
+    <message><source>The cleaning helper sent an answer that could not be read; the file was not changed</source><translation>清理程序傳回的答覆無法讀取；檔案沒有變更</translation></message>
 </context>
 </TS>

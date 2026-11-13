@@ -9,13 +9,13 @@ import math
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
-from PySide6.QtWidgets import (QButtonGroup, QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QMenu, QPlainTextEdit,
+from PySide6.QtWidgets import (QButtonGroup, QComboBox, QDialog, QFrame, QHBoxLayout, QMenu, QPlainTextEdit,
                                QPushButton, QRadioButton, QScrollArea, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import passgen, tokens
 from ..i18n import tr, trf
 from .clipboard import guard
-from .widgets import WrapCheckBox, _announce
+from .widgets import QLabel, WrapCheckBox, _announce
 
 SHORT_BITS = 60        # below this the window says "short"
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow,
+from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QHBoxLayout, QMainWindow,
                                QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import output, settings, shred, steps, storage, tokens
@@ -23,7 +23,7 @@ from ..i18n import dyn, tr
 from .dialogs import AboutShreddingDialog, ConfirmDialog, PdfDialog
 from .info_pages import AboutPage, SettingsPage
 from .page import _Row, TabPage
-from .widgets import DimLayer, NavButton, _announce, _urls, apply_theme
+from .widgets import QLabel, DimLayer, NavButton, _announce, _urls, apply_theme
 
 _OFFICE_FMTS = ("docx", "xlsx", "pptx", "odt", "ods", "odp")   # formats with an Office category dialog
 

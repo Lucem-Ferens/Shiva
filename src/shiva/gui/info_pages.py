@@ -7,12 +7,12 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QLabel, QPushButton, QRadioButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QPushButton, QRadioButton, QVBoxLayout, QWidget
 
 from .. import settings, tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr, trf
-from .widgets import WrapCheckBox, link_button
+from .widgets import QLabel, WrapCheckBox, link_button
 
 LANGUAGES = (("system", "System default"), ("en", "English"), ("zh_TW", "繁體中文"))
 NOTICES_NAME = "THIRD_PARTY_NOTICES.md"

@@ -11,7 +11,7 @@ Per-format details are in [`formats.md`](formats.md); user-facing limits are in 
 | You share a file and do not want hidden metadata (location, author, camera, revision history, comments) to travel with it | Remove the categories listed in `formats.md` and say what was removed, what was kept and what could not be checked |
 | A file is stored or sent where others may read it (cloud folder, e-mail, USB stick, lost laptop) | Encrypt it with the official age tool to a password or to recipient keys, then check that the result opens before anything is destroyed |
 | A file you no longer want sits on your drive | Overwrite and delete it, warn when the drive type makes that unreliable, and never call the result "secure deletion" |
-| A file from an untrusted source is opened for cleaning | Parse it in a separate helper process with memory and time limits and without the right to start other programs directly (packaged build) |
+| A file from an untrusted source is opened for cleaning | Parse it in a separate helper process with a memory limit and a time limit, so a broken or hostile file fails the helper, not the window |
 | A tampered download or bundled program | Pin the bundled age binaries and the Python packages by version and SHA-256, check them when building, publish the SHA-256 of each release |
 
 ## Not protected against
@@ -50,8 +50,9 @@ Per-format details are in [`formats.md`](formats.md); user-facing limits are in 
 1. **Shiva window** (Python, PySide6): holds the password and any unlocked key in memory until the run ends and, for a key, until
    the window is closed or rebuilt; Python cannot wipe it. Destructive options are never remembered between runs; the interface
    language is kept in a small settings file next to the program.
-2. **Cleaning helper process**: reads one file, returns a cleaned copy and a report. Memory-limited, stopped on cancel or timeout,
-   in a job object that forbids starting other programs directly (packaged build). Same user rights as the window.
+2. **Cleaning helper process**: reads one file, returns a cleaned copy and a report. Stopped on cancel or timeout and
+   killed with Shiva (a job object with a memory limit). Same user rights as the window: it can read your files, use the network and start
+   programs. Its answer is treated as untrusted (size-limited, checked, shown as plain text).
 3. **age (official binary, separate process)**: receives the password only through its environment, a private key only through
    a pipe. Shiva never puts a secret on a command line and writes no key to disk except the key file you ask it to create.
 4. **Shredding**: runs inside Shiva's own process, one held file at a time; refuses dangerous targets.

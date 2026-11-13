@@ -18,6 +18,8 @@ from . import CleanCancelled, CleanError, CleanOutcome, Unsupported, dispatch, w
 MAX_BYTES = 256 * 1024 * 1024   # in-memory cap; larger files are Unsupported for now (no disk staging yet)
 TIMEOUT_S = 120.0
 MEMORY_LIMIT = 2 * 1024 * 1024 * 1024   # per worker process; a user-visible trade-off
+MIN_RESPONSE_CAP = 256 * 1024 * 1024   # the window never reads more than this from the helper (or 32 times the file, if larger)
+MAX_RESPONSE_CAP = 1024 * 1024 * 1024  # and never more than this
 
 
 def _worker_cmd() -> list[str]:
@@ -61,9 +63,33 @@ def _talk(proc, request: dict, data: bytes, cancel, timeout: float) -> tuple[dic
     payload = worker._frame(request, data)
     box: dict = {}
 
+    cap = min(MAX_RESPONSE_CAP, MEMORY_LIMIT, max(MIN_RESPONSE_CAP, 32 * len(data)))
+
+    def feed():
+        try:
+            proc.stdin.write(payload)
+            proc.stdin.close()
+        except (OSError, ValueError):                # the helper ended early or was killed
+            pass
+
     def talk():
         try:
-            box["out"], _ = proc.communicate(payload)
+            threading.Thread(target=feed, daemon=True).start()
+            buf = bytearray()
+            while True:
+                c = proc.stdout.read(1 << 20)
+                if not c:
+                    break
+                buf += c
+                if len(buf) > cap:                       # a hostile or broken helper cannot fill the window's memory
+                    box["too_big"] = True
+                    proc.kill()
+                    break
+            box["out"] = bytes(buf)
+            try:
+                proc.wait(10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
         except Exception as e:  # pipe closed because we killed it
             box["err"] = e
 
@@ -78,10 +104,16 @@ def _talk(proc, request: dict, data: bytes, cancel, timeout: float) -> tuple[dic
         if time.monotonic() > deadline:
             proc.kill(); t.join(2)
             raise CleanError("Cleaning took too long and was stopped; the file may be damaged or hostile")
+    if box.get("too_big"):
+        raise CleanError("The cleaning helper returned far more data than expected and was stopped; the file was not changed")
     out = box.get("out")
     if not out or proc.returncode != 0:
         raise CleanError("The cleaning helper stopped unexpectedly; the file was not changed")
-    return worker.parse_frame(out)
+    try:
+        header, payload = worker.parse_frame(out)
+    except (ValueError, UnicodeDecodeError):
+        raise CleanError("The cleaning helper sent an answer that could not be read; the file was not changed") from None
+    return worker.sanitize_response(header), payload
 
 
 def classify(path: Path) -> tuple[str, str | None]:

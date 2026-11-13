@@ -9,7 +9,7 @@ from pathlib import Path
 from PySide6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPalette
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QFileDialog, QGroupBox, QHBoxLayout, QHeaderView,
-                               QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
+                               QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QMessageBox, QProgressBar, QPushButton,
                                QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QStyledItemDelegate, QStyleOptionViewItem,
                                QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -20,7 +20,7 @@ from ..i18n import dyn, tr, trf
 from .keypanel import KeyPanel
 from .clipboard import SecretFieldGuard, guard
 from .passgen import PasswordGeneratorDialog
-from .widgets import DisclosureRow, EmptyCard, OptionCard, Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
+from .widgets import QLabel, safe_tip, DisclosureRow, EmptyCard, OptionCard, Reveal, WrapCheckBox, _Table, _announce, high_contrast_active, link_button, status_icon, status_item
 
 _EMPTY = {
     "clean": ("Add files to clean", "Drop files here.\n"
@@ -900,7 +900,7 @@ class TabPage(QWidget):
                 it = QTableWidgetItem(txt)
                 it.setData(Qt.UserRole, r.key)
                 if c in (1, 4) and txt:
-                    it.setToolTip(str(f.path) if c == 1 else txt)
+                    it.setToolTip(safe_tip(str(f.path) if c == 1 else txt))
                 if r.info.status in ("Not supported", "Not found", "Not readable"):
                     it.setForeground(grey)
                 if c == 0:
@@ -1195,11 +1195,11 @@ class TabPage(QWidget):
                 if c == 0:
                     status_item(it, rr.status, self._theme())
                 elif c == 1:
-                    it.setToolTip(str(row.path))
+                    it.setToolTip(safe_tip(str(row.path)))
                 elif c == 3:
                     it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 if c == 2 and rr.tip:
-                    it.setToolTip(dyn(rr.tip)); it.setData(Qt.AccessibleTextRole, f"{txt}. {dyn(rr.tip)}")
+                    it.setToolTip(safe_tip(dyn(rr.tip))); it.setData(Qt.AccessibleTextRole, f"{txt}. {dyn(rr.tip)}")
                 t.setItem(i, c, it)
         t.resizeRowsToContents()
         statuses = [d[0].status for d in data]

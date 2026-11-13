@@ -306,7 +306,9 @@ def test_confirm_dialog_item_tips_hold_the_full_path(w):
     full = "D:\\" + "x" * 80 + "\\old.txt"
     d = ConfirmDialog(w, "Shred 1 item?", "body", [m.display_path(full)], [], "Shred", item_tips=[full])
     it = d.itemList.item(0)
-    assert "..." in it.text() and len(it.text()) <= 60 and it.toolTip() == full
+    assert "..." in it.text() and len(it.text()) <= 60
+    from PySide6.QtGui import QTextDocumentFragment
+    assert QTextDocumentFragment.fromHtml(it.toolTip()).toPlainText() == full        # the tip is escaped text, shown exactly
     assert it.text().startswith("D:\\") and it.text().endswith("old.txt")
 
 

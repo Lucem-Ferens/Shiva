@@ -10,13 +10,13 @@ from pathlib import Path
 
 from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLineEdit,
                                QPlainTextEdit, QPushButton, QRadioButton, QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import agecli, key_model as K, storage, tokens
 from ..i18n import dyn, tr, trf
 from ..ui_model import unit
-from .widgets import Reveal, WrapCheckBox, _announce
+from .widgets import QLabel, Reveal, WrapCheckBox, _announce
 
 
 def _label(text: str = "", name: str = "") -> QLabel:

@@ -2,18 +2,36 @@
 """
 from __future__ import annotations
 
+import html
 import sys
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QRect, QSize, Signal, QPointF, QRectF
 from PySide6.QtGui import (QAction, QBrush, QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap,
                            QRadialGradient)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout, QLabel as _QLabel, QLineEdit, QProxyStyle, QPushButton, QStyle, QStyleOptionButton,
                                QStyleOptionFocusRect, QSizePolicy, QTableWidget, QToolButton, QVBoxLayout, QWidget)
 
 from .. import tokens
 from .. import ui_model as m
 from ..i18n import dyn, tr
+
+
+class QLabel(_QLabel):
+    """A label that never interprets its text as rich text. Text from files, archives and the cleaning helper (names,
+    reasons, messages) can contain markup such as <img src="file:///..."> or a network path, which Qt's automatic text format
+    would load; every label in the window is this class, so none of them can."""
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.setTextFormat(Qt.PlainText)
+
+
+def safe_tip(text: str) -> str:
+    """A tool tip for text that may come from a file or the cleaning helper. Qt shows a tip as rich text when it looks like
+    markup; this escapes the text and says it is rich text, so what is shown is exactly the text and nothing is loaded."""
+    return "<qt>" + html.escape(text, quote=False) + "</qt>"
+
 
 def _eye_icon(widget: QWidget, crossed: bool) -> QIcon:
     """An eye (crossed out while the password is hidden), drawn in the field's text colour: no image files."""

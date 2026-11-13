@@ -936,3 +936,9 @@ _s("The words are English (EFF large word list). To type them, switch to an Engl
 _s("Error: Couldn't make a password. Try again.", "錯誤：無法產生密碼。", "再試一次。")
 _s("Warning: Under %1 bits. Add more words.", "警告：低於 %1 位元。", "增加單字數。")
 _s("Warning: Under %1 bits. Add more characters.", "警告：低於 %1 位元。", "增加字元數。")
+
+_many({
+    "The cleaning helper returned far more data than expected and was stopped; the file was not changed":
+        "清理程序回傳的資料遠多於預期，已被停止；檔案沒有變更",
+    "The cleaning helper sent an answer that could not be read; the file was not changed": "清理程序傳回的答覆無法讀取；檔案沒有變更",
+})
