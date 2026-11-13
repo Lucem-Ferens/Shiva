@@ -264,3 +264,21 @@ def test_a_protected_ssh_key_fails_at_once_instead_of_waiting_for_a_console(tmp_
     with pytest.raises(agecli.AgeError):
         agecli.decrypt_hash_identity(enc, key.read_bytes())
     assert time.monotonic() - t0 < 5
+
+
+def test_a_file_can_be_encrypted_to_an_ssh_public_key(tmp_path):
+    ed = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICoDf7P0Oija95uvYLpv67z5IsJgR6Pr7JDj4tMTjBuP"
+    src = tmp_path / "p.txt"; src.write_bytes(PLAIN)
+    dst = tmp_path / "p.txt.age"
+    assert agecli.encrypt_recipients(src, dst, [ed]) == hashlib.sha256(PLAIN).hexdigest()
+    assert agecli.inspect(dst)["stanza_types"] == ["ssh-ed25519"]
+
+
+def test_the_comment_of_an_ssh_key_never_reaches_age(tmp_path):
+    from shiva import recipients as rcp
+    ed = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICoDf7P0Oija95uvYLpv67z5IsJgR6Pr7JDj4tMTjBuP"
+    rec = rcp.parse_recipients(ed + " alice@laptop").keys
+    src = tmp_path / "p.txt"; src.write_bytes(PLAIN)
+    dst = tmp_path / "p.txt.age"
+    agecli.encrypt_recipients(src, dst, [r.text for r in rec])
+    assert b"alice" not in dst.read_bytes() and rec[0].text == ed

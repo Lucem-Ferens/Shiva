@@ -139,7 +139,7 @@ choose the key file for each run, and nothing about keys is saved.
 
 ## Not implemented yet
 
-SSH keys, plugin and hardware keys, and armored (text) output for encryption; MP4 / MOV / WAV / TIFF / HEIC / RAW
+Decrypting with an SSH key, plugin and hardware keys, and armored (text) output for encryption; MP4 / MOV / WAV / TIFF / HEIC / RAW
 cleaning; and German.
 
 ## Build and contribute

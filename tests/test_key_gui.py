@@ -362,3 +362,19 @@ def test_recipients_file_reports_lines_that_were_skipped(win, tmp_path):
     msgs = []; kp.status.connect(msgs.append)
     kp.addKeyFileBtn.click()
     assert kp.recipientTable.rowCount() == 1 and "Line 1 isn't a key and was skipped." in msgs[-1]
+
+
+def test_pasted_ssh_key_is_listed_with_both_warnings_and_a_file_key_removes_the_second(win, tmp_path):
+    p, _ = _page(win, tmp_path)
+    _keymode(p); kp = p.keyPanel
+    ed = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICoDf7P0Oija95uvYLpv67z5IsJgR6Pr7JDj4tMTjBuP alice@laptop"
+    kp.recipientEdit.setPlainText(ed)
+    assert "SSH key" in kp.recipientHint.text() and kp.addKeyBtn.isEnabled()
+    kp.addKeyBtn.click()
+    assert kp.recipientTable.item(0, 0).text() == "Standard (SSH)" and "alice" not in kp.recipientTable.item(0, 1).text()
+    text = kp.sshWarning.text()
+    assert not kp.sshWarning.isHidden() and "short tag" in text and "replaced or deleted" in text
+    _, _, a = _pair(False, tmp_path, "a.txt")
+    kp.recipientEdit.setPlainText(a); kp.addKeyBtn.click()
+    text = kp.sshWarning.text()
+    assert "short tag" in text and "replaced or deleted" not in text

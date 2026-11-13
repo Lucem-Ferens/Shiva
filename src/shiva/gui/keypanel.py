@@ -248,9 +248,9 @@ class KeyPanel(QWidget):
         self.captionLabel = QLabel(tr("Public keys of the recipients")); self.captionLabel.setObjectName("fieldLabel")
         paste = QHBoxLayout()
         self.recipientEdit = QPlainTextEdit(); self.recipientEdit.setTabChangesFocus(True)
-        self.recipientEdit.setPlaceholderText(tr("Paste a public key here (starts with age1)"))
+        self.recipientEdit.setPlaceholderText(tr("Paste a public key here (starts with age1 or ssh-)"))
         self.recipientEdit.setAccessibleName(tr("Public keys of the recipients"))
-        self.recipientEdit.setAccessibleDescription(tr("Paste a public key here (starts with age1)")); self.recipientEdit.setMaximumHeight(48)
+        self.recipientEdit.setAccessibleDescription(tr("Paste a public key here (starts with age1 or ssh-)")); self.recipientEdit.setMaximumHeight(48)
         self.addKeyBtn = QPushButton(tr("Add key")); self.addKeyBtn.setEnabled(False)
         paste.addWidget(self.recipientEdit, 1); paste.addWidget(self.addKeyBtn, 0, Qt.AlignTop)
         self.recipientHint = _label(); self.recipientHint.setAccessibleName(tr("Public key check"))
@@ -277,7 +277,9 @@ class KeyPanel(QWidget):
         rl.addLayout(paste); rl.addWidget(self.recipientHint); rl.addLayout(files)
         rl.addWidget(self.recipientTable); rl.addWidget(self.recipientEmpty)
         rrow = QHBoxLayout(); rrow.addWidget(self.recipientSummary, 1); rrow.addWidget(self.removeKeyBtn)
-        rl.addLayout(rrow); rl.addWidget(self.recipientMixLabel)
+        self.sshWarning = _label(); self.sshWarning.setObjectName("warningNote"); self.sshWarning.setWordWrap(True)
+        self.sshWarning.setVisible(False)
+        rl.addLayout(rrow); rl.addWidget(self.recipientMixLabel); rl.addWidget(self.sshWarning)
         self.keyFile = key_file_row or KeyFileRow(pick=pick_file)
         self.ownKeyCheck = WrapCheckBox(tr("Also encrypt to my own key")); self.ownKeyCheck.setAccessibleName(tr("Also encrypt to my own key"))
         self.ownKeyReason = _label(); self.ownKeyReason.setObjectName("shredAfterReason")
@@ -365,6 +367,7 @@ class KeyPanel(QWidget):
             kinds = [k.kind for k in res.keys]
             if n == 1:
                 msg = (tr("Post-quantum key. Press Add key to use it.") if kinds[0] == rcp.POST_QUANTUM
+                       else tr("SSH key. Press Add key to use it.") if rcp.is_ssh(res.keys[0].text)
                        else tr("Standard key. Press Add key to use it."))
             else:
                 pq = kinds.count(rcp.POST_QUANTUM)
@@ -380,9 +383,10 @@ class KeyPanel(QWidget):
     def _problem_text(code: str) -> str:
         return {
             "duplicate": tr("This key is already in the list."),
-            "ssh_key": "✗ " + tr("Error: SSH keys aren't supported yet. Use an age key (starts with age1)."),
+            "ssh_key": "✗ " + tr("Error: This SSH key type isn't supported. Use ssh-ed25519, ssh-rsa or an age key (starts with age1)."),
+            "ssh_rsa_small": "✗ " + tr("Error: This RSA key is shorter than 2048 bits. Use a longer RSA key or an ed25519 key."),
             "plugin_key": "✗ " + tr("Error: Keys for plugins or hardware devices aren't supported yet. Use an age key (starts with age1)."),
-        }.get(code, "✗ " + tr("Error: This isn't a key Shiva can use. Public keys start with age1."))
+        }.get(code, "✗ " + tr("Error: This isn't a key Shiva can use. Public keys start with age1 or ssh-."))
 
     def _hint(self, text: str, error: bool = False) -> None:
         self.recipientHint.setText(text)
@@ -424,7 +428,7 @@ class KeyPanel(QWidget):
         if not res.keys:
             dup = any(x.code == "duplicate" for x in res.problems)
             return self.status.emit(tr("This key is already in the list.") if dup
-                                    else tr("Error: No keys found in this file. Keys start with age1, one per line."))
+                                    else tr("Error: No keys found in this file. Keys start with age1 or ssh-, one per line."))
         self._recipients += res.keys
         dups = sum(1 for x in res.problems if x.code == "duplicate")
         msg = (trf("Added 1 key from %1.", p.name) if len(res.keys) == 1
@@ -462,7 +466,7 @@ class KeyPanel(QWidget):
         t = self.recipientTable
         t.setRowCount(len(rows))
         for i, r in enumerate(rows):
-            kind = tr("Post-quantum") if r.kind == rcp.POST_QUANTUM else tr("Standard")
+            kind = tr("Post-quantum") if r.kind == rcp.POST_QUANTUM else tr("Standard (SSH)") if rcp.is_ssh(r.text) else tr("Standard")
             src = tr("Pasted") if r.source == "Pasted" else tr("Your key file") if r.source == "Your key file" else r.source
             cells = (kind, rcp.shorten(r.text), src)
             for c, text in enumerate(cells):
@@ -479,6 +483,9 @@ class KeyPanel(QWidget):
         self.recipientMixLabel.setText("✗ " + tr("Error: A file can't use both post-quantum and standard keys. Remove one "
                                                   "kind.") if mixed else "")
         self.recipientMixLabel.setVisible(mixed)
+        ssh = [r for r in rows if rcp.is_ssh(r.text)]
+        notes = ([dyn(K.SSH_ONLY_WARNING)] if ssh and len(ssh) == len(rows) else []) + ([dyn(K.SSH_TAG_WARNING)] if ssh else [])
+        self.sshWarning.setText("\n".join("⚠ " + n for n in notes)); self.sshWarning.setVisible(bool(notes))
         self._selection()
 
     def _key_file_changed(self) -> None:

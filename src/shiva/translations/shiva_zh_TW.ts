@@ -716,7 +716,13 @@
     <message><source>You type the password the files were encrypted with.</source><translation>輸入加密這些檔案時使用的密碼。</translation></message>
     <message><source>Choose the key file that matches the key the files were encrypted for.</source><translation>選擇與加密這些檔案時所用金鑰相符的私鑰檔。</translation></message>
     <message><source>Public keys of the recipients</source><translation>收件人的公開金鑰</translation></message>
-    <message><source>Paste a public key here (starts with age1)</source><translation>在這裡貼上公開金鑰（以 age1 開頭）</translation></message>
+    <message><source>Paste a public key here (starts with age1 or ssh-)</source><translation>在這裡貼上公開金鑰（以 age1 或 ssh- 開頭）</translation></message>
+    <message><source>SSH key. Press Add key to use it.</source><translation>SSH 金鑰。按「加入金鑰」使用它。</translation></message>
+    <message><source>Standard (SSH)</source><translation>標準 (SSH)</translation></message>
+    <message><source>Error: This SSH key type isn't supported. Use ssh-ed25519, ssh-rsa or an age key (starts with age1).</source><translation>錯誤：不支援這種 SSH 金鑰類型。使用 ssh-ed25519、ssh-rsa 或 age 金鑰（以 age1 開頭）。</translation></message>
+    <message><source>Error: This RSA key is shorter than 2048 bits. Use a longer RSA key or an ed25519 key.</source><translation>錯誤：這把 RSA 金鑰短於 2048 位元。使用較長的 RSA 金鑰或 ed25519 金鑰。</translation></message>
+    <message><source>Warning: a file encrypted to an SSH key carries a short tag of that key. Anyone with the file and the SSH public key (for example from GitHub) can tell the file was made for that key, and can match files made for the same key. age1 keys add no such tag.</source><translation>警告：加密給 SSH 金鑰的檔案，會帶有該金鑰的簡短標籤。任何人只要有該檔案和這把 SSH 公開金鑰（例如從 GitHub 取得），就能判斷檔案是給這把金鑰的，也能找出給同一把金鑰的其他檔案。age1 金鑰沒有這種標籤。</translation></message>
+    <message><source>Warning: files encrypted only to an SSH key can't be opened once its private key is replaced or deleted. Add your own age key too, or keep the private key.</source><translation>警告：只加密給 SSH 金鑰的檔案，在其私鑰被更換或刪除後就無法開啟。同時加入您自己的 age 金鑰，或保留該私鑰。</translation></message>
     <message><source>Public key check</source><translation>公開金鑰檢查</translation></message>
     <message><source>Add key</source><translation>加入金鑰</translation></message>
     <message><source>Add from file...</source><translation>從檔案加入...</translation></message>
@@ -763,15 +769,14 @@
     <message><source>Options that need your key file were turned off. Choose or unlock it again.</source><translation>需要您私鑰檔的選項已關閉。重新選擇或解鎖私鑰檔。</translation></message>
     <message><source>This key file needs its password.</source><translation>這個私鑰檔需要密碼。</translation></message>
     <message><source>Enter it, then press Unlock.</source><translation>輸入後按「解鎖」。</translation></message>
-    <message><source>Error: No keys found in this file. Keys start with age1, one per line.</source><translation>錯誤：這個檔案中找不到金鑰。金鑰以 age1 開頭，每行一把。</translation></message>
-    <message><source>Error: This isn't a key Shiva can use. Public keys start with age1.</source><translation>錯誤：這不是 Shiva 能使用的金鑰。公開金鑰以 age1 開頭。</translation></message>
+    <message><source>Error: No keys found in this file. Keys start with age1 or ssh-, one per line.</source><translation>錯誤：這個檔案中找不到金鑰。金鑰以 age1 或 ssh- 開頭，每行一把。</translation></message>
+    <message><source>Error: This isn't a key Shiva can use. Public keys start with age1 or ssh-.</source><translation>錯誤：這不是 Shiva 能使用的金鑰。公開金鑰以 age1 或 ssh- 開頭。</translation></message>
     <message><source>Error: That is a secret key, not a public key. Shiva cleared the box. Never share it. It may still be in your clipboard history (Win+V): clear it there.</source><translation>錯誤：那是私密金鑰，不是公開金鑰。Shiva 已清空輸入框。切勿分享它。它可能仍留在剪貼簿歷程（Win+V）中，到那裡清除。</translation></message>
     <message><source>Error: This file holds a secret key, not public keys. Use "Choose key file..." for it.</source><translation>錯誤：這個檔案是私密金鑰，不是公開金鑰。改用「選擇私鑰檔...」。</translation></message>
     <message><source>Error: This file can't be read as a list of keys.</source><translation>錯誤：無法將這個檔案當作金鑰清單讀取。</translation></message>
     <message><source>Error: A file can't use both post-quantum and standard keys. Remove one kind.</source><translation>錯誤：同一個檔案不能同時使用後量子與標準金鑰。移除其中一種。</translation></message>
     <message><source>Error: The key file password is wrong, or the file is damaged. Enter it again.</source><translation>錯誤：私鑰檔密碼不正確，或檔案已損毀。重新輸入密碼。</translation></message>
     <message><source>Error: This isn't a key file (no AGE-SECRET-KEY- line). Choose another one.</source><translation>錯誤：這不是私鑰檔（沒有 AGE-SECRET-KEY- 開頭的行）。選擇另一個。</translation></message>
-    <message><source>Error: SSH keys aren't supported yet. Use an age key (starts with age1).</source><translation>錯誤：尚不支援 SSH 金鑰。使用 age 金鑰（以 age1 開頭）。</translation></message>
     <message><source>Error: Keys for plugins or hardware devices aren't supported yet. Use an age key (starts with age1).</source><translation>錯誤：尚不支援外掛或硬體裝置的金鑰。使用 age 金鑰（以 age1 開頭）。</translation></message>
     <message><source>Choose your key file</source><translation>選擇您的私鑰檔</translation></message>
     <message><source>Key files (*.agekey *.txt);;All files (*)</source><translation>私鑰檔 (*.agekey *.txt);;所有檔案 (*)</translation></message>

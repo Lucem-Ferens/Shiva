@@ -24,7 +24,8 @@ Format-independent: age encrypts a byte stream, so any file type works.
 | Public-key recipients (`age1...`), several at once; decrypt with a key file (plain or password-protected) | done |
 | Post-quantum recipients (`age1pq1`); one file never mixes post-quantum and standard keys | done |
 | Create a key pair in the window (standard or post-quantum, optional password, read back after saving) | done |
-| SSH keys, plugin and hardware keys, armored output | no |
+| SSH public keys (ssh-ed25519, ssh-rsa of 2048 bits or more) as recipients | yes; not with post-quantum keys in one file |
+| SSH private keys to decrypt, ecdsa and hardware SSH keys, plugin and hardware age keys, armored output | no |
 Not supported: files you cannot read, cloud placeholders that are not downloaded, links/junctions inside folders
 (refused with a reason).
 

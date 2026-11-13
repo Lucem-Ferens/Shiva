@@ -36,7 +36,7 @@ def test_secret_key_line_is_detected_and_refused(tmp_path):
 
 
 def test_other_key_types_are_named_not_accepted():
-    cases = {"ssh-ed25519 AAAAC3Nza": "ssh_key", "ssh-rsa AAAAB3": "ssh_key",
+    cases = {"ssh-ed25519 AAAAC3Nza": "unrecognised", "ssh-rsa AAAAB3": "unrecognised",
              "age1yubikey1qpzry": "plugin_key", "age1tag1qpzry": "plugin_key", "age1tagpq1qpzry": "plugin_key",
              "age1fido2-hmac1qpzry": "plugin_key", "sk-ssh-ed25519 AAAA": "ssh_key",
              "hello": "unrecognised", "age1": "unrecognised", "age1QQQ": "unrecognised", "age1bio": "unrecognised",
@@ -97,3 +97,37 @@ def test_ssh_private_keys_are_treated_as_secrets():
     for head in ("-----BEGIN OPENSSH PRIVATE KEY-----", "-----BEGIN RSA PRIVATE KEY-----", "-----BEGIN ENCRYPTED PRIVATE KEY-----"):
         assert R.is_secret_key(head + "\nb3BlbnNzaC1rZXk=\n") and R.classify(head) == "secret_key"
     assert not R.is_secret_key("-----BEGIN PUBLIC KEY-----")
+
+
+ED = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICoDf7P0Oija95uvYLpv67z5IsJgR6Pr7JDj4tMTjBuP"
+RSA2048 = ("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQChDCsCk7lwnKuRM/laegjGU7N10SOwf6T+3HQURuEx2oQIejo7TfSVc4XaACLitivhUvZIwcHy7VgSWoHNX1G412sUM5G2XyBA6mfCfHjWFyZDj9WhBNhUQmEKkR90dnf9hfuH/NXAjVvOXZuGX+MX6Uq27duoqPOma+w5wLfdSDqdua7Z1OgVVPAS2IL/QSsXzqruJqCOGhoWMG0nNNcAgrTDFEPHFVTKN9NGHPgNsUG9J9pLyVV4GNhep4LeNj1grJYX4ZKW9kcDJnsG7CDrCOV5SaE+kv5ufZ0dPgrL+w+Qez3t5KxMkCE43osbjAdytBh9MBJuGbhMLcxnQgFt")
+RSA1024 = ("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQDXK/ochSJmDez6IUQ7bVFdH2o+9duZ3qn1HS/crjrm5GnnFWSiospyKJN99TnLtjhEZNziASG/CPYX5YUScOtNgi0ulzUOjq6tbo2fRBnQvolyBNsdBbbmhZXteEuF+/ZuhjrVGrL2gnTg0qezTxP3vP4yM6yxO+rXELGAUH5Avw==")
+ECDSA = ("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBB2YG406IaaRLpse6DlWac6cvSS104ZxaGn4TTeFfd45XHN122SINfPREfbI/T9UptH/Wj6H5nNQPpdLIY82/hw=")
+
+
+def test_ssh_ed25519_and_rsa_keys_are_standard_recipients_without_their_comment():
+    for key in (ED, RSA2048):
+        res = R.parse_recipients(key + " alice@laptop")
+        assert [(k.kind, k.text) for k in res.keys] == [(R.STANDARD, key)] and not res.problems
+        assert R.is_ssh(key) and R.kind_of(key + " alice@laptop") == R.STANDARD
+    assert R.shorten(ED) == "ssh-ed25519 ..." + ED[-6:]
+
+
+def test_unusable_ssh_keys_are_named():
+    assert R.parse_recipients(RSA1024).problems == [R.Problem(1, "ssh_rsa_small")]
+    assert R.parse_recipients(ECDSA).problems == [R.Problem(1, "ssh_key")]
+    assert R.parse_recipients(ED[:-8]).problems == [R.Problem(1, "unrecognised")]            # cut short
+    assert R.parse_recipients(RSA2048.replace("ssh-rsa", "ssh-ed25519", 1)).problems == [R.Problem(1, "unrecognised")]   # type does not match the blob
+
+
+def test_an_ssh_key_cannot_be_mixed_with_a_post_quantum_one():
+    pq = R.Recipient(R.POST_QUANTUM, "age1pq1qpzry")
+    assert R.mixed([pq, R.parse_recipients(ED).keys[0]])
+    assert not R.mixed([R.Recipient(R.STANDARD, "age1qpzry"), R.parse_recipients(ED).keys[0]])
+
+
+def test_an_ssh_key_pasted_twice_with_different_comments_is_a_duplicate():
+    res = R.parse_recipients(ED + " alice@laptop\n" + ED + " bob@phone\n")
+    assert [k.text for k in res.keys] == [ED] and res.problems == [R.Problem(2, "duplicate")]
+    assert R.parse_recipients(ED + " x", existing=(ED,)).problems == [R.Problem(1, "duplicate")]
+    assert R.parse_recipients('command="x" ' + ED).problems == [R.Problem(1, "unrecognised")]

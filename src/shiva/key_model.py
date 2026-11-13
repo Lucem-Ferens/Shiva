@@ -63,6 +63,13 @@ def _key_file_reason(state: str) -> str | None:
     return None
 
 
+SSH_TAG_WARNING = (
+    "Warning: a file encrypted to an SSH key carries a short tag of that key. Anyone with the file and the SSH public key "
+    "(for example from GitHub) can tell the file was made for that key, and can match files made for the same key. "
+    "age1 keys add no such tag.")
+SSH_ONLY_WARNING = (
+    "Warning: files encrypted only to an SSH key can't be opened once its private key is replaced or deleted. Add your "
+    "own age key too, or keep the private key.")
 MIXED_REASON = "A file can't use both post-quantum and standard keys. Remove one kind."
 TOO_MANY_REASON = "Too many keys for one file. Remove some."
 NOT_RECIPIENT = ("Your key file isn't one of the recipients. Tick \"Also encrypt to my own key\", or remove the key "

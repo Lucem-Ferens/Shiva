@@ -6,6 +6,8 @@ malformed recipient when the file is encrypted.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 from dataclasses import dataclass, field
 
 STANDARD = "standard"
@@ -18,6 +20,8 @@ _INVISIBLE = {0x200B: None, 0x200C: None, 0x200D: None, 0x2060: None, 0xFEFF: No
 _PLUGIN_NAME =frozenset("abcdefghijklmnopqrstuvwxyz0123456789-_.")   # ASCII only
 _SECRET_PREFIX ="AGE-SECRET-KEY-"
 _SSH_PREFIXES = ("ssh-", "ecdsa-", "sk-ssh-", "sk-ecdsa-")
+SSH_TYPES = ("ssh-ed25519", "ssh-rsa")      # the two SSH key types age can encrypt to
+_MIN_RSA_BITS = 2048
 _PEM_SECRET = "PRIVATE KEY-----"     # the end of "-----BEGIN OPENSSH PRIVATE KEY-----" and its RSA / EC / encrypted variants
 
 
@@ -36,7 +40,7 @@ class Recipient:
 @dataclass(frozen=True)
 class Problem:
     line: int           # 1-based line in the parsed text
-    code: str           # secret_key | ssh_key | plugin_key | unrecognised | duplicate
+    code: str           # secret_key | ssh_key | ssh_rsa_small | plugin_key | unrecognised | duplicate
 
 
 @dataclass
@@ -55,7 +59,7 @@ def classify(line: str) -> str:
     if _has_secret(line):       # anywhere in the line: quoted, labelled, in backticks
         return "secret_key"
     if line.startswith(_SSH_PREFIXES):
-        return "ssh_key"
+        return _ssh_problem(line) or STANDARD
     if not line.startswith("age1") or len(line) <= 4:
         return "unrecognised"
     rest = line[4:]
@@ -66,6 +70,48 @@ def classify(line: str) -> str:
     if not (name and data and set(name) <= _PLUGIN_NAME and set(data) <= _BECH32):
         return "unrecognised"
     return POST_QUANTUM if name == "pq" else "plugin_key"
+
+
+def _ssh_fields(blob: bytes) -> list[bytes] | None:
+    """The length-prefixed fields of an SSH public key blob, or None when it is cut short or has trailing bytes."""
+    out, i = [], 0
+    while i < len(blob):
+        if i + 4 > len(blob):
+            return None
+        n = int.from_bytes(blob[i:i + 4], "big"); i += 4
+        if i + n > len(blob):
+            return None
+        out.append(blob[i:i + n]); i += n
+    return out
+
+
+def is_ssh(key: str) -> bool:
+    """True for an SSH public key line ("ssh-ed25519 ..." or "ssh-rsa ...")."""
+    return key.lstrip().startswith(SSH_TYPES)
+
+
+def _ssh_problem(line: str) -> str | None:
+    """None for a well-formed ssh-ed25519 / ssh-rsa key (RSA at least 2048 bits), else a problem code."""
+    parts = line.split()
+    if parts[0] not in SSH_TYPES:
+        return "ssh_key"                                   # ecdsa, sk-*, certificates: age cannot use them
+    try:
+        fields = _ssh_fields(base64.b64decode(parts[1], validate=True)) if len(parts) > 1 else None
+    except (binascii.Error, ValueError):
+        fields = None
+    if not fields or fields[0].decode("ascii", "replace") != parts[0]:
+        return "unrecognised"
+    if parts[0] == "ssh-ed25519":
+        return None if len(fields) == 2 and len(fields[1]) == 32 else "unrecognised"
+    if len(fields) != 3:
+        return "unrecognised"
+    bits = int.from_bytes(fields[2], "big").bit_length()
+    return None if bits >= _MIN_RSA_BITS else "ssh_rsa_small"
+
+
+def normalize(line: str) -> str:
+    """The text age gets: an SSH key without its comment (often user@host), anything else unchanged."""
+    return " ".join(line.split()[:2]) if is_ssh(line) else line
 
 
 def kind_of(key: str) -> str | None:
@@ -86,6 +132,7 @@ def parse_recipients(text: str, source: str = "pasted", existing: tuple[str, ...
         if not line or line.startswith("#"):
             continue
         k = classify(line)
+        line = normalize(line) if k == STANDARD else line
         if k not in (STANDARD, POST_QUANTUM):
             out.problems.append(Problem(n, k))
         elif line in seen:
@@ -112,4 +159,6 @@ def mixed(keys: list[Recipient]) -> bool:
 
 def shorten(key: str) -> str:
     """Display form of a long key: the start and the end, never the whole text."""
+    if is_ssh(key):
+        return key.split()[0] + " ..." + key[-6:]
     return key if len(key) <= 24 else key[:12] + "..." + key[-6:]
